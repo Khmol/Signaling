@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Signaling</string>
+    <string name="pb_showPaired">Показать\nспаренные</string>
+    <string name="tvConnectionState">Соединение отсутствует</string>
+    <string name="hintTextEdit1">Введите телефон</string>
+    <string name="scan_mode_on">Вкл. режим\ncканирования</string>
+    <string name="scan_mode_off">Принять\nданные</string>
+    <string name="green">Передать\nданные</string>
+    <string name="desc1">Кнопка с рисунком</string>
+    <string name="about_text">Список спаренных телефонов:\n</string>
+    <string name="about_title">О программе</string>
+    <string name="intent_title">Передача действий</string>
+    <string name="intent_text">Это то что было</string>
+    <string name="hint_tv_address">Куда передать</string>
+    <string name="pb_Discovery">Поиск\nустройств</string>
+    <string name="pbConnect">Connect</string>
+    <string name="ConnnectionOK">Соединение установлено</string>
+    <string name="ConnnectionERR">Ошибка подключения</string>
+    <string name="DataTransmitted">Данные переданы</string>
+    <string name="TransmitionError">Ошибка передачи</string>
+    <string name="RecieveError">Ошибка получения данных</string>
+    <string name="Recieve">Получено:</string>
+    <string name="action_settings">Settings</string>
+    <string name="default_Vin">12В</string>
+    <string name="ivCarDescription">Car</string>
+    <string name="tvOutTemperature">+20°C</string>
+
+
+</resources>
