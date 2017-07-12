@@ -21,9 +21,10 @@
     <string name="RecieveError">Ошибка получения данных</string>
     <string name="Recieve">Получено:</string>
     <string name="action_settings">Settings</string>
-    <string name="default_Vin">12В</string>
+    <string name="inVoltage">12В</string>
     <string name="ivCarDescription">Car</string>
     <string name="tvOutTemperature">+20°C</string>
+    <string name="outTemperature">+25°C</string>
 
 
 </resources>
