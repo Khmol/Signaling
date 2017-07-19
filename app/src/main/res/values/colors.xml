@@ -7,5 +7,6 @@
     <color name="colorYellow">#fff200</color>
     <color name="colorGreen">#00FF00</color>
     <color name="colorBlack">#f000</color>
-    <color name="colorCarSame">#990000FF</color>
+    <color name="colorCarSame">#5598C8</color>
+    <color name="colorSame">#5598C8</color>
 </resources>
