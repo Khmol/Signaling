@@ -20,7 +20,7 @@
     <string name="TransmitionError">Ошибка передачи</string>
     <string name="RecieveError">Ошибка получения данных</string>
     <string name="Recieve">Получено:</string>
-    <string name="action_settings">Settings</string>
+    <string name="action_settings">Настройки</string>
     <string name="inVoltage">12В</string>
     <string name="ivCarDescription">Car</string>
     <string name="tvOutTemperature">+20°C</string>

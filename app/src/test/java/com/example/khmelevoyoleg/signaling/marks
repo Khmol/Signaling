@@ -1,4 +1,6 @@
 
+            android:theme="@style/AppTheme.NoActionBar"
+
 
 
     @Override
