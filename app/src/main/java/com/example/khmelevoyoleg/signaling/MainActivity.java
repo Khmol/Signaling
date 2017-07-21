@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     // TODO перенести BT_SERVER_NAME в настройки
     // TODO перенести BT_SERVER_UUID в настройки
     private static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
+    private static final int SET_SETTINGS = 2;              // редактирование настроек
     private static final int BT_CONNECT_OK = 5;         // соединение по Bluetooth установлено
     private static final int BT_CONNECT_ERR = 6;        // ошибка установки соединения по Bluetooth
 
@@ -54,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
 
         // определяем объекты всех View
         fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
-
 
         // определяем адаптер
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -116,6 +116,12 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            Intent intent = new Intent(MainActivity.this, SigSettings.class);
+            // передаем данные для активности IntentActivity
+            intent.putExtra("name", "переданные данные");
+            //intent.putExtra("phone", mTextPhone.getText().toString());
+            // запускаем активность
+            startActivityForResult(intent, SET_SETTINGS);
             return true;
         }
         // по умолчанию возвращаем обработчик родителя
@@ -186,6 +192,9 @@ public class MainActivity extends AppCompatActivity {
                         getResources().getColor(R.color.colorCarSame));
             }
         }
+        else if(requestCode == SET_SETTINGS){
+            Toast.makeText(getApplicationContext(), data.getStringExtra("name"), Toast.LENGTH_SHORT).show();
+        }
     }
 
     // установка цвета для кнопки FloatingActionButton
@@ -201,6 +210,29 @@ public class MainActivity extends AppCompatActivity {
         };
         ColorStateList colorStateList = new ColorStateList(states, colors);
         fab.setBackgroundTintList(colorStateList);
+    }
+
+
+    // Вызывается перед уничтожением активности
+    @Override
+    public void onDestroy() {
+        // Освободить все ресурсы, включая работающие потоки,
+        // соединения с БД и т. д.
+        try {
+            if (inStream != null)
+                inStream.close();
+            if (outStream != null)
+                outStream.close();
+            if (clientSocket != null)
+                clientSocket.close();
+            mBluetoothDevice = null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(getApplicationContext(),
+                    "Ошибка закрытия Bluetooth",
+                    Toast.LENGTH_SHORT).show();
+        }
+        super.onDestroy();
     }
 }
 

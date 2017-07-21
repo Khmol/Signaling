@@ -25,6 +25,8 @@
     <string name="ivCarDescription">Car</string>
     <string name="tvOutTemperature">+20°C</string>
     <string name="outTemperature">+25°C</string>
+    <string name="base_name">имя базового\nблока</string>
+    <string name="settings">Настройки</string>
 
 
 </resources>
