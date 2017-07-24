@@ -27,6 +27,7 @@
     <string name="outTemperature">+25°C</string>
     <string name="base_name">имя базового\nблока</string>
     <string name="settings">Настройки</string>
+    <string name="title_in_out">Входы/выходы</string>
 
 
 </resources>

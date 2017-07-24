@@ -3,19 +3,25 @@ package com.example.khmelevoyoleg.signaling;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.AnimationUtils;
 import android.widget.Toast;
+import android.widget.ViewFlipper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,7 +29,7 @@ import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnTouchListener {
     // пределяем константы
     private static final String BT_SERVER_NAME = "CAR2";
     private static final String BT_SERVER_UUID = "00001101-0000-1000-8000-00805f9b34fb";
@@ -43,18 +49,31 @@ public class MainActivity extends AppCompatActivity {
     private OutputStream outStream;
     private InputStream inStream;
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
+    private ViewFlipper flipper;                    // определяем flipper для перелистываний экрана
+    private float fromPosition;
 
     Handler btConnectHandler;   // обработчик сообщений из потока btConnect
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setContentView(R.layout.activity_main_flip);
 
-        // определяем объекты всех View
+        // определяем объекты для flipper
+        flipper = (ViewFlipper) findViewById(R.id.flipper);
+        // Создаем View и добавляем их в уже готовый flipper
+        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        int layouts[] = new int[]{ R.layout.activity_main, R.layout.activity_in_out};
+        for (int layout : layouts)
+            flipper.addView(inflater.inflate(layout, null));
+
+        // Устанавливаем listener касаний, для последующего перехвата жестов
+        ConstraintLayout mainLayout = (ConstraintLayout) findViewById(R.id.main_layout);
+        mainLayout.setOnTouchListener(this);
+        //
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
+        setSupportActionBar(toolbar);
 
         // определяем адаптер
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -233,6 +252,33 @@ public class MainActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
         }
         super.onDestroy();
+    }
+
+    @Override
+    public boolean onTouch(View view, MotionEvent event)
+    {
+        switch (event.getAction())
+        {
+            case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
+                // fromPosition - координата по оси X начала выполнения операции
+                fromPosition = event.getX();
+                break;
+            case MotionEvent.ACTION_UP: // Пользователь отпустил экран, т.е. окончание движения
+                float toPosition = event.getX();
+                if (fromPosition > toPosition){
+                    flipper.setInAnimation(AnimationUtils.loadAnimation(this,R.anim.go_next_in));
+                    flipper.setOutAnimation(AnimationUtils.loadAnimation(this,R.anim.go_next_out));
+                    flipper.showNext();
+                }
+                else if (fromPosition < toPosition) {
+                    flipper.setInAnimation(AnimationUtils.loadAnimation(this,R.anim.go_prev_in));
+                    flipper.setOutAnimation(AnimationUtils.loadAnimation(this,R.anim.go_prev_out));
+                    flipper.showPrevious();
+                }
+            default:
+                break;
+        }
+        return true;
     }
 }
 

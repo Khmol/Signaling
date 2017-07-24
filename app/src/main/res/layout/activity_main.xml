@@ -7,147 +7,148 @@
     android:layout_height="match_parent"
     android:background="@android:color/darker_gray">
 
-    <android.support.design.widget.AppBarLayout
-        android:id="@+id/appBar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:theme="@style/AppTheme.AppBarOverlay"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/TopLayout">
 
-        <android.support.v7.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:popupTheme="@style/AppTheme.PopupOverlay" />
-    </android.support.design.widget.AppBarLayout>
-
-    <android.support.constraint.ConstraintLayout
-        android:id="@+id/TopLayout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/appBar"
-        app:layout_constraintBottom_toTopOf="@+id/BotLayout">
-
-        <ImageView
-            android:id="@+id/ivCar"
+        <android.support.constraint.ConstraintLayout
+            android:id="@+id/BotLayout"
             android:layout_width="wrap_content"
             android:layout_height="0dp"
-            android:contentDescription="@string/ivCarDescription"
-            app:srcCompat="@drawable/car"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintDimensionRatio="H,20:9"/>
-
-        <TextView
-            android:id="@+id/tvInVoltage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/inVoltage"
-            android:textSize="13sp"
-            android:textColor="@color/colorCarSame"
-            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintHorizontal_bias="0.16"
-            app:layout_constraintVertical_bias="0.72"/>
+            app:layout_constraintTop_toBottomOf="@+id/TopLayout">
 
-        <ImageView
-            android:id="@+id/imageView"
+            <android.support.design.widget.FloatingActionButton
+                android:id="@+id/fabConnect"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:onClick="pbConnectHeader"
+                android:src="@android:drawable/ic_dialog_email"
+                app:backgroundTint="@color/colorRed"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageButton
+                android:id="@+id/ibOpen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:layout_marginEnd="4dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="4dp"
+                android:layout_marginStart="8dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintHorizontal_chainStyle="packed"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/ibClose"
+                app:srcCompat="@drawable/open" />
+
+            <ImageButton
+                android:id="@+id/ibClose"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginLeft="4dp"
+                android:layout_marginRight="8dp"
+                android:layout_marginStart="4dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toRightOf="@+id/ibOpen"
+                app:layout_constraintRight_toRightOf="parent"
+                app:srcCompat="@drawable/close" />
+
+            <ImageButton
+                android:id="@+id/ibMute"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="4dp"
+                android:layout_marginStart="8dp"
+                app:layout_constraintBottom_toTopOf="@+id/ibOpen"
+                app:layout_constraintHorizontal_chainStyle="packed"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/ibBagage"
+                app:srcCompat="@drawable/mute" />
+
+            <ImageButton
+                android:id="@+id/ibBagage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginLeft="4dp"
+                android:layout_marginRight="8dp"
+                android:layout_marginStart="4dp"
+                app:layout_constraintBottom_toTopOf="@+id/ibClose"
+                app:layout_constraintLeft_toRightOf="@+id/ibMute"
+                app:layout_constraintRight_toRightOf="parent"
+                app:srcCompat="@drawable/bagage" />
+        </android.support.constraint.ConstraintLayout>
+
+        <android.support.constraint.ConstraintLayout
+            android:id="@+id/TopLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/BotLayout"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:srcCompat="@drawable/close_small"
-            app:layout_constraintHorizontal_bias="0.63" />
+            app:layout_constraintTop_toBottomOf="@+id/appBar">
 
-    </android.support.constraint.ConstraintLayout>
+            <ImageView
+                android:id="@+id/ivCar"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:contentDescription="@string/ivCarDescription"
+                app:layout_constraintDimensionRatio="H,20:9"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/car" />
 
-    <android.support.constraint.ConstraintLayout
-        android:id="@+id/BotLayout"
-        android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/TopLayout"
-        app:layout_constraintBottom_toBottomOf="parent">
+            <TextView
+                android:id="@+id/tvInVoltage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/inVoltage"
+                android:textColor="@color/colorCarSame"
+                android:textSize="13sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintHorizontal_bias="0.16"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.72" />
 
-        <android.support.design.widget.FloatingActionButton
-            android:id="@+id/fabConnect"
-            android:layout_width="wrap_content"
+            <ImageView
+                android:id="@+id/imageView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintHorizontal_bias="0.63"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/close_small" />
+
+        </android.support.constraint.ConstraintLayout>
+
+        <android.support.design.widget.AppBarLayout
+            android:id="@+id/appBar"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:onClick="pbConnectHeader"
-            android:src="@android:drawable/ic_dialog_email"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:backgroundTint="@color/colorRed"/>
-
-        <ImageButton
-            android:id="@+id/ibOpen"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintHorizontal_chainStyle="packed"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:theme="@style/AppTheme.AppBarOverlay"
+            app:layout_constraintBottom_toTopOf="@+id/TopLayout"
             app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@+id/ibClose"
-            app:srcCompat="@drawable/open"
-            android:layout_marginBottom="8dp"
-            android:layout_marginLeft="8dp"
-            android:layout_marginRight="4dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="4dp" />
-
-        <ImageButton
-            android:id="@+id/ibClose"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:srcCompat="@drawable/close"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintLeft_toRightOf="@+id/ibOpen"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginBottom="8dp"
-            android:layout_marginLeft="4dp"
-            android:layout_marginRight="8dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginStart="4dp" />
+            app:layout_constraintTop_toTopOf="parent">
 
-        <ImageButton
-            android:id="@+id/ibMute"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:srcCompat="@drawable/mute"
-            app:layout_constraintHorizontal_chainStyle="packed"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@+id/ibBagage"
-            app:layout_constraintBottom_toTopOf="@+id/ibOpen"
-            android:layout_marginBottom="4dp"
-            android:layout_marginLeft="8dp"
-            android:layout_marginRight="4dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="4dp" />
-
-        <ImageButton
-            android:id="@+id/ibBagage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:srcCompat="@drawable/bagage"
-            app:layout_constraintBottom_toTopOf="@+id/ibClose"
-            app:layout_constraintLeft_toRightOf="@+id/ibMute"
-            app:layout_constraintRight_toRightOf="parent"
-            android:layout_marginBottom="4dp"
-            android:layout_marginLeft="4dp"
-            android:layout_marginRight="8dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginStart="4dp" />
-    </android.support.constraint.ConstraintLayout>
+            <android.support.v7.widget.Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="?attr/colorPrimary"
+                app:popupTheme="@style/AppTheme.PopupOverlay" />
+        </android.support.design.widget.AppBarLayout>
 
 </android.support.constraint.ConstraintLayout>
