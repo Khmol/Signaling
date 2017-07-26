@@ -3,8 +3,11 @@ package com.example.khmelevoyoleg.signaling;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.bluetooth.BluetoothManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
@@ -37,8 +40,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     // TODO перенести BT_SERVER_UUID в настройки
     private static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
     private static final int SET_SETTINGS = 2;              // редактирование настроек
-    private static final int BT_CONNECT_OK = 5;         // соединение по Bluetooth установлено
+    private static final int BT_CONNECT_OK = 5;         // соединение по Bluetooth установлено успешно
     private static final int BT_CONNECT_ERR = 6;        // ошибка установки соединения по Bluetooth
+    private static final int BT_CONNECTED = 7;          // соединения по Bluetooth уже было установлено
 
     // определяем стринговые константы
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
@@ -46,6 +50,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothDevice mBluetoothDevice;
     private BluetoothSocket clientSocket;
+    private enum ConnectionStatusBT {
+        NO_CONNECT,
+        CONNECTED
+    }; // тип перечисления состояний по Bluetooth
+    private ConnectionStatusBT mConnectionStatusBT;    // состояние подключения по Bluetooth
     private OutputStream outStream;
     private InputStream inStream;
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
@@ -70,13 +79,23 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // Устанавливаем listener касаний, для последующего перехвата жестов
         ConstraintLayout mainLayout = (ConstraintLayout) findViewById(R.id.main_layout);
         mainLayout.setOnTouchListener(this);
-        //
+        // определяем toolbar
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
         setSupportActionBar(toolbar);
+        // инициализация переменных
+        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+        // инициализация объектов для View
+        fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
+
+
+        // регистрация активностей
+        registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED));
+        registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED));
+        registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED));
 
         // определяем адаптер
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
         if(mBluetoothAdapter != null)
         {
             // С Bluetooth все в порядке.
@@ -104,7 +123,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         }
                         break;
                     case BT_CONNECT_ERR:
-                        // TODO - обработать ситуацию когда соединение уже установлено
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             setFloatingActionButtonColors(fabConnect,
                                     getResources().getColor(R.color.colorRed, null),
@@ -115,6 +133,10 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                     getResources().getColor(R.color.colorRed),
                                     getResources().getColor(R.color.colorCarSame));
                         }
+                        Toast.makeText(getApplicationContext(), "Ошибка соединения", Toast.LENGTH_SHORT).show();
+                        break;
+                    case BT_CONNECTED:
+                        Toast.makeText(getApplicationContext(), "Соединение уже активно", Toast.LENGTH_SHORT).show();
                         break;
                 }
             };
@@ -156,19 +178,40 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             @Override
             public void run() {
                 try {
-                    mBluetoothDevice = findBTDevice(BT_SERVER_NAME);
-                    UUID uuid = new UUID(0, 0);
-                    uuid = UUID.fromString(BT_SERVER_UUID);
-                    if (clientSocket != null){
-                        if ( ! clientSocket.isConnected()) {
-                            clientSocket.connect();
+                    // проверяем включен ли Bluetooth
+                    if (mBluetoothAdapter.isEnabled()) {
+                        // включен, проверяем устанавливалось ли ранее соединение
+                        UUID uuid = new UUID(0, 0);
+                        if ( clientSocket == null ) {
+                            // не устанавливалось
+                            mBluetoothDevice = findBTDevice(BT_SERVER_NAME);
+                            uuid = UUID.fromString(BT_SERVER_UUID);
+                            clientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(uuid);
+                            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, BT_SERVER_NAME));
+                            }
+                            else {
+                                // соединения нет, пробуем снова установить его
+                                clientSocket.connect();
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, BT_SERVER_NAME));
+                            }
+                        }
+                        else {
+                            // соединение устанавливалось, проверка есть ли соединение
+                            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, BT_SERVER_NAME));
+                            }
+                            else {
+                                // соединения нет, пробуем снова установить его
+                                clientSocket.connect();
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, BT_SERVER_NAME));
+                            }
                         }
                     }
                     else {
-                        clientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(uuid);
-                        clientSocket.connect();
+                        // Bluetooth выключен. Предложим пользователю включить его.
+                        startActivityForResult(new Intent(actionRequestEnable), REQUEST_ENABLE_BT);
                     }
-                    btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, BT_SERVER_NAME));
                 }
                 catch (IOException e) {
                     btConnectHandler.sendEmptyMessage(BT_CONNECT_ERR);
@@ -177,6 +220,78 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         });
         bluetooth_Connect.start();
     }
+
+    BroadcastReceiver connectionStatus = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            try {
+                String action = intent.getAction();
+                switch (action){
+                    case BluetoothDevice.ACTION_ACL_CONNECTED:
+                        // состояние - CONNECTED
+                        mConnectionStatusBT = ConnectionStatusBT.CONNECTED;
+                        break;
+                    case BluetoothDevice.ACTION_ACL_DISCONNECTED:
+                        // состояние - NO_CONNECT
+                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+                        if (clientSocket != null){
+                            clientSocket.close();
+                            clientSocket = null;
+                        }
+                        if (inStream != null){
+                            inStream.close();
+                            inStream = null;
+                        }
+                        if (outStream != null){
+                            outStream.close();
+                            outStream = null;
+                        }
+                        Toast.makeText(getApplicationContext(),
+                                "Соединение разорвано", Toast.LENGTH_SHORT).show();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            setFloatingActionButtonColors(fabConnect,
+                                    getResources().getColor(R.color.colorRed, null),
+                                    getResources().getColor(R.color.colorCarSame, null));
+                        }
+                        else {
+                            setFloatingActionButtonColors(fabConnect,
+                                    getResources().getColor(R.color.colorRed),
+                                    getResources().getColor(R.color.colorCarSame));
+                        }
+                        break;
+                    case BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED:
+                        // состояние - NO_CONNECT
+                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+                        if (inStream != null)
+                            inStream.close();
+                        if (outStream != null)
+                            outStream.close();
+                        if (clientSocket != null)
+                            clientSocket.close();
+                        mBluetoothDevice = null;
+                        Toast.makeText(getApplicationContext(),
+                                "Разрыв соединения от базовой станции", Toast.LENGTH_SHORT).show();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            setFloatingActionButtonColors(fabConnect,
+                                    getResources().getColor(R.color.colorRed, null),
+                                    getResources().getColor(R.color.colorCarSame, null));
+                        }
+                        else {
+                            setFloatingActionButtonColors(fabConnect,
+                                    getResources().getColor(R.color.colorRed),
+                                    getResources().getColor(R.color.colorCarSame));
+                        }
+                        break;
+                }
+            }
+            catch (IOException e) {
+                // состояние - NO_CONNECT
+                mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+                Toast.makeText(getApplicationContext(),
+                        "Ошибка соединения", Toast.LENGTH_SHORT).show();
+            }
+        }
+    };
 
     /* поиск устройства Bluetooth по имени
     params: String nameDev - мя которое будет искаться в спаренных усройствах */
