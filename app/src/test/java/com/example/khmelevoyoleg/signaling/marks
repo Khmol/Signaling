@@ -1,3 +1,22 @@
+                        Thread bluetoothInit = new Thread(new Runnable() {
+                            public void run() {
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                // передаем данные для начала работы с SIM
+                                sendDataBT(BT_INIT_MESSAGE);
+                                // запускаем прием сообщений от SIM
+                                listenMessageBT();
+                            }
+                        });
+                        bluetoothInit.start();
+
+
+
+
+
 
             android:theme="@style/AppTheme.NoActionBar"
 

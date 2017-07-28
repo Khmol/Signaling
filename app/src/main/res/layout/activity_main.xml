@@ -17,6 +17,14 @@
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/TopLayout">
 
+            <TextView
+                android:id="@+id/tvBtRxData"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent"/>
+
             <android.support.design.widget.FloatingActionButton
                 android:id="@+id/fabConnect"
                 android:layout_width="wrap_content"
@@ -52,6 +60,7 @@
                 android:layout_marginLeft="4dp"
                 android:layout_marginRight="8dp"
                 android:layout_marginStart="4dp"
+                android:onClick="pbCloseHeader"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toRightOf="@+id/ibOpen"
                 app:layout_constraintRight_toRightOf="parent"
