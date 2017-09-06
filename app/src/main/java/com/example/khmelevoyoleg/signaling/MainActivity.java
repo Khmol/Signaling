@@ -29,25 +29,36 @@ import android.widget.ViewFlipper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements View.OnTouchListener {
     // тип перечисления состояний по Bluetooth
     private enum ConnectionStatusBT {
+        CONNECTING,
         NO_CONNECT,
         CONNECTED
     };
     private enum MainStatus {
         IDLE,
-        INIT
+        CONNECTING,
+        CONNECTED,
+        CLEAR_ALARM_TRIGGERED,
+        CLEAR_ALARM,
+        SET_ALARM
     };
 
     // пределяем константы
-    private static final String BT_SERVER_NAME = "CAR2";
+    private static final String BT_SERVER_NAME = "CAR";
     private static final String BT_SERVER_UUID = "00001101-0000-1000-8000-00805f9b34fb";
     private static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP";    // посылка для инициализации SIM
-    private static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED";        // посылка для снятия аварии с SIM
+    private static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r";        // посылка для снятия аварии с SIM
+    private static final String CLEAR_ALARM = "CLEAR ALARM,1\r";                // посылка для снятия с охраны
+    private static final String SET_ALARM = "SET ALARM,1\r";                    // посылка для установки на охрану
+    private static final String RX_INIT_OK = "SPP APP OK\r";                    // ответ на BT_INIT_MESSAGE
+
+
 
     // TODO перенести BT_SERVER_NAME в настройки
     // TODO перенести BT_SERVER_UUID в настройки
@@ -66,16 +77,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothDevice mBluetoothDevice;
-    private BluetoothSocket clientSocket;
+    private BluetoothSocket mClientSocket;
 
     private ConnectionStatusBT mConnectionStatusBT; // состояние подключения по Bluetooth
-    private OutputStream outStream;                 // поток по передаче bluetooth
-    private InputStream inStream;                   // поток по приему bluetooth
+    private MainStatus mMainStatus; // состояние подключения по Bluetooth
+    private OutputStream mOutStream;                 // поток по передаче bluetooth
+    private InputStream mInStream;                   // поток по приему bluetooth
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
     private ViewFlipper flipper;                    // определяем flipper для перелистываний экрана
     private float fromPosition;                     // позиция касания при перелистывании экранов
     private boolean mBtRxStatus;                    // состояние по приему bluetooth
     private TextView tvBtRxData;                    // текст с принятыми данными
+    private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
+    private ArrayList<String> namePairedDevices;    // имена спаренных устройств
 
     Handler btConnectHandler;   // обработчик сообщений из потока btConnect
     Handler btRxHandler;        // обработчик сообщений из потока bluetooth_Rx
@@ -101,7 +115,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         // инициализация переменных
-        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;    // вначале состояние NO_CONNECT
+        mMainStatus = MainStatus.IDLE;  // вначале состояние IDLE
         // инициализация объектов для View
         fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
         tvBtRxData = (TextView) findViewById(R.id.tvBtRxData);
@@ -123,6 +138,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 startActivityForResult(new Intent(actionRequestEnable), REQUEST_ENABLE_BT);
             }
         }
+        // получаем список спаренных устройств
+        pairedDevices = mBluetoothAdapter.getBondedDevices();
+        namePairedDevices = new ArrayList<>();
 
         // определяем Handler для соединения по Bluetooth
         btConnectHandler = new Handler(){
@@ -152,6 +170,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                     getResources().getColor(R.color.colorCarSame));
                         }
                         Toast.makeText(getApplicationContext(), "Ошибка соединения", Toast.LENGTH_SHORT).show();
+                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;        // соединение не установлено
+                        mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
                         break;
                     case BT_CONNECTED:
                         Toast.makeText(getApplicationContext(), "Соединение уже активно", Toast.LENGTH_SHORT).show();
@@ -165,14 +185,16 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             public void handleMessage(android.os.Message msg){
                 switch (msg.what) {
                     case BT_TX_OK:
-                        String s = (String) msg.obj;
                         Toast.makeText(getApplicationContext(),
                                 R.string.DataTransmitted, Toast.LENGTH_SHORT).show();
                         break;
                     case BT_TX_ERR:
-                        Toast.makeText(getApplicationContext(),
-                                R.string.TransmitionError,
-                                Toast.LENGTH_SHORT).show();
+                        if (mMainStatus == MainStatus.CONNECTING) {
+                            Toast.makeText(getApplicationContext(),
+                                    R.string.TransmitionError,
+                                    Toast.LENGTH_SHORT).show();
+                            SendInitMessage();  // отправка посылки для инициализации SIM
+                        }
                         break;
                 }
             };
@@ -183,6 +205,22 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             public void handleMessage(android.os.Message msg){
                 switch (msg.what) {
                     case BT_RX_OK_ANSWER:
+                        String rxText = (String) msg.obj;
+                        // если получен RX_INIT_OK и это первое соединение
+                        if (rxText.equals(RX_INIT_OK) & mMainStatus == MainStatus.CONNECTING) {
+                            // ответ получен правильный
+                            Toast.makeText(getApplicationContext(),
+                                    R.string.DataTransmitted, Toast.LENGTH_SHORT).show();
+                            mMainStatus = MainStatus.CONNECTED;
+                        }
+                        else if (mMainStatus == MainStatus.CONNECTING) {
+                            // ошибочный ответ
+                            // повторная отправка посылки для инициализации SIM
+                            SendInitMessage();  // отправка посылки для инициализации SIM
+                        }
+                        else if (mMainStatus == MainStatus.CONNECTED){
+                            // получены рабочие данные
+                        }
                         // обновляем значение текста
                         tvBtRxData.setText((String) msg.obj);
                         break;
@@ -192,9 +230,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                 Toast.LENGTH_SHORT).show();
                         break;
                 }
-                // TODO - сделать проверку на установленное соединение, прежде чем перезапускать прием
                 // снова запускаем прием данных
-                listenMessageBT();
+                if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED)
+                    listenMessageBT();
             };
         };
     }
@@ -211,11 +249,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // получаем код выбранного пункта меню
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
+        // если выбран пункт меню "Настройки"
         if (id == R.id.action_settings) {
             Intent intent = new Intent(MainActivity.this, SigSettings.class);
             // передаем данные для активности IntentActivity
-            intent.putExtra("name", "переданные данные");
+            if (pairedDevices.size() > 0) {
+                int i = 0;
+                for (BluetoothDevice device : pairedDevices) {
+                    String name = device.getName();
+                    namePairedDevices.add(i, name);
+                    i++;
+                }
+            }
+            intent.putExtra("Paired", namePairedDevices);
             //intent.putExtra("phone", mTextPhone.getText().toString());
             // запускаем активность
             startActivityForResult(intent, SET_SETTINGS);
@@ -227,8 +273,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     // обработка нажатия кнопки fabConnect
     public void pbConnectHeader(View view){
-        // выводим сообщение о начале поиска "Базового блока"
-        Toast.makeText(getApplicationContext(), "Запущен поиск сигнализации", Toast.LENGTH_SHORT).show();
+        if (mMainStatus == MainStatus.IDLE){
+            // выводим сообщение о начале поиска "Базового блока"
+            Toast.makeText(getApplicationContext(), "Запущен поиск сигнализации", Toast.LENGTH_SHORT).show();
+        }
+        mConnectionStatusBT = ConnectionStatusBT.CONNECTING;
         // создаем поток в котором будет производится поиск "Базового блока"
         Thread bluetooth_Connect = new Thread(new Runnable() {
             @Override
@@ -238,17 +287,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     if (mBluetoothAdapter.isEnabled()) {
                         // включен, проверяем устанавливалось ли ранее соединение
                         UUID uuid = new UUID(0, 0);
-                        if ( clientSocket == null ) {
+                        if ( mClientSocket == null ) {
                             // не устанавливалось
                             mBluetoothDevice = findBTDevice(BT_SERVER_NAME);
                             uuid = UUID.fromString(BT_SERVER_UUID);
-                            clientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(uuid);
+                            mClientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(uuid);
                             if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
                                 btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, BT_SERVER_NAME));
                             }
                             else {
                                 // соединения нет, пробуем снова установить его
-                                clientSocket.connect();
+                                mClientSocket.connect();
+
                                 btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, BT_SERVER_NAME));
                             }
                         }
@@ -259,7 +309,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                             }
                             else {
                                 // соединения нет, пробуем снова установить его
-                                clientSocket.connect();
+                                mClientSocket.connect();
                                 btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, BT_SERVER_NAME));
                             }
                         }
@@ -274,7 +324,27 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 }
             }
         });
+        bluetooth_Connect.setDaemon(true);
         bluetooth_Connect.start();
+    }
+
+    // отправка посылки для инициализации SIM
+    void SendInitMessage(){
+        Thread bluetoothInit = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    Thread.sleep(1500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                // передаем данные для начала работы с SIM
+                sendDataBT(BT_INIT_MESSAGE);
+                // запускаем прием сообщений от SIM
+                listenMessageBT();
+            }
+        });
+        bluetoothInit.setDaemon(true);
+        bluetoothInit.start();
     }
 
     BroadcastReceiver connectionStatus = new BroadcastReceiver() {
@@ -284,37 +354,29 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 String action = intent.getAction();
                 switch (action) {
                     case BluetoothDevice.ACTION_ACL_CONNECTED:
-                        // состояние - CONNECTED
-                        mConnectionStatusBT = ConnectionStatusBT.CONNECTED;
-                        Thread bluetoothInit = new Thread(new Runnable() {
-                            public void run() {
-                                try {
-                                    Thread.sleep(1500);
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                                // передаем данные для начала работы с SIM
-                                sendDataBT(BT_INIT_MESSAGE);
-                                // запускаем прием сообщений от SIM
-                                listenMessageBT();
-                            }
-                        });
-                        bluetoothInit.start();
+                        // если не было ошибки при установке соединения
+                        if (mConnectionStatusBT == ConnectionStatusBT.CONNECTING){
+                            // изменяем состояние - CONNECTED
+                            mConnectionStatusBT = ConnectionStatusBT.CONNECTED;
+                            mMainStatus = MainStatus.CONNECTING;   // установка соединения - отправка посылки для инициализации SIM
+                            SendInitMessage();      // отправка посылки для инициализации SIM
+                        }
+                        // в противном случае ничего не делаем, соединение не состоялось
                         break;
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED:
                         // состояние - NO_CONNECT
                         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
-                        if (clientSocket != null) {
-                            clientSocket.close();
-                            clientSocket = null;
+                        if (mClientSocket != null) {
+                            mClientSocket.close();
+                            mClientSocket = null;
                         }
-                        if (inStream != null) {
-                            inStream.close();
-                            inStream = null;
+                        if (mInStream != null) {
+                            mInStream.close();
+                            mInStream = null;
                         }
-                        if (outStream != null) {
-                            outStream.close();
-                            outStream = null;
+                        if (mOutStream != null) {
+                            mOutStream.close();
+                            mOutStream = null;
                         }
                         Toast.makeText(getApplicationContext(),
                                 "Соединение разорвано", Toast.LENGTH_SHORT).show();
@@ -331,12 +393,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     case BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED:
                         // состояние - NO_CONNECT
                         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
-                        if (inStream != null)
-                            inStream.close();
-                        if (outStream != null)
-                            outStream.close();
-                        if (clientSocket != null)
-                            clientSocket.close();
+                        if (mInStream != null)
+                            mInStream.close();
+                        if (mOutStream != null)
+                            mOutStream.close();
+                        if (mClientSocket != null)
+                            mClientSocket.close();
                         mBluetoothDevice = null;
                         Toast.makeText(getApplicationContext(),
                                 "Разрыв соединения от базовой станции", Toast.LENGTH_SHORT).show();
@@ -360,11 +422,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
     };
 
-    /* поиск устройства Bluetooth по имени
-    params: String nameDev - мя которое будет искаться в спаренных усройствах */
+    /**
+     *  поиск устройства Bluetooth по имени
+     *  params: String nameDev - мя которое будет искаться в спаренных усройствах
+     */
     public BluetoothDevice findBTDevice (String nameDev) {
-        // получаем список спаренных устройств
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
         if (pairedDevices.size() > 0) {
             for (BluetoothDevice device : pairedDevices) {
                 String name = device.getName();
@@ -420,12 +482,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // Освободить все ресурсы, включая работающие потоки,
         // соединения с БД и т. д.
         try {
-            if (inStream != null)
-                inStream.close();
-            if (outStream != null)
-                outStream.close();
-            if (clientSocket != null)
-                clientSocket.close();
+            if (mInStream != null)
+                mInStream.close();
+            if (mOutStream != null)
+                mOutStream.close();
+            if (mClientSocket != null)
+                mClientSocket.close();
             mBluetoothDevice = null;
         } catch (IOException e) {
             e.printStackTrace();
@@ -470,11 +532,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             @Override
             public void run() {
                 try {
-                    if (clientSocket != null) {
-                        if (outStream == null)
-                            outStream = clientSocket.getOutputStream();
+                    if (mClientSocket != null) {
+                        if (mOutStream == null)
+                            mOutStream = mClientSocket.getOutputStream();
                         byte[] byteArray = (txdata + " ").getBytes();
-                        outStream.write(byteArray);
+                        mOutStream.write(byteArray);
                         btTxHandler.sendEmptyMessage(BT_TX_OK);
                     }
                     else {
@@ -485,6 +547,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 }
             }
         });
+        bluetooth_Tx.setDaemon(true);
         bluetooth_Tx.start();
     }
 
@@ -499,9 +562,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             @Override
             public void run() {
                 try {
-                    if (clientSocket != null) {
-                        if (inStream == null)
-                            inStream = clientSocket.getInputStream();
+                    if (mClientSocket != null) {
+                        if (mInStream == null)
+                            mInStream = mClientSocket.getInputStream();
                     }
                     else {
                         btRxHandler.sendEmptyMessage(BT_RX_ERR_ANSWER);
@@ -511,14 +574,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     int bytesRead = -1;
                     mBtRxStatus = true;     // находимся в состянии приема
                     while (true) {
-                        int numBytes = inStream.available();
+                        int numBytes = mInStream.available();
                         if (numBytes != 0)
-                            if(clientSocket != null){
-                                bytesRead = inStream.read(buffer);
+                            if(mClientSocket != null){
+                                bytesRead = mInStream.read(buffer);
                                 if (bytesRead != -1) {
                                     while (bytesRead == bufferSize){
                                         result = result + new String(buffer, 0, bytesRead);
-                                        bytesRead = inStream.read(buffer);
+                                        bytesRead = mInStream.read(buffer);
                                     }
                                     result = result + new String(buffer, 0, bytesRead);
                                     btRxHandler.sendMessage(btRxHandler.obtainMessage(BT_RX_OK_ANSWER, 0, 0, result));
@@ -531,11 +594,22 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 }
             }
         });
+        bluetooth_Rx.setDaemon(true);
         bluetooth_Rx.start();
     }
 
     // обработка нажатия кнопки close
     public void pbCloseHeader(View view){
+        sendDataBT(SET_ALARM);
+    }
+
+    // обработка нажатия кнопки Open
+    public void pbOpenHeader(View view){
+        sendDataBT(CLEAR_ALARM);
+    }
+
+    // обработка нажатия кнопки Mute
+    public void pbClearAlarmTriggered(View view){
         sendDataBT(CLEAR_ALARM_TRIGGERED);
     }
 
