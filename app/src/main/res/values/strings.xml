@@ -26,8 +26,10 @@
     <string name="tvOutTemperature">+20°C</string>
     <string name="outTemperature">+25°C</string>
     <string name="base_name">имя базового\nблока</string>
-    <string name="settings">Настройки</string>
+    <string name="settings">Выберите устройство для подключения</string>
     <string name="title_in_out">Входы/выходы</string>
+    <string name="radioButtomSize">16</string>
+    <string name="save">Сохранить</string>
 
 
 </resources>

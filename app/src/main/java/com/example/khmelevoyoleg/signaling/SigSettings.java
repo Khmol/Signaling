@@ -8,6 +8,9 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.Toast;
+
+import java.util.ArrayList;
 
 /**
  * Created by Oleg_ on 21.07.17.
@@ -25,26 +28,28 @@ public class SigSettings extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
-
-        String text = getIntent().getStringExtra("name");
-        clSettings = (LinearLayout) findViewById(R.id.clSettings);
-        // etNameBaseStation = (EditText) findViewById(R.id.etNameBaseStation);
-        // etNameBaseStation.setText(text);
+        //
+        ArrayList<String> name = getIntent().getStringArrayListExtra("paired_names");
+        ArrayList<String> adress = getIntent().getStringArrayListExtra("paired_adresses");
+        clSettings = (LinearLayout) findViewById(R.id.llSettings);
         rgPairedDevices = (RadioGroup) findViewById(R.id.rgPairedDevices);
-        RadioButton rbListPairedDevices = new RadioButton(this);
-        rbListPairedDevices.setText("Проверка");
-        rbListPairedDevices.setId(findId());
-        // добавляем радиокнопку в группу
-        rgPairedDevices.addView(rbListPairedDevices);
-        // добавляем группу радиокнопок на Layout
-        //clSettings.addView(rgPairedDevices);
+        // формируем список радио кнопок
+        for (String n : name)
+        {
+            RadioButton rbListPairedDevices = new RadioButton(this);
+            rbListPairedDevices.setText(n);
+            rbListPairedDevices.setTextSize(Integer.parseInt(getResources().getText(R.string.radioButtomSize).toString()));
+            rbListPairedDevices.setId(findId());
+            // добавляем радиокнопку в группу
+            rgPairedDevices.addView(rbListPairedDevices);
+        }
     }
 
     /**
      * Поиск свободного ID
      */
     public int findId(){
-        id = R.id.clSettings;
+        id = R.id.llSettings;
         View v = findViewById(id);
         while (v != null){
             v = findViewById(++id);
@@ -53,11 +58,15 @@ public class SigSettings extends Activity {
     }
 
     /**
-     * Закрываем настройки
+     * Обработчик нажатия кнопки Save
      */
     public void pbSaveHeader(View view) {
+        int i = rgPairedDevices.getCheckedRadioButtonId();
         Intent intent = new Intent();
-        intent.putExtra("name", etNameBaseStation.getText().toString());
+        //Toast.makeText(getApplicationContext(),
+        //        Integer.toString(i),
+        //        Toast.LENGTH_SHORT).show();
+        intent.putExtra("adress", Integer.toString(i));
         setResult(RESULT_OK, intent);
         finish();
     }

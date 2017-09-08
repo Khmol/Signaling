@@ -90,6 +90,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private TextView tvBtRxData;                    // текст с принятыми данными
     private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
     private ArrayList<String> namePairedDevices;    // имена спаренных устройств
+    private ArrayList<String> adressPairedDevices;  // адреса спаренных устройств
+
 
     Handler btConnectHandler;   // обработчик сообщений из потока btConnect
     Handler btRxHandler;        // обработчик сообщений из потока bluetooth_Rx
@@ -256,12 +258,17 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             if (pairedDevices.size() > 0) {
                 int i = 0;
                 for (BluetoothDevice device : pairedDevices) {
+                    // читаем имена спаренных устройств
                     String name = device.getName();
                     namePairedDevices.add(i, name);
+                    // читаем адреса спаренных устройств
+                    //String mac_adress = device.getAddress();
+                    //adressPairedDevices.add(i, mac_adress);
                     i++;
                 }
             }
-            intent.putExtra("Paired", namePairedDevices);
+            intent.putExtra("paired_names", namePairedDevices);
+            //intent.putExtra("paired_adresses", adressPairedDevices);
             //intent.putExtra("phone", mTextPhone.getText().toString());
             // запускаем активность
             startActivityForResult(intent, SET_SETTINGS);
@@ -456,7 +463,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
         }
         else if(requestCode == SET_SETTINGS){
-            Toast.makeText(getApplicationContext(), data.getStringExtra("name"), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), data.getStringExtra("adress"), Toast.LENGTH_SHORT).show();
         }
     }
 
