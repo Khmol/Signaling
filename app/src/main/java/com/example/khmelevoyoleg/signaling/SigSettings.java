@@ -61,8 +61,8 @@ public class SigSettings extends Activity {
      * Обработчик нажатия кнопки Save
      */
     public void pbSaveHeader(View view) {
-        int i = rgPairedDevices.getCheckedRadioButtonId();
-        Intent intent = new Intent();
+        int i = rgPairedDevices.getCheckedRadioButtonId(); // получаем номер выбранной радиокнопки
+        Intent intent = new Intent();// запускаем намерение
         //Toast.makeText(getApplicationContext(),
         //        Integer.toString(i),
         //        Toast.LENGTH_SHORT).show();

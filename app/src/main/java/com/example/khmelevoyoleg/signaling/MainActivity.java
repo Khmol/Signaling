@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         CONNECTING,
         NO_CONNECT,
         CONNECTED
-    };
+    }
     private enum MainStatus {
         IDLE,
         CONNECTING,
@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         CLEAR_ALARM_TRIGGERED,
         CLEAR_ALARM,
         SET_ALARM
-    };
+    }
 
     // пределяем константы
     private static final String BT_SERVER_NAME = "CAR";
@@ -89,7 +89,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private boolean mBtRxStatus;                    // состояние по приему bluetooth
     private TextView tvBtRxData;                    // текст с принятыми данными
     private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
-    private ArrayList<String> namePairedDevices;    // имена спаренных устройств
+
     private ArrayList<String> adressPairedDevices;  // адреса спаренных устройств
 
 
@@ -140,9 +140,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 startActivityForResult(new Intent(actionRequestEnable), REQUEST_ENABLE_BT);
             }
         }
-        // получаем список спаренных устройств
-        pairedDevices = mBluetoothAdapter.getBondedDevices();
-        namePairedDevices = new ArrayList<>();
+
+
 
         // определяем Handler для соединения по Bluetooth
         btConnectHandler = new Handler(){
@@ -251,12 +250,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // получаем код выбранного пункта меню
         int id = item.getItemId();
 
+
         // если выбран пункт меню "Настройки"
         if (id == R.id.action_settings) {
+            // получаем список спаренных устройств
+            pairedDevices = mBluetoothAdapter.getBondedDevices();
+            // новый список имен спаренных устройств
+            ArrayList<String> namePairedDevices = new ArrayList<>();
+            // запускаем намерение
             Intent intent = new Intent(MainActivity.this, SigSettings.class);
             // передаем данные для активности IntentActivity
             if (pairedDevices.size() > 0) {
                 int i = 0;
+
                 for (BluetoothDevice device : pairedDevices) {
                     // читаем имена спаренных устройств
                     String name = device.getName();
