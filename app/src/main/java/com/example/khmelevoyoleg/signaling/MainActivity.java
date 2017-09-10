@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
@@ -50,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     // пределяем константы
+    private static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
+    private static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
     private static final String BT_SERVER_NAME = "CAR";
     private static final String BT_SERVER_UUID = "00001101-0000-1000-8000-00805f9b34fb";
     private static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP";    // посылка для инициализации SIM
@@ -89,9 +92,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private boolean mBtRxStatus;                    // состояние по приему bluetooth
     private TextView tvBtRxData;                    // текст с принятыми данными
     private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
-
-    private ArrayList<String> adressPairedDevices;  // адреса спаренных устройств
-
+    private SharedPreferences sPref;    // настройки приложения
 
     Handler btConnectHandler;   // обработчик сообщений из потока btConnect
     Handler btRxHandler;        // обработчик сообщений из потока bluetooth_Rx
@@ -101,6 +102,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_flip);
+
+        // определяем объект для работы с настройками
+        sPref = getSharedPreferences(SETTINGS_FILENAME, MODE_PRIVATE);
+        String temp = sPref.getString(SELECTED_BOUNDED_DEV, "");
+        Toast.makeText(getApplicationContext(), temp, Toast.LENGTH_SHORT).show();
 
         // определяем объекты для flipper
         flipper = (ViewFlipper) findViewById(R.id.flipper);
@@ -198,7 +204,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         }
                         break;
                 }
-            };
+            }
         };
 
         // определяем Handler для приемника данных из Bluetooth
@@ -255,27 +261,26 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         if (id == R.id.action_settings) {
             // получаем список спаренных устройств
             pairedDevices = mBluetoothAdapter.getBondedDevices();
-            // новый список имен спаренных устройств
+            // новые списки имен и адресов спаренных устройств
             ArrayList<String> namePairedDevices = new ArrayList<>();
+            ArrayList<String> adressPairedDevices = new ArrayList<>();
             // запускаем намерение
             Intent intent = new Intent(MainActivity.this, SigSettings.class);
             // передаем данные для активности IntentActivity
             if (pairedDevices.size() > 0) {
                 int i = 0;
-
                 for (BluetoothDevice device : pairedDevices) {
                     // читаем имена спаренных устройств
                     String name = device.getName();
                     namePairedDevices.add(i, name);
                     // читаем адреса спаренных устройств
-                    //String mac_adress = device.getAddress();
-                    //adressPairedDevices.add(i, mac_adress);
-                    i++;
+                    String mac_adress = device.getAddress();
+                    adressPairedDevices.add(i, mac_adress);
+                    i++;    // переход к следующему устройству
                 }
             }
             intent.putExtra("paired_names", namePairedDevices);
-            //intent.putExtra("paired_adresses", adressPairedDevices);
-            //intent.putExtra("phone", mTextPhone.getText().toString());
+            intent.putExtra("paired_adresses", adressPairedDevices);
             // запускаем активность
             startActivityForResult(intent, SET_SETTINGS);
             return true;
@@ -469,7 +474,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
         }
         else if(requestCode == SET_SETTINGS){
-            Toast.makeText(getApplicationContext(), data.getStringExtra("adress"), Toast.LENGTH_SHORT).show();
+            if (data != null){
+                Toast.makeText(getApplicationContext(), data.getStringExtra("address"), Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
