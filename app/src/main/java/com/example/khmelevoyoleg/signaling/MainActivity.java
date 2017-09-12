@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.ParcelUuid;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -61,8 +62,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private static final String SET_ALARM = "SET ALARM,1\r";                    // посылка для установки на охрану
     private static final String RX_INIT_OK = "SPP APP OK\r";                    // ответ на BT_INIT_MESSAGE
 
-
-
     // TODO перенести BT_SERVER_NAME в настройки
     // TODO перенести BT_SERVER_UUID в настройки
     private static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
@@ -105,8 +104,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
         // определяем объект для работы с настройками
         sPref = getSharedPreferences(SETTINGS_FILENAME, MODE_PRIVATE);
-        String temp = sPref.getString(SELECTED_BOUNDED_DEV, "");
-        Toast.makeText(getApplicationContext(), temp, Toast.LENGTH_SHORT).show();
+
 
         // определяем объекты для flipper
         flipper = (ViewFlipper) findViewById(R.id.flipper);
@@ -147,8 +145,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
         }
 
-
-
         // определяем Handler для соединения по Bluetooth
         btConnectHandler = new Handler(){
             public void handleMessage(Message msg){
@@ -176,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                     getResources().getColor(R.color.colorRed),
                                     getResources().getColor(R.color.colorCarSame));
                         }
+                        // TODO - сделать обработку сообщения об отсутствии выбранного устройства для соединения
                         Toast.makeText(getApplicationContext(), "Ошибка соединения", Toast.LENGTH_SHORT).show();
                         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;        // соединение не установлено
                         mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
@@ -184,7 +181,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         Toast.makeText(getApplicationContext(), "Соединение уже активно", Toast.LENGTH_SHORT).show();
                         break;
                 }
-            };
+            }
         };
 
         // определяем Handler для передачи по Bluetooth
@@ -260,6 +257,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // если выбран пункт меню "Настройки"
         if (id == R.id.action_settings) {
             // получаем список спаренных устройств
+            // TODO - pairedDevices должны быть определены при старте поиска устройств
             pairedDevices = mBluetoothAdapter.getBondedDevices();
             // новые списки имен и адресов спаренных устройств
             ArrayList<String> namePairedDevices = new ArrayList<>();
@@ -303,32 +301,40 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 try {
                     // проверяем включен ли Bluetooth
                     if (mBluetoothAdapter.isEnabled()) {
-                        // включен, проверяем устанавливалось ли ранее соединение
-                        UUID uuid = new UUID(0, 0);
+                        String selectedBoundedDevice = sPref.getString(SELECTED_BOUNDED_DEV, "");
+                        // проверим определено ли устройство для связи
+                        if (selectedBoundedDevice.equals("")){
+                            // устройство для связи не выбрано
+                            btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_ERR, 0, 0, selectedBoundedDevice));
+                            return;
+                        }
+                        // Bluetooth включен, проверяем устанавливалось ли ранее соединение
+                        // UUID uuid = new UUID(0, 0);
                         if ( mClientSocket == null ) {
-                            // не устанавливалось
-                            mBluetoothDevice = findBTDevice(BT_SERVER_NAME);
-                            uuid = UUID.fromString(BT_SERVER_UUID);
-                            mClientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(uuid);
+                            // производим поиск нужного нам устройства, получаем его
+                            mBluetoothDevice = findBTDevice(selectedBoundedDevice);
+                            ParcelUuid[] uuid = mBluetoothDevice.getUuids();// получаем перечень доступных UUID данного устройства
+                            // uuid = UUID.fromString(BT_SERVER_UUID);
+                            // устанавливаем связь, создаем Socket
+                            mClientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(uuid[0].getUuid());
                             if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, BT_SERVER_NAME));
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, selectedBoundedDevice));
                             }
                             else {
                                 // соединения нет, пробуем снова установить его
                                 mClientSocket.connect();
-
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, BT_SERVER_NAME));
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, selectedBoundedDevice));
                             }
                         }
                         else {
                             // соединение устанавливалось, проверка есть ли соединение
                             if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, BT_SERVER_NAME));
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, selectedBoundedDevice));
                             }
                             else {
                                 // соединения нет, пробуем снова установить его
                                 mClientSocket.connect();
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, BT_SERVER_NAME));
+                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, selectedBoundedDevice));
                             }
                         }
                     }
@@ -444,11 +450,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      *  поиск устройства Bluetooth по имени
      *  params: String nameDev - мя которое будет искаться в спаренных усройствах
      */
-    public BluetoothDevice findBTDevice (String nameDev) {
+    public BluetoothDevice findBTDevice (String addressDev) {
         if (pairedDevices.size() > 0) {
             for (BluetoothDevice device : pairedDevices) {
-                String name = device.getName();
-                if (name.equals(nameDev)) {
+                String address = device.getAddress();
+                if (address.equals(addressDev)) {
                     return device;
                 }
             }

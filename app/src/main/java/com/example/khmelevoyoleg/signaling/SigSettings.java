@@ -117,7 +117,6 @@ public class SigSettings extends Activity {
     public void onDestroy() {
         // Освободить все ресурсы, включая работающие потоки,
         // соединения с БД и т. д.
-
         super.onDestroy();
     }
 }
