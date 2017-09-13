@@ -30,6 +30,8 @@
     <string name="title_in_out">Входы/выходы</string>
     <string name="radioButtomSize">16</string>
     <string name="save">Сохранить</string>
-
+    <string name="noBoundedDevice">Устройство для связи не выбрано.</string>
+    <string name="connectionError">Ошибка соединения.</string>
+    <string name="connectionActiv">Соединение уже активно</string>
 
 </resources>
