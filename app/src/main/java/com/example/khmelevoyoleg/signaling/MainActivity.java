@@ -57,16 +57,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
     private static final String NO_BOUNDED_DEVICE = "NO_BOUNDED_DEVICE";   // устройство для соединения не выбрано
     private static final String CONNECTION_ERR = "CONNECTION_ERR";   // ошибка соединения
-    private static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP";    // посылка для инициализации SIM
+    private static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r";    //SIMCOMSPPFORAPP посылка для инициализации SIM
     private static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r";        // посылка для снятия аварии с SIM
     private static final String CLEAR_ALARM = "CLEAR ALARM,1\r";                // посылка для снятия с охраны
     private static final String SET_ALARM = "SET ALARM,1\r";                    // посылка для установки на охрану
     private static final String RX_INIT_OK = "SPP APP OK\r";                    // ответ на BT_INIT_MESSAGE
     // цифровые константы
-    private static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
+    private static final int MAX_CONNECTION_ATTEMPTS = 10;   // максимальное количество попыток установления соединения
 
-    // TODO перенести BT_SERVER_NAME в настройки
-    // TODO перенести BT_SERVER_UUID в настройки
     private static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
     private static final int SET_SETTINGS = 2;          // редактирование настроек
     private static final int BT_CONNECT_OK = 5;         // соединение по Bluetooth установлено успешно
@@ -162,6 +160,13 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                     getResources().getColor(R.color.colorGreen),
                                     getResources().getColor(R.color.colorCarSame));
                         }
+                        // если соединение все еще активно
+                        if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+                            // отправка посылки для инициализации SIM
+                            //SendInitMessage();
+                            // передаем данные для начала работы с SIM
+                            sendDataBT(BT_INIT_MESSAGE);
+                        }
                         break;
                     case BT_CONNECT_ERR:
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -190,7 +195,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                 }
                                 else{
                                     // все попытки установки соединения закончились неудачей
-                                    Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_SHORT).show();
                                     mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;  // соединение не установлено
                                     mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
                                     mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
@@ -216,6 +220,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             public void handleMessage(android.os.Message msg){
                 switch (msg.what) {
                     case BT_TX_OK:
+                        // запускаем прием сообщений от SIM
+                        listenMessageBT();
                         Toast.makeText(getApplicationContext(),
                                 R.string.DataTransmitted, Toast.LENGTH_SHORT).show();
                         break;
@@ -224,7 +230,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                             Toast.makeText(getApplicationContext(),
                                     R.string.TransmitionError,
                                     Toast.LENGTH_SHORT).show();
-                            SendInitMessage();  // отправка посылки для инициализации SIM
                         }
                         break;
                 }
@@ -238,21 +243,17 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     case BT_RX_OK_ANSWER:
                         String rxText = (String) msg.obj;
                         // если получен RX_INIT_OK и это первое соединение
-                        if (rxText.equals(RX_INIT_OK) & mMainStatus == MainStatus.CONNECTING) {
-                            // ответ получен правильный
-                            Toast.makeText(getApplicationContext(),
-                                    R.string.DataTransmitted, Toast.LENGTH_SHORT).show();
-                            mMainStatus = MainStatus.CONNECTED;
+                        if (mMainStatus == MainStatus.CONNECTING) {
+                            if (rxText.equals(RX_INIT_OK)){
+                                // изменяем основное состояние
+                                mMainStatus = mMainStatus.CONNECTED;
+                                // ответ получен правильный
+                                Toast.makeText(getApplicationContext(),
+                                        R.string.DataTransmitted, Toast.LENGTH_SHORT).show();
+                                mMainStatus = MainStatus.CONNECTED;
+                            }
                         }
-                        else if (mMainStatus == MainStatus.CONNECTING) {
-                            // ошибочный ответ
-                            // повторная отправка посылки для инициализации SIM
-                            SendInitMessage();  // отправка посылки для инициализации SIM
-                        }
-                        else if (mMainStatus == MainStatus.CONNECTED){
-                            // получены рабочие данные
-                        }
-                        // обновляем значение текста
+                        // обновляем значение текста в окне
                         tvBtRxData.setText((String) msg.obj);
                         break;
                     case BT_RX_ERR_ANSWER:
@@ -391,8 +392,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 }
                 // передаем данные для начала работы с SIM
                 sendDataBT(BT_INIT_MESSAGE);
-                // запускаем прием сообщений от SIM
-                listenMessageBT();
             }
         });
         bluetoothInit.setDaemon(true);
@@ -406,13 +405,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 String action = intent.getAction();
                 switch (action) {
                     case BluetoothDevice.ACTION_ACL_CONNECTED:
-                        // если не было ошибки при установке соединения
-                        if (mConnectionStatusBT == ConnectionStatusBT.CONNECTING){
-                            // изменяем состояние - CONNECTED
-                            mConnectionStatusBT = ConnectionStatusBT.CONNECTED;
-                            SendInitMessage();      // отправка посылки для инициализации SIM
-                        }
-                        // в противном случае ничего не делаем, соединение не состоялось
+                        // изменяем состояние BT - CONNECTED
+                        mConnectionStatusBT = ConnectionStatusBT.CONNECTED;
                         break;
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED:
                         // состояние - NO_CONNECT
@@ -585,10 +579,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             @Override
             public void run() {
                 try {
+                    try {
+                        Thread.sleep(1500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     if (mClientSocket != null) {
                         if (mOutStream == null)
                             mOutStream = mClientSocket.getOutputStream();
-                        byte[] byteArray = (txdata + " ").getBytes();
+                        byte[] byteArray = txdata.getBytes();
                         mOutStream.write(byteArray);
                         btTxHandler.sendEmptyMessage(BT_TX_OK);
                     }
