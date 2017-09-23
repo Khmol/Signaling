@@ -204,13 +204,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             public void handleMessage(Message msg){
                 switch (msg.what) {
                     case BT_CONNECT_OK:
+                        // TODO - UUID нужно выбирать минимальный и устанавливать связь с ним
                         // установка зеленого цвета для кнопки FabConnect
                         setFabConnectColorGreen();
                         // если соединение все еще активно
                         if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
                             // обнуляем счетчик попыток установления связи
                             mConnectionAttemptsCnt = 0;
-                            // запускаем прием сообщений от SIM
+                            // запускаем прием  от SIM
                             listenMessageBT();
                             // передаем данные для начала работы с SIM
                             sendDataBT(BT_INIT_MESSAGE);
@@ -235,11 +236,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                     pbConnectHeader(fabConnect, 12000);
                                 }
                                 else{
-                                    // TODO - блокировать кнопку установления связи на время посика устройства
                                     // все попытки установки соединения закончились неудачей
                                     mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;  // соединение не установлено
                                     mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
                                     mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
+                                    fabConnect.setEnabled(true);     // кнопка поиска устройств активна
                                     // если получено NO_BOUNDED_DEVICE, выдать предупреждение
                                     Toast.makeText(getApplicationContext(), "Ошибка установления связи", Toast.LENGTH_SHORT).show();
                                 }
@@ -250,6 +251,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                             mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;  // соединение не установлено
                             mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
                             mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
+                            fabConnect.setEnabled(true);     // кнопка поиска устройств активна
                         }
                         break;
                     case BT_CONNECTED:
@@ -381,6 +383,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     // обработка нажатия кнопки fabConnect
     public void pbConnectHeader(View view, int delay_ms){
+        // TODO - удалить View из описания метода
         final int delay = delay_ms;
         // получаем список спаренных устройств
         pairedDevices = mBluetoothAdapter.getBondedDevices();
@@ -389,7 +392,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             // выводим сообщение о начале поиска "Базового блока"
             Toast.makeText(getApplicationContext(), "Запущен поиск сигнализации", Toast.LENGTH_SHORT).show();
             mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
+            fabConnect.setEnabled(false);     // кнопка не активна на время поиска устройств
         }
+        setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
         mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
         mConnectionAttemptsCnt++;       // увеличиваем счетчик попыток установления соединения
         // создаем поток в котором будет производится поиск "Базового блока"
@@ -486,16 +491,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         super.onActivityResult(requestCode, resultCode, data);
         // проверяем результат какого намерения вернулся
         if (requestCode == REQUEST_ENABLE_BT) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                setFloatingActionButtonColors(fabConnect,
-                        getResources().getColor(R.color.colorRed, null),
-                        getResources().getColor(R.color.colorCarSame, null));
-            }
-            else {
-                setFloatingActionButtonColors(fabConnect,
-                        getResources().getColor(R.color.colorRed),
-                        getResources().getColor(R.color.colorCarSame));
-            }
+            setFabConnectColorRed();
         }
         else if(requestCode == SET_SETTINGS){
             if (data != null){
@@ -648,6 +644,22 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         else {
             setFloatingActionButtonColors(fabConnect,
                     getResources().getColor(R.color.colorGreen),
+                    getResources().getColor(R.color.colorCarSame));
+        }
+    }
+
+    /**
+     * установка синего цвета кнопки fabConnect
+     */
+    private void setFabConnectColorBlue(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            setFloatingActionButtonColors(fabConnect,
+                    getResources().getColor(R.color.colorCarSame, null),
+                    getResources().getColor(R.color.colorCarSame, null));
+        }
+        else {
+            setFloatingActionButtonColors(fabConnect,
+                    getResources().getColor(R.color.colorCarSame),
                     getResources().getColor(R.color.colorCarSame));
         }
     }

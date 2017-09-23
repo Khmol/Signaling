@@ -33,5 +33,10 @@
     <string name="noBoundedDevice">Устройство для связи не выбрано.</string>
     <string name="connectionError">Ошибка соединения.</string>
     <string name="connectionActiv">Соединение уже активно</string>
+    <string name="ibOpenDescription">Open</string>
+    <string name="ibCloseDescription">Close</string>
+    <string name="ibMuteDescription">Mute</string>
+    <string name="ibBagageDescription">Bagage</string>
+    <string name="ivSigStateDescription">SigState</string>
 
 </resources>
