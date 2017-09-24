@@ -102,7 +102,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private float fromPosition;                     // позиция касания при перелистывании экранов
     private TextView tvBtRxData;                    // текст с принятыми данными
     private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
-    private SharedPreferences sPref;    // настройки приложения
+    private SharedPreferences sPref;                // настройки приложения
+    int btRxCnt;                                    // счетчик принятых пакетов
     //endregion
 
     // приемник широковещательных событий
@@ -111,43 +112,67 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            // обновляем значение текста в окне
+            String text = "mMainStatus = " + mMainStatus.toString() + "mConnectionStatusBT = "
+                    + mConnectionStatusBT.toString();
+            tvBtRxData.setText(text);
             switch (action) {
                 case BluetoothDevice.ACTION_ACL_CONNECTED:
                     // изменяем состояние BT - CONNECTED
                     mConnectionStatusBT = ConnectionStatusBT.CONNECTED;
                     break;
                 case BluetoothDevice.ACTION_ACL_DISCONNECTED:
-                    // состояние - NO_CONNECT
-                    mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
-                    // запускаем процесс установления соединения
-                    mMainStatus = MainStatus.CONNECTING;
-                    // закрываем потоки ввода вывода для BT
-                    closeBtStreams();
-                    // установка красного цвета для кнопки FabConnect
-                    setFabConnectColorRed();
+                    if (mMainStatus != MainStatus.CLOSE){
+                        // если программа не в закрытии
+                        // состояние - NO_CONNECT
+                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+                        // запускаем процесс установления соединения
+                        mMainStatus = MainStatus.CONNECTING;
+                        // закрываем потоки ввода вывода для BT
+                        closeBtStreams();
+                        // установка красного цвета для кнопки FabConnect
+                        setFabConnectColorRed();
+                        // делаем попытку снова установить соединение через 12 с
+                        pbConnectHeader(fabConnect, 12000);
+                    }
                     Toast.makeText(getApplicationContext(),
                             "Соединение разорвано", Toast.LENGTH_SHORT).show();
-                    // делаем попытку снова установить соединение через 12 с
-                    pbConnectHeader(fabConnect, 12000);
                     break;
                 case BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED:
-                    // состояние - NO_CONNECT
-                    mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
-                    // запускаем процесс установления соединения
-                    mMainStatus = MainStatus.CONNECTING;
-                    // закрываем потоки ввода вывода для BT
-                    closeBtStreams();
-                    // установка красного цвета для кнопки FabConnect
-                    setFabConnectColorRed();
+                    if (mMainStatus != MainStatus.CLOSE) {
+                        // состояние - NO_CONNECT
+                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+                        // запускаем процесс установления соединения
+                        mMainStatus = MainStatus.CONNECTING;
+                        // закрываем потоки ввода вывода для BT
+                        closeBtStreams();
+                        // установка красного цвета для кнопки FabConnect
+                        setFabConnectColorRed();
+                        // делаем попытку снова установить соединение через 12 с
+                        pbConnectHeader(fabConnect, 12000);
+                    }
                     Toast.makeText(getApplicationContext(),
                             "Разрыв соединения от базовой станции", Toast.LENGTH_SHORT).show();
-                    // делаем попытку снова установить соединение через 12 с
-                    pbConnectHeader(fabConnect, 12000);
                     break;
             }
         }
     };
     // endregion
+
+    /** обработка результатов намерений */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // проверяем результат какого намерения вернулся
+        if (requestCode == REQUEST_ENABLE_BT) {
+            setFabConnectColorRed();
+        }
+        else if(requestCode == SET_SETTINGS){
+            if (data != null){
+                Toast.makeText(getApplicationContext(), data.getStringExtra("address"), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -205,8 +230,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 switch (msg.what) {
                     case BT_CONNECT_OK:
                         // TODO - UUID нужно выбирать минимальный и устанавливать связь с ним
-                        // установка зеленого цвета для кнопки FabConnect
-                        setFabConnectColorGreen();
                         // если соединение все еще активно
                         if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
                             // обнуляем счетчик попыток установления связи
@@ -218,40 +241,42 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         }
                         break;
                     case BT_CONNECT_ERR:
-                        // установка красного цвета для кнопки FabConnect
-                        setFabConnectColorRed();
-                        // получаем данные сообщения
-                        String rxMsg = (String) msg.obj;
-                        // проверка получено ли rxMsg
-                        if (rxMsg != null){
-                            // получено NO_BOUNDED_DEVICE ???
-                            if (rxMsg.equals(NO_BOUNDED_DEVICE)){
-                                // если получено NO_BOUNDED_DEVICE, выдать предупреждение
-                                Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
-                            }
-                            else {
-                                // значит получено BT_CONNECT_ERR (других пока нет)
-                                if (mConnectionAttemptsCnt <= MAX_CONNECTION_ATTEMPTS){
-                                    // делаем попытку снова установить соединение через 12 с
-                                    pbConnectHeader(fabConnect, 12000);
-                                }
-                                else{
-                                    // все попытки установки соединения закончились неудачей
-                                    mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;  // соединение не установлено
-                                    mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
-                                    mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
-                                    fabConnect.setEnabled(true);     // кнопка поиска устройств активна
+                        if (mMainStatus != MainStatus.CLOSE){
+                            // установка красного цвета для кнопки FabConnect
+                            setFabConnectColorRed();
+                            // получаем данные сообщения
+                            String rxMsg = (String) msg.obj;
+                            // проверка получено ли rxMsg
+                            if (rxMsg != null){
+                                // получено NO_BOUNDED_DEVICE ???
+                                if (rxMsg.equals(NO_BOUNDED_DEVICE)){
                                     // если получено NO_BOUNDED_DEVICE, выдать предупреждение
-                                    Toast.makeText(getApplicationContext(), "Ошибка установления связи", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
+                                }
+                                else {
+                                    // значит получено BT_CONNECT_ERR (других пока нет)
+                                    if (mConnectionAttemptsCnt <= MAX_CONNECTION_ATTEMPTS){
+                                        // делаем попытку снова установить соединение через 12 с
+                                        pbConnectHeader(fabConnect, 12000);
+                                    }
+                                    else{
+                                        // все попытки установки соединения закончились неудачей
+                                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;  // соединение не установлено
+                                        mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
+                                        mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
+                                        fabConnect.setEnabled(true);     // кнопка поиска устройств активна
+                                        // если получено NO_BOUNDED_DEVICE, выдать предупреждение
+                                        Toast.makeText(getApplicationContext(), "Ошибка установления связи", Toast.LENGTH_SHORT).show();
+                                    }
                                 }
                             }
-                        }
-                        else{
-                            // ошибочное сообщение, переходим в исходное состояние
-                            mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;  // соединение не установлено
-                            mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
-                            mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
-                            fabConnect.setEnabled(true);     // кнопка поиска устройств активна
+                            else{
+                                // ошибочное сообщение, переходим в исходное состояние
+                                mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;  // соединение не установлено
+                                mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
+                                mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
+                                fabConnect.setEnabled(true);     // кнопка поиска устройств активна
+                            }
                         }
                         break;
                     case BT_CONNECTED:
@@ -302,13 +327,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                             if (rxText.equals(RX_INIT_OK)){
                                 // изменяем основное состояние
                                 mMainStatus = MainStatus.CONNECTED;
-                                // ответ получен правильный
-                                Toast.makeText(getApplicationContext(),
-                                        R.string.DataTransmitted, Toast.LENGTH_SHORT).show();
+                                btRxCnt = 0;
+                                // установка зеленого цвета для кнопки FabConnect
+                                setFabConnectColorGreen();
                             }
                         }
                         // обновляем значение текста в окне
-                        tvBtRxData.setText((String) msg.obj);
+                        String text = String.valueOf(btRxCnt) + " " + (String) msg.obj;
+                        tvBtRxData.setText(text);
+                        btRxCnt++;
                         break;
                     case BT_RX_ERR_ANSWER:
                         Toast.makeText(getApplicationContext(),
@@ -320,9 +347,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                 "Прерывание приема", Toast.LENGTH_SHORT).show();
                         return;
                 }
-                // снова запускаем прием данных
-                if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED)
-                    listenMessageBT();
+                if (mMainStatus != MainStatus.CLOSE){
+                    // снова запускаем прием данных
+                    if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED)
+                        listenMessageBT();
+                }
             };
         };
         //endregion
@@ -425,25 +454,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                             ParcelUuid[] uuid = mBluetoothDevice.getUuids();// получаем перечень доступных UUID данного устройства
                             // устанавливаем связь, создаем Socket
                             mClientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(uuid[11].getUuid());
-                            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, selectedBoundedDevice));
-                            }
-                            else {
-                                // соединения нет, пробуем снова установить его
-                                mClientSocket.connect();
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, selectedBoundedDevice));
-                            }
+                        }
+                        // проверка установлено ли соединение
+                        if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+                            btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, selectedBoundedDevice));
                         }
                         else {
-                            // соединение устанавливалось, проверка есть ли соединение
-                            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, selectedBoundedDevice));
-                            }
-                            else {
-                                // соединения нет, пробуем снова установить его
-                                mClientSocket.connect();
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, selectedBoundedDevice));
-                            }
+                            // соединения нет, пробуем снова установить его
+                            mClientSocket.connect();
+                            btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, selectedBoundedDevice));
                         }
                     }
                     else {
@@ -471,7 +490,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     /**
      *  поиск устройства Bluetooth по имени
-     *  params: String nameDev - мя которое будет искаться в спаренных усройствах
+     *  params: String addressDev - адрес, который будет искаться в спаренных усройствах
      */
     public BluetoothDevice findBTDevice (String addressDev) {
         if (pairedDevices.size() > 0) {
@@ -483,21 +502,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
         }
         return null;
-    }
-
-    /** обработка результатов намерений */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        // проверяем результат какого намерения вернулся
-        if (requestCode == REQUEST_ENABLE_BT) {
-            setFabConnectColorRed();
-        }
-        else if(requestCode == SET_SETTINGS){
-            if (data != null){
-                Toast.makeText(getApplicationContext(), data.getStringExtra("address"), Toast.LENGTH_SHORT).show();
-            }
-        }
     }
 
     // установка цвета для кнопки FloatingActionButton
