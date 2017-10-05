@@ -128,14 +128,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 case BluetoothDevice.ACTION_ACL_DISCONNECTED:
                     if (mMainStatus != MainStatus.CLOSE){
                         // если программа не в закрытии
-                        // состояние - NO_CONNECT
-                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+                        // состояние - CONNECTING
+                        mConnectionStatusBT = ConnectionStatusBT.CONNECTING;
                         // запускаем процесс установления соединения
-                        mMainStatus = MainStatus.IDLE;
+                        mMainStatus = MainStatus.CONNECTING;
                         // закрываем потоки ввода вывода для BT
                         //closeBtStreams();
                         // установка красного цвета для кнопки FabConnect
-                        setFabConnectColorRed();
+                        // setFabConnectColorRed();
                         // делаем попытку снова установить соединение через 12 с
                         //pbConnectHeader(12000);
                     }
@@ -147,13 +147,13 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         // состояние - NO_CONNECT
                         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
                         // запускаем процесс установления соединения
-                        mMainStatus = MainStatus.CONNECTING;
+                        mMainStatus = MainStatus.IDLE;
                         // закрываем потоки ввода вывода для BT
                         closeBtStreams();
                         // установка красного цвета для кнопки FabConnect
                         setFabConnectColorRed();
                         // делаем попытку снова установить соединение через 12 с
-                        pbConnectHeader(12000);
+                        //pbConnectHeader(12000);
                     }
                     //Toast.makeText(getApplicationContext(),
                     //        "Разрыв соединения от базовой станции", Toast.LENGTH_SHORT).show();
@@ -245,14 +245,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         break;
                     case BT_CONNECT_ERR:
                         if (mMainStatus != MainStatus.CLOSE){
-                            // установка красного цвета для кнопки FabConnect
-                            setFabConnectColorRed();
                             // получаем данные сообщения
                             String rxMsg = (String) msg.obj;
                             // проверка получено ли rxMsg
                             if (rxMsg != null){
                                 // получено NO_BOUNDED_DEVICE ???
                                 if (rxMsg.equals(NO_BOUNDED_DEVICE)){
+                                    // установка красного цвета для кнопки FabConnect
+                                    setFabConnectColorRed();
                                     // если получено NO_BOUNDED_DEVICE, выдать предупреждение
                                     Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
                                 }
@@ -268,7 +268,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                         mMainStatus = MainStatus.IDLE;      // сбрасываем соединение
                                         mConnectionAttemptsCnt = 0;         // счетчик попыток сбрасываем в 0
                                         fabConnect.setEnabled(true);     // кнопка поиска устройств активна
-                                        // если получено NO_BOUNDED_DEVICE, выдать предупреждение
+                                        // установка красного цвета для кнопки FabConnect
+                                        setFabConnectColorRed();
                                         Toast.makeText(getApplicationContext(), "Ошибка установления связи", Toast.LENGTH_SHORT).show();
                                     }
                                 }
@@ -326,6 +327,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         String rxText = (String) msg.obj;
                         // если получен RX_INIT_OK и это первое соединение
                         if (mMainStatus == MainStatus.CONNECTING) {
+                            // TODO - сделать обработку получения первого пакета с правильным началом, но большей длины
                             if (rxText.equals(RX_INIT_OK)){
                                 // изменяем основное состояние
                                 mMainStatus = MainStatus.CONNECTED;
@@ -340,6 +342,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         btRxCnt++;
                         break;
                     case BT_RX_ERR_ANSWER:
+                        // кнопка связи - красная
+                        setFabConnectColorRed();
+                        // закрываем все потоки и соединения
+                        closeBtStreams();
+                        // переходим в исходное состояние
+                        mMainStatus = MainStatus.IDLE;
+                        mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
+                        // выдаем сообщение об ошибке приема
                         Toast.makeText(getApplicationContext(),
                                 getResources().getText(R.string.RecieveError),
                                 Toast.LENGTH_SHORT).show();
@@ -617,24 +627,27 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     int bytesRead = -1;
                     while (true) {
                         int numBytes = mInStream.available();
-                        // TODO - сделать обраотку прерывания приема numBytes = 65535
-                        if (numBytes != 0 && numBytes < bufferSize) {
-                            if (mClientSocket != null) {
-                                bytesRead = mInStream.read(buffer);
-                                if (bytesRead != -1) {
-                                    while (bytesRead == bufferSize) {
-                                        result = result + new String(buffer, 0, bytesRead);
-                                        bytesRead = mInStream.read(buffer);
-                                    }
-                                    result = result + new String(buffer, 0, bytesRead);
-                                    btRxHandler.sendMessage(btRxHandler.obtainMessage(BT_RX_OK_ANSWER, 0, 0, result));
-                                    break;
-                                }
-                            }
-                        }
-                        else {
+                        if (numBytes == 65535){
+                            // ошибка выполнения mInStream.available()
                             btRxHandler.sendEmptyMessage(BT_RX_ERR_ANSWER);
                             return;
+                        }
+                        else {
+                            if (numBytes != 0) {
+                                // данные получены
+                                if (mClientSocket != null) {
+                                    bytesRead = mInStream.read(buffer);
+                                    if (bytesRead != -1) {
+                                        while (bytesRead == bufferSize) {
+                                            result = result + new String(buffer, 0, bytesRead);
+                                            bytesRead = mInStream.read(buffer);
+                                        }
+                                        result = result + new String(buffer, 0, bytesRead);
+                                        btRxHandler.sendMessage(btRxHandler.obtainMessage(BT_RX_OK_ANSWER, 0, 0, result));
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (IOException e) {
