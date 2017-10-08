@@ -28,7 +28,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end"
-                android:src="@android:drawable/ic_dialog_email"
+                android:src="@drawable/antenna3"
                 app:backgroundTint="@color/colorRed"
                 app:layout_constraintRight_toRightOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -130,7 +130,7 @@
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/close_small"
+                app:srcCompat="@drawable/no_connect_small"
                 android:contentDescription="@string/ivSigStateDescription" />
 
         </android.support.constraint.ConstraintLayout>

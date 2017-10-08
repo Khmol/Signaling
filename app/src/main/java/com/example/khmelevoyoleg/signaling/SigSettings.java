@@ -36,8 +36,8 @@ public class SigSettings extends Activity implements View.OnClickListener{
         lvPairedDevices.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
         // настраиваем ArrayAdapter спаренных устройств
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_list_item_single_choice,
-                names);
+                R.layout.settings_item,
+                names); //simple_list_item_single_choice
         lvPairedDevices.setAdapter(adapter);
         // выделяем сохраненный номер спаренного устройства
         for (int i = 0; i < addresses.size(); i++)

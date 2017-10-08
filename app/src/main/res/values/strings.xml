@@ -14,11 +14,11 @@
     <string name="hint_tv_address">Куда передать</string>
     <string name="pb_Discovery">Поиск\nустройств</string>
     <string name="pbConnect">Connect</string>
-    <string name="ConnnectionOK">Соединение установлено</string>
-    <string name="ConnnectionERR">Ошибка подключения</string>
-    <string name="DataTransmitted">Данные переданы</string>
-    <string name="TransmitionError">Ошибка передачи</string>
-    <string name="RecieveError">Ошибка получения данных</string>
+    <string name="connnectionOK">Соединение установлено</string>
+    <string name="connnectionERR">Ошибка подключения</string>
+    <string name="initRequest">Запрос соединения</string>
+    <string name="transmitionError">Ошибка передачи</string>
+    <string name="recieveError">Ошибка получения данных</string>
     <string name="Recieve">Получено:</string>
     <string name="action_settings">Настройки</string>
     <string name="inVoltage">12В</string>
@@ -31,12 +31,16 @@
     <string name="radioButtomSize">16</string>
     <string name="save">Сохранить</string>
     <string name="noBoundedDevice">Устройство для связи не выбрано.</string>
-    <string name="connectionError">Ошибка соединения.</string>
-    <string name="connectionActiv">Соединение уже активно</string>
     <string name="ibOpenDescription">Open</string>
     <string name="ibCloseDescription">Close</string>
     <string name="ibMuteDescription">Mute</string>
     <string name="ibBagageDescription">Bagage</string>
     <string name="ivSigStateDescription">SigState</string>
+    <string name="сonnectionStoped">Поиск сигнализации остановлен</string>
+    <string name="connectionStart">Запущен поиск сигнализации</string>
+    <string name="connectionError">Ошибка установления связи</string>
+    <string name="connectionActiv">Соединение уже активно</string>
+    <string name="connectionInterrupted">Соединение разорвано</string>
+    <string name="connectionFailed">Соединение отсутствует</string>
 
 </resources>
