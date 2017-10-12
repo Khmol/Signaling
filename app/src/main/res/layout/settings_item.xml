@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CheckedTextView
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/textView1"
+    android:id="@+id/checkedTextStyle1"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="start"
     android:padding="5dp"
-    android:text="TextView"
     android:textColor="#000000"
     android:checkMark="?android:attr/listChoiceIndicatorSingle"
-    android:textSize="16sp">
+    android:textSize="18sp">
 </CheckedTextView>
