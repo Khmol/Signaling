@@ -12,8 +12,8 @@ import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
 import android.os.ParcelUuid;
+import android.os.Vibrator;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
@@ -28,6 +28,7 @@ import android.view.View;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
@@ -40,6 +41,8 @@ import java.util.Set;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
+
+
 
     // инициализация переменных
     //region InitVar
@@ -58,59 +61,48 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     // определяем строковые константы
-    private static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
-    private static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
-    private static final String NO_BOUNDED_DEVICE = "NO_BOUNDED_DEVICE";   // устройство для соединения не выбрано
-    private static final String CONNECTION_ERR = "CONNECTION_ERR"; // ошибка соединения
-    private static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r"; //SIMCOMSPPFORAPP посылка для инициализации SIM
-    private static final String SET_ALARM = "SET ALARM,1\r"; // посылка для установки на охрану
-    private static final String CLEAR_ALARM = "CLEAR ALARM,1\r"; // посылка для снятия с охраны
-    private static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r"; // посылка для снятия аварии с SIM
-    private static final String OUT_1_ON = "OUT ON,1\r"; // посылка для открытия 1-го выхода
-    private static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
+    static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
+    static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
+    static final String PENDING = "PENDING";        // задача ожидает запуска
+    static final String FINISHED = "FINISHED";      // задача завершена
+    static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r"; //SIMCOMSPPFORAPP посылка для инициализации SIM
+    static final String SET_ALARM = "SET ALARM,1\r"; // посылка для установки на охрану
+    static final String CLEAR_ALARM = "CLEAR ALARM,1\r"; // посылка для снятия с охраны
+    static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r"; // посылка для снятия аварии с SIM
+    static final String OUT_1_ON = "OUT ON,1\r"; // посылка для открытия 1-го выхода
+    static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
 
     // определяем числовые константы
     private static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
     private static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
     private static final int SET_SETTINGS = 2;          // редактирование настроек
-    private static final int BT_CONNECT_OK = 5;         // соединение по Bluetooth установлено успешно
-    private static final int BT_CONNECT_ERR = 6;        // ошибка установки соединения по Bluetooth
-    private static final int BT_CONNECTED = 7;          // соединения по Bluetooth уже было установлено
-    private static final int BT_TX_OK = 8;              // передача по Bluetooth успешно выполнена
-    private static final int BT_TX_ERR = 9;             // ошибка передачи по Bluetooth
-    private static final int BT_RX_OK_ANSWER = 10;      // прием по Bluetooth успешно выполнен
-    private static final int BT_RX_ERR_ANSWER = 11;     // ошибка приема по Bluetooth
-    private static final int BT_CONNECT_INTERRUPT = 12;  // прерывание соединения по BT
-    private static final int BT_TX_INTERRUPT = 13;       // прерывание передачи по BT
-    private static final int BT_RX_INTERRUPT = 14;       // прерывание приема по BT
     private static final long UUID_SERIAL = 0x1101;     // нужный UUID
     private static final long UUID_MASK = 0xFFFFFFFF00000000L;  // маска для извлечения нужных битов UUID
     private static final short POSITION_STATUS_SIM = 6; // начальная позиция флагов статуса в общем пакете
     private static final short MASK_GUARD = 1;  // маска для извлечения флага нахождения на охране
+    private static final int DELAY_TX_INIT_MESSAGE = 3; // задержка перед повторной передачей  INIT_MESSAGE
+    private static final int TIMER_CHECK_STATUS = 500;  // периодичность вызова runCheckStatus
+    private static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
+    private static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
+    private static final long VIBRATE_TIME = 500;      //  длительность вибрации при нажатии кнопки
 
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
 
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothDevice mBluetoothDevice;
-    private BluetoothSocket mClientSocket;
-    private ConnectionStatusBT mConnectionStatusBT; // состояние подключения по Bluetooth
-    Handler btConnectHandler;   // обработчик сообщений из потока btConnect
-    Handler btRxHandler;        // обработчик сообщений из потока bluetooth_Rx
-    Handler btTxHandler;        // обработчик сообщений из потока bluetooth_Tx
+    public BluetoothSocket mClientSocket;
+    ConnectionStatusBT mConnectionStatusBT; // состояние подключения по Bluetooth
     Handler timerHandler;       // обработчик таймера
-    Thread bluetooth_Rx;        // поток приема
-    boolean waitingRx;          // ожидание приема
-    Thread bluetooth_Connect;   // поток установления соединения
-    boolean waitingConnect;     // ожидание соединения
-    Thread bluetooth_Tx;        // поток передачи
-    boolean waitingTx;          // ожидание передачи
+    BTRx bluetooth_Rx;        // поток приема
+    BTConnect bluetooth_Connect;   // задача установления соединения
+    BTTx bluetooth_Tx;        // поток передачи
 
-    private int mConnectionAttemptsCnt = 0;         // счетчик попыток подключения по Bluetooth
+    int mConnectionAttemptsCnt = 0;         // счетчик попыток подключения по Bluetooth
 
-    private MainStatus mMainStatus; // состояние подключения по Bluetooth
-    private OutputStream mOutStream;                 // поток по передаче bluetooth
-    private InputStream mInStream;                   // поток по приему bluetooth
+    MainStatus mMainStatus; // состояние подключения по Bluetooth
+    OutputStream mOutStream;                 // поток по передаче bluetooth
+    InputStream mInStream;                   // поток по приему bluetooth
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
     private ViewFlipper flipper;                    // определяем flipper для перелистываний экрана
     private float fromPosition;                     // позиция касания при перелистывании экранов
@@ -119,10 +111,16 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private SharedPreferences sPref;                // настройки приложения
     int btRxCnt;                                    // счетчик принятых пакетов
     ImageButton ibOpen;                     // кнопка снятия с охраны
+    boolean ibOpenPress;
     ImageButton ibClose;                    // кнопка установки на охрану
+    boolean ibClosePress;
     ImageButton ibMute;                     // кнопка снятие активной аварии
+    boolean ibMutePress;
     ImageButton ibBagage;                   // кнопка открытие 1-го выхода
+    boolean ibBagagePress;
     ImageView ivSigState;                   // рисунок состояния сигнализации (на крыше)
+    ProgressBar pbIBPress;
+    private int pbProgress;
 
     //endregion
 
@@ -148,16 +146,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     else {
                         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
                     }
-                    //Toast.makeText(getApplicationContext(),
-                    //        "Соединение разорвано", Toast.LENGTH_SHORT).show();
                     break;
                 case BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED:
                     if (mMainStatus != MainStatus.CLOSE) {
                         // переходим в исходное состояние
                         returnIdleState();
                     }
-                    //Toast.makeText(getApplicationContext(),
-                    //        "Разрыв соединения от базовой станции", Toast.LENGTH_SHORT).show();
                     break;
             }
         }
@@ -207,15 +201,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
         fabConnect.setOnClickListener(this);
         ibOpen = (ImageButton) findViewById(R.id.ibOpen);
-        ibOpen.setOnClickListener(this);
+        //ibOpen.setOnClickListener(this);
+        ibOpen.setOnTouchListener(this);
         ibClose = (ImageButton) findViewById(R.id.ibClose);
-        ibClose.setOnClickListener(this);
+        ibClose.setOnTouchListener(this);
         ibMute = (ImageButton) findViewById(R.id.ibMute);
-        ibMute.setOnClickListener(this);
+        ibMute.setOnTouchListener(this);
         ibBagage = (ImageButton) findViewById(R.id.ibBagage);
-        ibBagage.setOnClickListener(this);
+        ibBagage.setOnTouchListener(this);
         ivSigState = (ImageView) findViewById(R.id.ivSigState);
         tvBtRxData = (TextView) findViewById(R.id.tvBtRxData);
+        pbIBPress = (ProgressBar) findViewById(R.id.pbIBPress);
+        pbIBPress.setMax(MAX_PROGRESS_VALUE);
+        pbIBPress.setProgress(0);
 
         // регистрация активностей
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED));
@@ -235,154 +233,13 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 startActivityForResult(new Intent(actionRequestEnable), REQUEST_ENABLE_BT);
             }
         }
+        // создаем задачу соединения BTConnect
+        bluetooth_Connect = new BTConnect();
+        // передаем ссылку на основную activity
+        bluetooth_Connect.link(this);
         // запускаем таймер просмотра состояний программы
         timerHandler = new Handler();
-        timerHandler.postDelayed(runCheckStatus, 1000);
-        //endregion
-        // определяем Handler для соединения по Bluetooth
-        //region btConnectHandler
-        btConnectHandler = new Handler(){
-            public void handleMessage(Message msg){
-                waitingConnect = false;
-                switch (msg.what) {
-                    case BT_CONNECT_OK:
-                        // если соединение все еще активно
-                        if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
-                            // обнуляем счетчик попыток установления связи
-                            mConnectionAttemptsCnt = 0;
-                            listenMessageBT();
-                            sendDataBT(BT_INIT_MESSAGE, 3000);
-                        }
-                        break;
-                    case BT_CONNECT_ERR:
-                        if (mMainStatus != MainStatus.CLOSE){
-                            // получаем данные сообщения
-                            String rxMsg = (String) msg.obj;
-                            // проверка получено ли rxMsg
-                            if (rxMsg != null){
-                                // получено NO_BOUNDED_DEVICE ???
-                                if (rxMsg.equals(NO_BOUNDED_DEVICE)){
-                                    // переходим в исходное состояние
-                                    returnIdleState();
-                                    // если получено NO_BOUNDED_DEVICE, выдать предупреждение
-                                    Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
-                                }
-                                else {
-                                    // значит получено BT_CONNECT_ERR (других пока нет)
-                                    if (mMainStatus == MainStatus.CONNECTING)
-                                        // повторяем попытку соединения
-                                        if (mConnectionAttemptsCnt <= MAX_CONNECTION_ATTEMPTS){
-                                            // делаем попытку снова установить соединение через 12 с
-                                            pbConnectHeader(12000);
-                                        }
-                                    else{
-                                        // все попытки установки соединения закончились неудачей
-                                        returnIdleState();
-                                        // выводим сообщение "Ошибка установления связи"
-                                        Toast.makeText(getApplicationContext(), R.string.connectionError , Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-                            }
-                            else{
-                                // ошибочное сообщение, переходим в исходное состояние
-                                returnIdleState();
-                            }
-                        }
-                        break;
-                    case BT_CONNECTED:
-                        // выводим сообщение "Соединение уже активно"
-                        Toast.makeText(getApplicationContext(), R.string.connectionActiv, Toast.LENGTH_SHORT).show();
-                        break;
-                    case BT_CONNECT_INTERRUPT:
-                        // выводим сообщение "Соединение разорвано"
-                        Toast.makeText(getApplicationContext(),
-                                R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
-                        break;
-                }
-            }
-        };
-        //endregion
-        // определяем Handler для передачи по Bluetooth
-        //region btTxHandler
-        btTxHandler = new Handler(){
-            public void handleMessage(android.os.Message msg){
-                waitingTx = false;
-                switch (msg.what) {
-                    case BT_TX_OK:
-                        if (mMainStatus == MainStatus.CONNECTING)
-                            // выводим сообщение "Запрос соединения"
-                            Toast.makeText(getApplicationContext(),
-                                R.string.initRequest, Toast.LENGTH_SHORT).show();
-                        break;
-                    case BT_TX_ERR:
-                        if (mMainStatus == MainStatus.CONNECTING) {
-                            Toast.makeText(getApplicationContext(),
-                                    R.string.transmitionError,
-                                    Toast.LENGTH_SHORT).show();
-                        }
-                        break;
-                    case BT_TX_INTERRUPT:
-                        Toast.makeText(getApplicationContext(),
-                                "Прерывание передачи", Toast.LENGTH_SHORT).show();
-                        break;
-                }
-            }
-        };
-        //endregion
-        // определяем Handler для приема по Bluetooth
-        //region btRxHandler
-        btRxHandler = new Handler(){
-            public void handleMessage(android.os.Message msg){
-                waitingRx = false;
-                switch (msg.what) {
-                    case BT_RX_OK_ANSWER:
-                        // данные приняты успешно
-                        String rxText = (String) msg.obj;
-                        // находимся в режиме MainStatus.CONNECTING ???
-                        if (mMainStatus == MainStatus.CONNECTING) {
-                            if (rxText.contains(RX_INIT_OK)){
-                                // в принятых данных есть строка инициализации RX_INIT_OK
-                                // изменяем основное состояние на CONNECTED
-                                mMainStatus = MainStatus.CONNECTED;
-                                // обнуляем счетчик принятых пакетов
-                                btRxCnt = 0;
-                                // установка зеленого цвета для кнопки FabConnect
-                                setFabConnectColorGreen();
-                                // отменяем повторную посылку пакета инициализации BT_INIT_MESSAGE
-                                btTxHandler.removeCallbacks(runRepeatSendInitData);
-                            }
-                            Log.d("MY_LOG", "MainStatus.CONNECTED");
-                        }
-                        // производим анализ полученных данных
-                        analiseRxData(rxText);
-                        // обновляем значение текста в окне
-                        String text = String.valueOf(btRxCnt) + " " + (String) msg.obj;
-                        tvBtRxData.setText(text);
-                        btRxCnt++;
-                        break;
-                    case BT_RX_ERR_ANSWER:
-                        // ошибка при получении данных, переходим в исходное состояние
-                        // returnIdleState();
-                        Log.d("MY_LOG", "MainStatus.CONNECTED, ConnectionStatusBT.NO_CONNECT");
-                        // выдаем сообщение "Ошибка получения данных"
-                        //Toast.makeText(getApplicationContext(),
-                        //        getResources().getText(R.string.recieveError),
-                        //        Toast.LENGTH_SHORT).show();
-                        break;
-                    case BT_RX_INTERRUPT:
-                        returnIdleState();
-                        Log.d("MY_LOG", "BT_RX_INTERRUPT");
-                        Toast.makeText(getApplicationContext(),
-                                "Прерывание приема", Toast.LENGTH_SHORT).show();
-                        return;
-                }
-                if (mMainStatus != MainStatus.CLOSE){
-                    // снова запускаем прием данных
-                    if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED)
-                        listenMessageBT();
-                }
-            };
-        };
+        timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
         //endregion
     }
 
@@ -404,7 +261,13 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
                     mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
                     setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
-                    pbConnectHeader(0);     // запускаем установление соединения
+                    // создаем асинхронную задачу соединения если прошлая уже отработала
+                    if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
+                        bluetooth_Connect = new BTConnect();
+                        // передаем ссылку на основную activity
+                        bluetooth_Connect.link(this);
+                    }
+                    pbConnectHeader();     // запускаем установление соединения
                 }
                 else {
                     if (mMainStatus == MainStatus.CONNECTING){
@@ -421,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 }
                 break;
             case R.id.ibOpen:
-                ibOpenHeader(); // обрабатываем нажатие ibOpen
+                //ibOpenHeader(); // обрабатываем нажатие ibOpen
                 break;
             case R.id.ibClose:
                 ibCloseHeader(); // обрабатываем нажатие ibClose
@@ -473,90 +336,67 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     /**
      * обработка нажатия кнопки fabConnect
-     * @param delay_ms - задержка перед выполенением
      */
-    private void pbConnectHeader(int delay_ms){
-        if (!waitingConnect) {
-            final int delay = delay_ms;
-            // получаем список спаренных устройств
-            pairedDevices = mBluetoothAdapter.getBondedDevices();
-            mConnectionAttemptsCnt++;       // увеличиваем счетчик попыток установления соединения
-            // создаем поток в котором будет производится поиск "Базового блока"
-            bluetooth_Connect = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        waitingConnect = true;
-                        UUID serialUUID;
-                        // проверяем включен ли Bluetooth
-                        if (mBluetoothAdapter.isEnabled()) {
-                            String selectedBoundedDevice = sPref.getString(SELECTED_BOUNDED_DEV, "");
-                            // проверим определено ли устройство для связи
-                            if (selectedBoundedDevice.equals("")) {
-                                // устройство для связи не выбрано
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_ERR, 0, 0, NO_BOUNDED_DEVICE));
-                                return;
+    private void pbConnectHeader(){
+        // получаем список спаренных устройств
+        pairedDevices = mBluetoothAdapter.getBondedDevices();
+        mConnectionAttemptsCnt++;       // увеличиваем счетчик попыток установления соединения
+        try {
+            UUID serialUUID;
+            // проверяем включен ли Bluetooth
+            if (mBluetoothAdapter.isEnabled()) {
+                String selectedBoundedDevice = sPref.getString(SELECTED_BOUNDED_DEV, "");
+                // проверим определено ли устройство для связи
+                if (selectedBoundedDevice.equals("")) {
+                    // переходим в исходное состояние
+                    returnIdleState();
+                    // выдаем сообщение "Устройство для связи не выбрано."
+                    Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // Bluetooth включен, проверяем устанавливалось ли ранее соединение
+                if (mClientSocket == null) {
+                    // попытка установить соединение не производилась
+                    // производим поиск нужного нам устройства, получаем его
+                    mBluetoothDevice = findBTDevice(selectedBoundedDevice);
+                    if (mBluetoothDevice != null) {
+                        ParcelUuid[] uuids = mBluetoothDevice.getUuids();// получаем перечень доступных UUID данного устройства
+                        if (uuids != null) {
+                            serialUUID = new UUID(0, 0);
+                            for (ParcelUuid uuid : uuids) {
+                                long profileUUID = uuid.getUuid().getMostSignificantBits();
+                                profileUUID = (profileUUID & UUID_MASK) >> 32;
+                                if (profileUUID == UUID_SERIAL)
+                                    serialUUID = uuid.getUuid();
                             }
-                            // ожидаем t=delay мс
-                            try {
-                                Thread.sleep(delay);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            // Bluetooth включен, проверяем устанавливалось ли ранее соединение
-                            if (mClientSocket == null) {
-                                // попытка установить соединение не производилась
-                                // производим поиск нужного нам устройства, получаем его
-                                mBluetoothDevice = findBTDevice(selectedBoundedDevice);
-                                if (mBluetoothDevice != null) {
-                                    ParcelUuid[] uuids = mBluetoothDevice.getUuids();// получаем перечень доступных UUID данного устройства
-                                    if (uuids != null) {
-                                        serialUUID = new UUID(0, 0);
-                                        for (ParcelUuid uuid : uuids) {
-                                            long profileUUID = uuid.getUuid().getMostSignificantBits();
-                                            profileUUID = (profileUUID & UUID_MASK) >> 32;
-                                            if (profileUUID == UUID_SERIAL)
-                                                serialUUID = uuid.getUuid();
-                                        }
-                                        // проверяем установлен ли UUID
-                                        if (serialUUID.getMostSignificantBits() != 0) {
-                                            // устанавливаем связь, создаем Socket
-                                            mClientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(serialUUID);
-                                        } else {
-                                            // ошибка установления связи
-                                            // передаем сообщение - ошибка установления связи
-                                            btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_ERR, 0, 0, CONNECTION_ERR));
-                                        }
-                                    }
-                                }
-                            }
-                            // проверка установлено ли соединение
-                            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED) {
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECTED, 0, 0, selectedBoundedDevice));
+                            // проверяем установлен ли UUID
+                            if (serialUUID.getMostSignificantBits() != 0) {
+                                // устанавливаем связь, создаем Socket
+                                mClientSocket = mBluetoothDevice.createRfcommSocketToServiceRecord(serialUUID);
                             } else {
-                                // соединения нет, пробуем снова установить его
-                                mClientSocket.connect();
-                                btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_OK, 0, 0, selectedBoundedDevice));
+                                // переходим в исходное состояние
+                                returnIdleState();
+                                // если получено NO_BOUNDED_DEVICE, выдать предупреждение
+                                Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
                             }
-                        } else {
-                            // Bluetooth выключен. Предложим пользователю включить его.
-                            startActivityForResult(new Intent(actionRequestEnable), REQUEST_ENABLE_BT);
-                        }
-                    } catch (IOException e) {
-                        if (mMainStatus == MainStatus.CLOSE) {
-                            // завершение работы программы
-                            // передаем сообщение - прерывание связи
-                            btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_INTERRUPT, 0, 0, CONNECTION_ERR));
-                        } else {
-                            // ошибка установления связи
-                            // передаем сообщение - ошибка установления связи
-                            btConnectHandler.sendMessage(btConnectHandler.obtainMessage(BT_CONNECT_ERR, 0, 0, CONNECTION_ERR));
                         }
                     }
                 }
-            });
-            bluetooth_Connect.setDaemon(true);
-            bluetooth_Connect.start();
+                // запускаем задачу bluetooth_Connect если она не запущена
+                if (bluetooth_Connect.getStatus().toString().equals(PENDING))
+                    bluetooth_Connect.execute(0);
+            }
+            else {
+                // Bluetooth выключен. Предложим пользователю включить его.
+                startActivityForResult(new Intent(actionRequestEnable), REQUEST_ENABLE_BT);
+            }
+        } catch (IOException e) {
+            if (mMainStatus == MainStatus.CLOSE) {
+                // завершение работы программы
+                // выводим сообщение "Соединение разорвано"
+                Toast.makeText(getApplicationContext(),
+                        R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -595,43 +435,91 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     @Override
     public boolean onTouch(View view, MotionEvent event)
     {
-        switch (event.getAction())
-        {
-            case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
-                // fromPosition - координата по оси X начала выполнения операции
-                fromPosition = event.getX();
+        switch (view.getId()) {
+            case R.id.ibOpen:
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
+                        ibOpenPress = true;
+                        ibOpen.setPressed(true);
+                        break;
+                    case MotionEvent.ACTION_UP: // Пользователь отпустил экран, т.е. окончание движения
+                        ibOpenPress = false;
+                        ibOpen.setPressed(false);
+                        pbProgress = 0;
+                        pbIBPress.setProgress(pbProgress);
+                        break;
+                }
                 break;
-            case MotionEvent.ACTION_UP: // Пользователь отпустил экран, т.е. окончание движения
-                float toPosition = event.getX();
-                if (fromPosition > toPosition){
-                    if ((fromPosition - toPosition) > 100) {
-                        flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
-                        flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
-                        flipper.showNext();
-                    }
+            case R.id.ibClose:
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
+                        ibClosePress = true;
+                        ibClose.setPressed(true);
+                        break;
+                    case MotionEvent.ACTION_UP: // Пользователь отпустил экран, т.е. окончание движения
+                        ibClosePress = false;
+                        ibClose.setPressed(false);
+                        pbProgress = 0;
+                        pbIBPress.setProgress(pbProgress);
+                        break;
                 }
-                else if (fromPosition < toPosition) {
-                    if ((toPosition - fromPosition) > 100) {
-                        flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
-                        flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
-                        flipper.showPrevious();
-                    }
+                break;
+            case R.id.ibMute:
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
+                        ibMutePress = true;
+                        ibMute.setPressed(true);
+                        break;
+                    case MotionEvent.ACTION_UP: // Пользователь отпустил экран, т.е. окончание движения
+                        ibMutePress = false;
+                        ibMute.setPressed(false);
+                        pbProgress = 0;
+                        pbIBPress.setProgress(pbProgress);
+                        break;
                 }
-            default:
+                break;
+            case R.id.ibBagage:
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
+                        ibBagagePress = true;
+                        ibBagage.setPressed(true);
+                        break;
+                    case MotionEvent.ACTION_UP: // Пользователь отпустил экран, т.е. окончание движения
+                        ibBagagePress = false;
+                        ibBagage.setPressed(false);
+                        pbProgress = 0;
+                        pbIBPress.setProgress(pbProgress);
+                        break;
+                }
+                break;
+            case R.id.main_layout:
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
+                        // fromPosition - координата по оси X начала выполнения операции
+                        fromPosition = event.getX();
+                        break;
+                    case MotionEvent.ACTION_UP: // Пользователь отпустил экран, т.е. окончание движения
+                        float toPosition = event.getX();
+                        if (fromPosition > toPosition) {
+                            if ((fromPosition - toPosition) > 100) {
+                                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
+                                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
+                                flipper.showNext();
+                            }
+                        } else if (fromPosition < toPosition) {
+                            if ((toPosition - fromPosition) > 100) {
+                                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
+                                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
+                                flipper.showPrevious();
+                            }
+                        }
+                    default:
+                        break;
+                }
                 break;
         }
         return true;
     }
-
-    /**
-     * повторная посылка пакета инициализации BT_INIT_MESSAGE
-     */
-    Runnable runRepeatSendInitData = new Runnable() {
-        @Override
-        public void run() {
-            sendDataBT(BT_INIT_MESSAGE, 0);
-        }
-    };
 
     /**
      * анализ состояний программы
@@ -644,108 +532,126 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     };
 
     private void checkStatus(){
-        if (mConnectionStatusBT == ConnectionStatusBT.NO_CONNECT){
-            if (mMainStatus == MainStatus.CONNECTED ){
-                // соединение разорвано, но возврат в исходное не выполнен
-                returnIdleState();
+        if (mMainStatus == MainStatus.CONNECTING) {
+            // проверка установлено ли соединение
+            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+                // проверяем была ли уже передача ранее
+                if (bluetooth_Tx != null) {
+                    // передаем повторно пакет BT_INIT_MESSAGE, если прошлый уже передан
+                    sendDataBT(BT_INIT_MESSAGE, DELAY_TX_INIT_MESSAGE);
+                    // вызываем runCheckStatus с задержкой 100 мс.
+                    timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
+                    return;
+                }
+            }
+            else {
+                // проверка завершилась ли прошлая задача установки соединения
+                if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
+                    // повторяем попытку соединения если количество попыток меньше MAX_CONNECTION_ATTEMPTS
+                    if (mConnectionAttemptsCnt <= MAX_CONNECTION_ATTEMPTS) {
+                        // запускаем задачу bluetooth_Connect
+                        bluetooth_Connect = new BTConnect();
+                        // передаем ссылку на основную activity
+                        bluetooth_Connect.link(this);
+                        // запускаем задачу с задержкой 12 с
+                        bluetooth_Connect.execute(DELAY_CONNECTING);
+                        // увеличиваем счетчик попыток установления соединения
+                        mConnectionAttemptsCnt++;
+                    } else {
+                        // все попытки установки соединения закончились неудачей
+                        returnIdleState();
+                        // выводим сообщение "Ошибка установления связи"
+                        Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_SHORT).show();
+                    }
+                }
             }
         }
         else
-            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED) {
-                // запускаем прием  от SIM, чтобы получить данные
-                listenMessageBT();
-            }
-        // вызываем runCheckStatus с задержкой 1 с.
-        timerHandler.postDelayed(runCheckStatus, 1000);
-    }
-
-    // передача данных через Bluetooth
-    private void sendDataBT(String data, int delay){
-        if (!waitingTx) {
-            waitingTx = true;
-            final String txData = data;
-            final int txDelay = delay;
-            bluetooth_Tx = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        try {
-                            Thread.sleep(txDelay);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        if (mClientSocket != null) {
-                            if (mOutStream == null)
-                                mOutStream = mClientSocket.getOutputStream();
-                            byte[] byteArray = txData.getBytes();
-                            mOutStream.write(byteArray);
-                            btTxHandler.sendEmptyMessage(BT_TX_OK);
-                        } else {
-                            btTxHandler.sendEmptyMessage(BT_TX_ERR);
-                        }
-                    } catch (IOException e) {
-                        btTxHandler.sendEmptyMessage(BT_TX_INTERRUPT);
+            if (mMainStatus != MainStatus.CLOSE){
+                if (ibOpenPress) {
+                    pbIBPress.setProgress(++pbProgress);
+                    if (pbProgress == MAX_PROGRESS_VALUE) {
+                        ibOpenHeader();
+                        Vibrate(VIBRATE_TIME);
                     }
                 }
-            });
-            bluetooth_Tx.setDaemon(true);
-            bluetooth_Tx.start();
-            if (mMainStatus == MainStatus.CONNECTING)
-                btTxHandler.postDelayed(runRepeatSendInitData, 8000);
+                else if (ibClosePress) {
+                    pbIBPress.setProgress(++pbProgress);
+                    if (pbProgress == MAX_PROGRESS_VALUE) {
+                        ibCloseHeader();
+                        Vibrate(VIBRATE_TIME);
+                    }
+                }
+                else if (ibMutePress) {
+                    pbIBPress.setProgress(++pbProgress);
+                    if (pbProgress == MAX_PROGRESS_VALUE) {
+                        ibMuteHeader();
+                        Vibrate(VIBRATE_TIME);
+                    }
+                }
+                else if (ibBagagePress) {
+                    pbIBPress.setProgress(++pbProgress);
+                    if (pbProgress == MAX_PROGRESS_VALUE) {
+                        ibBaggageHeader();
+                        Vibrate(VIBRATE_TIME);
+                    }
+                }
+                // снова запускаем прием данных
+                listenMessageBT();
+                // вызываем runCheckStatus с задержкой 100 мс.
+                timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
+                return;
+            }
+        // вызываем runCheckStatus с задержкой 100 мс.
+        timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
+    }
+
+    private void Vibrate(Long time) {
+        Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        vibrator.vibrate(time);
+    }
+
+    /**
+     * передача данных через Bluetooth
+     * @param data - данные для передачи
+     * @param delay - задержка перед передачей данных в секундах
+     */
+    private boolean sendDataBT(String data, int delay){
+        // проверка завершилась ли прошлая задача передачи
+        if ( bluetooth_Tx == null || bluetooth_Tx.getStatus().toString().equals(FINISHED)) {
+            // передача завершилась, создаем новую задачу передачи
+            bluetooth_Tx = new BTTx(data);
+            // передаем ссылку на основную activity
+            bluetooth_Tx.link(this);
+            bluetooth_Tx.execute(delay);
+            return true;
+        }
+        else {
+            return false;
         }
     }
 
     // прием данных из Bluetooth
     private void listenMessageBT() {
-        if (!waitingRx) {
-            waitingRx = true;
-            bluetooth_Rx = new Thread(new Runnable() {
-                String result = "";
-                int bufferSize = 1024;
-                byte[] buffer = new byte[bufferSize];
-
-                @Override
-                public void run() {
-                    try {
-                        if (mClientSocket != null) {
-                            if (mInStream == null)
-                                mInStream = mClientSocket.getInputStream();
-                        } else {
-                            btRxHandler.sendEmptyMessage(BT_RX_ERR_ANSWER);
-                            return;
-                        }
-                        int bytesRead;
-                        while (true) {
-                            int numBytes = mInStream.available();
-                            if (numBytes == 65535) {
-                                // ошибка выполнения mInStream.available()
-                                btRxHandler.sendEmptyMessage(BT_RX_ERR_ANSWER);
-                                return;
-                            } else {
-                                if (numBytes != 0) {
-                                    // данные получены
-                                    if (mClientSocket != null) {
-                                        bytesRead = mInStream.read(buffer);
-                                        if (bytesRead != -1) {
-                                            while (bytesRead == bufferSize) {
-                                                result = result + new String(buffer, 0, bytesRead);
-                                                bytesRead = mInStream.read(buffer);
-                                            }
-                                            result = result + new String(buffer, 0, bytesRead);
-                                            btRxHandler.sendMessage(btRxHandler.obtainMessage(BT_RX_OK_ANSWER, 0, 0, result));
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch (IOException e) {
-                        btRxHandler.sendEmptyMessage(BT_RX_INTERRUPT);
-                    }
+        try {
+            if (mClientSocket != null) {
+                if (mInStream == null)
+                    mInStream = mClientSocket.getInputStream();
+                if (bluetooth_Rx == null || bluetooth_Rx.getStatus().toString().equals(FINISHED)) {
+                    // создаем задачу BTRx
+                    bluetooth_Rx = new BTRx();
+                    // передаем ссылку на основную activity
+                    bluetooth_Rx.link(this);
+                    // запускаем задачу с задержкой 0 с
+                    bluetooth_Rx.execute(0);
                 }
-            });
-            bluetooth_Rx.setDaemon(true);
-            bluetooth_Rx.start();
+            } else Log.d("MY_LOG", "Rx Error");
+        }
+        catch (IOException e) {
+            returnIdleState();
+            Log.d("MY_LOG", "BT_RX_INTERRUPT");
+            Toast.makeText(getApplicationContext(),
+                    "Прерывание приема", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -893,10 +799,68 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     /**
+     * метод вызываемый в конце выполнения задачи bluetooth_Connect
+     */
+    void onPostExecuteBTConnect(String result){
+        // если соединение активно
+        if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+            // проверяем результат работы задачи bluetooth_Connect
+            if (result.equals(BTConnect.CONNECTION_OK)) {
+                // обнуляем счетчик попыток установления связи
+                mConnectionAttemptsCnt = 0;
+                // переходим к отправке посылки инициаизации, состояние CONNECTED
+                sendDataBT(BT_INIT_MESSAGE, DELAY_TX_INIT_MESSAGE);
+                listenMessageBT();
+            }
+        }
+    }
+
+    /**
+     * метод вызываемый в конце выполнения задачи bluetooth_Rx
+     */
+    void onPostExecuteBTRx(String rxText){
+        // если соединение активно
+        if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+            // находимся в режиме MainStatus.CONNECTING ???
+            if (mMainStatus == MainStatus.CONNECTING) {
+                if (rxText.contains(RX_INIT_OK)){
+                    // в принятых данных есть строка инициализации RX_INIT_OK
+                    // изменяем основное состояние на CONNECTED
+                    mMainStatus = MainStatus.CONNECTED;
+                    // обнуляем счетчик принятых пакетов
+                    btRxCnt = 0;
+                    // установка зеленого цвета для кнопки FabConnect
+                    setFabConnectColorGreen();
+                    Log.d("MY_LOG", "MainStatus.CONNECTED");
+                }
+            }
+            // производим анализ полученных данных
+            analiseRxData(rxText);
+            // обновляем значение текста в окне
+            String text = String.valueOf(btRxCnt) + " " + rxText;
+            tvBtRxData.setText(text);
+            btRxCnt++;
+        }
+    }
+
+    /**
      * закрытие потоков ввода вывода для BT
      */
     private void closeBtStreams(){
         try{
+            mBluetoothDevice = null;
+            if (bluetooth_Connect != null) {
+                // завершаем задачу установки соединения
+                bluetooth_Connect.cancel(true);
+            }
+            if (bluetooth_Tx != null) {
+                // завершаем задачу передачи
+                bluetooth_Tx.cancel(true);
+            }
+            if (bluetooth_Rx != null) {
+                // завершаем задачу приема
+                bluetooth_Rx.cancel(true);
+            }
             // закрываем сокет и потоки ввода вывода
             if (mClientSocket != null) {
                 mClientSocket.close();
@@ -909,23 +873,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             if (mOutStream != null) {
                 mOutStream.close();
                 mOutStream = null;
-            }
-            mBluetoothDevice = null;
-            // завершаем нами созданные потоки для BT
-            if (bluetooth_Connect != null) {
-                Thread bt_Connect = bluetooth_Connect;
-                bluetooth_Connect = null;
-                bt_Connect.interrupt();
-            }
-            if (bluetooth_Rx != null) {
-                Thread bt_Rx = bluetooth_Rx;
-                bluetooth_Rx = null;
-                bt_Rx.interrupt();
-            }
-            if (bluetooth_Tx != null) {
-                Thread bt_Tx = bluetooth_Tx;
-                bluetooth_Tx = null;
-                bt_Tx.interrupt();
             }
         }
         catch (IOException e) {
