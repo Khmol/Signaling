@@ -82,7 +82,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private static final short POSITION_STATUS_SIM = 6; // начальная позиция флагов статуса в общем пакете
     private static final short MASK_GUARD = 1;  // маска для извлечения флага нахождения на охране
     private static final int DELAY_TX_INIT_MESSAGE = 3; // задержка перед повторной передачей  INIT_MESSAGE
-    private static final int TIMER_CHECK_STATUS = 500;  // периодичность вызова runCheckStatus
+    private static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
     private static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
     private static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
     private static final long VIBRATE_TIME = 500;      //  длительность вибрации при нажатии кнопки
@@ -105,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     OutputStream mOutStream;                 // поток по передаче bluetooth
     InputStream mInStream;                   // поток по приему bluetooth
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
+    private int fabConnectPicture = 1;
     private ViewFlipper flipper;                    // определяем flipper для перелистываний экрана
     private float fromPosition;                     // позиция касания при перелистывании экранов
     private TextView tvBtRxData;                    // текст с принятыми данными
@@ -535,16 +536,21 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     private void checkStatus(){
         if (mMainStatus == MainStatus.CONNECTING) {
+            // показываем что идет поиск сети путем изменения антенны на кнопке
+            changePictureFabConnect();
             // проверка установлено ли соединение
             if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
                 // проверяем была ли уже передача ранее
-                if (bluetooth_Tx != null) {
-                    // передаем повторно пакет BT_INIT_MESSAGE, если прошлый уже передан
-                    sendDataBT(BT_INIT_MESSAGE, DELAY_TX_INIT_MESSAGE);
-                    // вызываем runCheckStatus с задержкой 100 мс.
-                    timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
-                    return;
-                }
+                if (bluetooth_Tx != null)
+                    if ( bluetooth_Tx.getStatus().toString().equals(FINISHED)) {
+                        // передаем повторно пакет BT_INIT_MESSAGE, если прошлый уже передан
+                        sendDataBT(BT_INIT_MESSAGE, DELAY_TX_INIT_MESSAGE);
+                        // вызываем runCheckStatus с задержкой 100 мс.
+                        timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
+                        // снова запускаем прием данных
+                        listenMessageBT();
+                        return;
+                    }
             }
             else {
                 // проверка завершилась ли прошлая задача установки соединения
@@ -608,6 +614,26 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
     }
 
+    /**
+     * Изменение рисунка на кнопке fabConnect во время поиска базы
+     */
+    private void changePictureFabConnect() {
+        switch (fabConnectPicture) {
+            case 1:
+                fabConnect.setImageResource(R.drawable.antenna1);
+                break;
+            case 2:
+                fabConnect.setImageResource(R.drawable.antenna2);
+                break;
+            case 3:
+                fabConnect.setImageResource(R.drawable.antenna3);
+                break;
+        }
+        if (fabConnectPicture == 3)
+            fabConnectPicture = 1;
+        else fabConnectPicture++;
+    }
+
     private void Vibrate(Long time) {
         Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         vibrator.vibrate(time);
@@ -626,6 +652,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             // передаем ссылку на основную activity
             bluetooth_Tx.link(this);
             bluetooth_Tx.execute(delay);
+            Log.d("MY_LOG", "Send: " + data);
             return true;
         }
         else {
@@ -646,6 +673,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     bluetooth_Rx.link(this);
                     // запускаем задачу с задержкой 0 с
                     bluetooth_Rx.execute(0);
+                    Log.d("MY_LOG", "Start recieve");
                 }
             } else Log.d("MY_LOG", "Rx Error");
         }
@@ -766,6 +794,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     getResources().getColor(R.color.colorGreen),
                     getResources().getColor(R.color.colorCarSame));
         }
+        fabConnect.setImageResource(R.drawable.antenna3);
     }
 
     /**
@@ -798,6 +827,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     getResources().getColor(R.color.colorRed),
                     getResources().getColor(R.color.colorCarSame));
         }
+        fabConnect.setImageResource(R.drawable.antenna3);
     }
 
     /**
@@ -833,7 +863,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     btRxCnt = 0;
                     // установка зеленого цвета для кнопки FabConnect
                     setFabConnectColorGreen();
-                    Log.d("MY_LOG", "MainStatus.CONNECTED");
                 }
             }
             // производим анализ полученных данных
@@ -842,6 +871,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             String text = String.valueOf(btRxCnt) + " " + rxText;
             tvBtRxData.setText(text);
             btRxCnt++;
+            Log.d("MY_LOG", "Recieve:" + rxText);
         }
     }
 

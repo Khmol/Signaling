@@ -77,9 +77,9 @@ class BTRx extends AsyncTask<Integer, Void, String> {
 
     @Override
     protected void onPostExecute(String result) {
+        Log.d(LOG_TAG, "Rx end. Result = " + result);
         super.onPostExecute(result);
         activity.onPostExecuteBTRx(result);
-        Log.d(LOG_TAG, "Rx end. Result = " + result);
     }
 
     @Override

@@ -42,9 +42,9 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
 
     @Override
     protected void onPostExecute(String result) {
+        Log.d(LOG_TAG, "Connect end. Result = " + result);
         super.onPostExecute(result);
         activity.onPostExecuteBTConnect(result);
-        Log.d(LOG_TAG, "Connect end. Result = " + result);
     }
 
     @Override
