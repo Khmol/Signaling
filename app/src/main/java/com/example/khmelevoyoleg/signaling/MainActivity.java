@@ -20,6 +20,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -338,6 +339,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      * обработка нажатия кнопки fabConnect
      */
     private void pbConnectHeader(){
+        fabConnect.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
         // получаем список спаренных устройств
         pairedDevices = mBluetoothAdapter.getBondedDevices();
         mConnectionAttemptsCnt++;       // увеличиваем счетчик попыток установления соединения
