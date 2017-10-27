@@ -508,6 +508,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
                                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                                 flipper.showNext();
+                                // запускаем намерение
+                                Intent intent = new Intent(MainActivity.this, InOut.class);
+                                startActivity(intent);
                             }
                         } else if (fromPosition < toPosition) {
                             if ((toPosition - fromPosition) > 100) {
