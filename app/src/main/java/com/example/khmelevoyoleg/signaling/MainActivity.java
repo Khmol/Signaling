@@ -9,6 +9,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -27,6 +30,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -41,9 +45,9 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
-
-
+public class MainActivity extends AppCompatActivity
+        implements View.OnTouchListener, View.OnClickListener,
+        MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
 
     // инициализация переменных
     //region InitVar
@@ -61,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         CONNECTED,
     }
 
+    final String LOG_TAG = "myLogs";
     // определяем строковые константы
     static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
     static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
@@ -85,7 +90,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
     private static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
     private static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
-    private static final long VIBRATE_TIME = 500;      //  длительность вибрации при нажатии кнопки
+    private static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
 
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
@@ -121,8 +126,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     ImageButton ibBagage;                   // кнопка открытие 1-го выхода
     boolean ibBagagePress;
     ImageView ivSigState;                   // рисунок состояния сигнализации (на крыше)
-    ProgressBar pbIBPress;
-    private int pbProgress;
+    ProgressBar pbIBPress;                  // Индикация длятельности нажатия кнопок
+    private int pbProgress;                 // счетчик длительности нажатия кнопок
+    Button pbStart;
+    Button pbPause;
+
+    MediaPlayer mediaPlayer;
+    AudioManager am;
+    Uri AUDIO_FILE_URI;
 
     //endregion
 
@@ -216,11 +227,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         pbIBPress = (ProgressBar) findViewById(R.id.pbIBPress);
         pbIBPress.setMax(MAX_PROGRESS_VALUE);
         pbIBPress.setProgress(0);
+        pbStart = (Button) findViewById(R.id.start);
+        pbStart.setOnClickListener(this);
+        pbPause = (Button) findViewById(R.id.pause);
+        pbPause.setOnClickListener(this);
 
         // регистрация активностей
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED));
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED));
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED));
+
+        // определяем AudioManager
+        am = (AudioManager) getSystemService(AUDIO_SERVICE);
+        AUDIO_FILE_URI = Uri.parse("android.resource://your.app.package/" + R.raw.alarm1);
 
         // определяем адаптер
         //region BluetoothAdapter
@@ -255,48 +274,68 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     @Override
     public void onClick(View v) {
         // проверяем какая кнопка нажата
-        switch (v.getId()){
-            case R.id.fabConnect:
-                if (mMainStatus == MainStatus.IDLE){
-                    // выводим сообщение "Запущен поиск сигнализации"
-                    Toast.makeText(getApplicationContext(), R.string.connectionStart, Toast.LENGTH_SHORT).show();
-                    mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
-                    mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
-                    setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
-                    // создаем асинхронную задачу соединения если прошлая уже отработала
-                    if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
-                        bluetooth_Connect = new BTConnect();
-                        // передаем ссылку на основную activity
-                        bluetooth_Connect.link(this);
+        try {
+            switch (v.getId()){
+                case R.id.fabConnect:
+                    if (mMainStatus == MainStatus.IDLE){
+                        // выводим сообщение "Запущен поиск сигнализации"
+                        Toast.makeText(getApplicationContext(), R.string.connectionStart, Toast.LENGTH_SHORT).show();
+                        mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
+                        mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
+                        setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
+                        // создаем асинхронную задачу соединения если прошлая уже отработала
+                        if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
+                            bluetooth_Connect = new BTConnect();
+                            // передаем ссылку на основную activity
+                            bluetooth_Connect.link(this);
+                        }
+                        pbConnectHeader();     // запускаем установление соединения
                     }
-                    pbConnectHeader();     // запускаем установление соединения
-                }
-                else {
-                    if (mMainStatus == MainStatus.CONNECTING){
-                        // выводим сообщение "Поиск сигнализации остановлен"
-                        Toast.makeText(getApplicationContext(), R.string.сonnectionStoped, Toast.LENGTH_SHORT).show();
-                    }
-                    else
+                    else {
+                        if (mMainStatus == MainStatus.CONNECTING){
+                            // выводим сообщение "Поиск сигнализации остановлен"
+                            Toast.makeText(getApplicationContext(), R.string.сonnectionStoped, Toast.LENGTH_SHORT).show();
+                        }
+                        else
                         if (mMainStatus == MainStatus.CONNECTED){
                             // выводим сообщение "Соединение разорвано"
                             Toast.makeText(getApplicationContext(), R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
+                        }
+                        // выключаем поиск сигнализации и переходим в исходное состояние
+                        returnIdleState();
                     }
-                    // выключаем поиск сигнализации и переходим в исходное состояние
-                    returnIdleState();
-                }
-                break;
-            case R.id.ibOpen:
-                //ibOpenHeader(); // обрабатываем нажатие ibOpen
-                break;
-            case R.id.ibClose:
-                ibCloseHeader(); // обрабатываем нажатие ibClose
-                break;
-            case R.id.ibMute:
-                ibMuteHeader(); // обрабатываем нажатие ibMute
-                break;
-            case R.id.ibBagage:
-                ibBaggageHeader(); // обрабатываем нажатие ibBagage
-                break;
+                    break;
+                case R.id.ibOpen:
+                    //ibOpenHeader(); // обрабатываем нажатие ibOpen
+                    break;
+                case R.id.ibClose:
+                    ibCloseHeader(); // обрабатываем нажатие ibClose
+                    break;
+                case R.id.ibMute:
+                    ibMuteHeader(); // обрабатываем нажатие ibMute
+                    break;
+                case R.id.ibBagage:
+                    ibBaggageHeader(); // обрабатываем нажатие ibBagage
+                    break;
+                case R.id.start:
+                    releaseMP();
+                    Log.d(LOG_TAG, "start Uri");
+                    mediaPlayer = new MediaPlayer();
+                    mediaPlayer.setDataSource(this, AUDIO_FILE_URI);
+                    mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                    mediaPlayer.prepare();
+                    mediaPlayer.start();
+                    mediaPlayer.setLooping(false);
+                    mediaPlayer.setOnCompletionListener(this);
+                    break;
+                case R.id.pause:
+                    Log.d(LOG_TAG, "start Raw");
+                    mediaPlayer = MediaPlayer.create(this, R.raw.alarm2);
+                    mediaPlayer.start();
+                    break;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -508,9 +547,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
                                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                                 flipper.showNext();
-                                // запускаем намерение
-                                Intent intent = new Intent(MainActivity.this, InOut.class);
-                                startActivity(intent);
                             }
                         } else if (fromPosition < toPosition) {
                             if ((toPosition - fromPosition) > 100) {
@@ -879,6 +915,31 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
     /**
+     * освобождаем медиаплеей
+     */
+    private void releaseMP() {
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.release();
+                mediaPlayer = null;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onPrepared(MediaPlayer mp) {
+        Log.d(LOG_TAG, "onPrepared");
+        mp.start();
+    }
+
+    @Override
+    public void onCompletion(MediaPlayer mp) {
+        Log.d(LOG_TAG, "onCompletion");
+    }
+
+    /**
      * закрытие потоков ввода вывода для BT
      */
     private void closeBtStreams(){
@@ -926,6 +987,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // соединения с БД и т. д.
         mMainStatus = MainStatus.CLOSE;
         closeBtStreams();
+        releaseMP();    // release the resources of the player
     }
 }
 

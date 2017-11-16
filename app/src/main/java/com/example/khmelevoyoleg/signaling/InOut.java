@@ -31,7 +31,6 @@ public class InOut extends Activity implements MediaPlayer.OnPreparedListener, M
         Log.d("LOG_TAG", DATA_SD);
         Log.d("LOG_TAG", DATA_SD1);
         Log.d("LOG_TAG", path);
-
     }
 
     @Override
