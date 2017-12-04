@@ -86,6 +86,8 @@ public class MainActivity extends AppCompatActivity
     private static final long UUID_MASK = 0xFFFFFFFF00000000L;  // маска для извлечения нужных битов UUID
     private static final short POSITION_STATUS_SIM = 6; // начальная позиция флагов статуса в общем пакете
     private static final short MASK_GUARD = 1;  // маска для извлечения флага нахождения на охране
+    private static final short MASK_ALARM = 32;  // маска для извлечения флага сработала авария
+    private static final short MASK_ALARM_TRIGERED = 16;  // маска для извлечения флага сработала предварительная авария
     private static final int DELAY_TX_INIT_MESSAGE = 3; // задержка перед повторной передачей  INIT_MESSAGE
     private static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
     private static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
@@ -274,7 +276,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onClick(View v) {
         // проверяем какая кнопка нажата
-        try {
+        //try {
             switch (v.getId()){
                 case R.id.fabConnect:
                     if (mMainStatus == MainStatus.IDLE){
@@ -319,6 +321,10 @@ public class MainActivity extends AppCompatActivity
                     break;
                 case R.id.start:
                     releaseMP();
+                    Log.d(LOG_TAG, "start Raw");
+                    mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
+                    mediaPlayer.start();
+                    /*
                     Log.d(LOG_TAG, "start Uri");
                     mediaPlayer = new MediaPlayer();
                     mediaPlayer.setDataSource(this, AUDIO_FILE_URI);
@@ -327,16 +333,18 @@ public class MainActivity extends AppCompatActivity
                     mediaPlayer.start();
                     mediaPlayer.setLooping(false);
                     mediaPlayer.setOnCompletionListener(this);
+                    */
                     break;
                 case R.id.pause:
-                    Log.d(LOG_TAG, "start Raw");
-                    mediaPlayer = MediaPlayer.create(this, R.raw.alarm2);
-                    mediaPlayer.start();
+                    Log.d(LOG_TAG, "Pause");
+                    if (mediaPlayer == null)
+                        return;
+                    mediaPlayer.stop();
                     break;
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    //    } catch (IOException e) {
+    //        e.printStackTrace();
+    //    }
     }
 
     @Override
@@ -733,7 +741,7 @@ public class MainActivity extends AppCompatActivity
         if (data.length() > (POSITION_STATUS_SIM + 2)){
             String strStatusSIM = data.substring(POSITION_STATUS_SIM, (POSITION_STATUS_SIM + 2));
             try{
-                int statusSIM = Integer.parseInt(strStatusSIM, 10);
+                int statusSIM = Integer.parseInt(strStatusSIM, 16);
                 if ((statusSIM & MASK_GUARD) > 0){
                     // устанавливаем рисунок - close_small "закрыто"
                     ivSigState.setImageResource(R.drawable.close_small);
@@ -741,6 +749,22 @@ public class MainActivity extends AppCompatActivity
                 else{
                     // устанавливаем рисунок - close_small "открыто"
                     ivSigState.setImageResource(R.drawable.open_small);
+                }
+                if ((statusSIM & MASK_ALARM) > 0){
+                    // сработала авария, включаем звук
+                    Log.d(LOG_TAG, "start alarm");
+                    if (mediaPlayer == null) {
+                        mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
+                        mediaPlayer.start();
+                    }
+                }
+                else{
+                    // авария не сработала, выключаем звук
+                    Log.d(LOG_TAG, "stop alarm");
+                    if (mediaPlayer == null)
+                        return true;
+                    mediaPlayer.stop();
+                    mediaPlayer = null;
                 }
                 return true;
             }
