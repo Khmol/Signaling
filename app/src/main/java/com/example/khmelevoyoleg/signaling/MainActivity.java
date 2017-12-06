@@ -64,6 +64,13 @@ public class MainActivity extends AppCompatActivity
         CONNECTING,
         CONNECTED,
     }
+    private enum SoundStatus {
+        ALARM_ACTIVE,
+        PREALARM_ACTIVE,
+        IDLE,
+        AFTER_ALARM,
+        AFTER_PREALARM,
+    }
 
     final String LOG_TAG = "myLogs";
     // определяем строковые константы
@@ -109,6 +116,7 @@ public class MainActivity extends AppCompatActivity
     int mConnectionAttemptsCnt = 0;         // счетчик попыток подключения по Bluetooth
 
     MainStatus mMainStatus; // состояние подключения по Bluetooth
+    SoundStatus mSoundStatus; // состояние звукового оповещения
     OutputStream mOutStream;                 // поток по передаче bluetooth
     InputStream mInStream;                   // поток по приему bluetooth
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
@@ -741,26 +749,42 @@ public class MainActivity extends AppCompatActivity
         if (data.length() > (POSITION_STATUS_SIM + 2)){
             String strStatusSIM = data.substring(POSITION_STATUS_SIM, (POSITION_STATUS_SIM + 2));
             try{
+                // получаем значение статуса SIM модуля
                 int statusSIM = Integer.parseInt(strStatusSIM, 16);
+                // устанавливаем нужный рисунок на крыше машины
                 if ((statusSIM & MASK_GUARD) > 0){
                     // устанавливаем рисунок - close_small "закрыто"
                     ivSigState.setImageResource(R.drawable.close_small);
                 }
-                else{
+                else {
                     // устанавливаем рисунок - close_small "открыто"
                     ivSigState.setImageResource(R.drawable.open_small);
                 }
+                // включаем/ выключаем звук аварии (предварительной аварии)
                 if ((statusSIM & MASK_ALARM) > 0){
                     // сработала авария, включаем звук
                     Log.d(LOG_TAG, "start alarm");
-                    if (mediaPlayer == null) {
+                    if (mediaPlayer == null & mSoundStatus != SoundStatus.AFTER_ALARM) {
                         mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
+                        mediaPlayer.setOnCompletionListener(this);
                         mediaPlayer.start();
+                        mSoundStatus = SoundStatus.AFTER_ALARM;
                     }
                 }
-                else{
-                    // авария не сработала, выключаем звук
-                    Log.d(LOG_TAG, "stop alarm");
+                else if ((statusSIM & MASK_ALARM_TRIGERED ) > 0){
+                    // сработала предварительная авария, включаем звук
+                    Log.d(LOG_TAG, "start pre_alarm");
+                    if (mediaPlayer == null & mSoundStatus != SoundStatus.AFTER_PREALARM) {
+                        mediaPlayer = MediaPlayer.create(this, R.raw.prealarm);
+                        mediaPlayer.setOnCompletionListener(this);
+                        mediaPlayer.start();
+                        mSoundStatus = SoundStatus.AFTER_PREALARM;
+                    }
+                }
+                else {
+                    // авария не сработала либо была выключена, выключаем звук
+                    Log.d(LOG_TAG, "stop media player");
+                    mSoundStatus = SoundStatus.IDLE;
                     if (mediaPlayer == null)
                         return true;
                     mediaPlayer.stop();
@@ -961,6 +985,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onCompletion(MediaPlayer mp) {
         Log.d(LOG_TAG, "onCompletion");
+        mediaPlayer = null;
     }
 
     /**
