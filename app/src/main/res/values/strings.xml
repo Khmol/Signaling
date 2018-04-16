@@ -42,5 +42,6 @@
     <string name="connectionActiv">Соединение уже активно</string>
     <string name="connectionInterrupted">Соединение разорвано</string>
     <string name="connectionFailed">Соединение отсутствует</string>
+    <string name="ctvAutoConnect">Автоматическое подключение</string>
 
 </resources>

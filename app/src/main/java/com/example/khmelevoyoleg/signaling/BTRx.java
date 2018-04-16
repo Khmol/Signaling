@@ -62,7 +62,7 @@ class BTRx extends AsyncTask<Integer, Void, String> {
                         }
                         else return RX_ERROR;
                     }
-                    else return result;
+                    else return RX_ERROR;
                 }
             }
         }

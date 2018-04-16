@@ -11,7 +11,6 @@ import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -30,7 +29,6 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -47,7 +45,7 @@ import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity
         implements View.OnTouchListener, View.OnClickListener,
-        MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
+        MediaPlayer.OnCompletionListener {
 
     // инициализация переменных
     //region InitVar
@@ -74,6 +72,8 @@ public class MainActivity extends AppCompatActivity
 
     final String LOG_TAG = "myLogs";
     // определяем строковые константы
+
+    private static final String RX_ERROR = "RX_ERROR" ;
     static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
     static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
     static final String PENDING = "PENDING";        // задача ожидает запуска
@@ -84,6 +84,8 @@ public class MainActivity extends AppCompatActivity
     static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r"; // посылка для снятия аварии с SIM
     static final String OUT_1_ON = "OUT ON,1\r"; // посылка для открытия 1-го выхода
     static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
+    static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
+    private static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
 
     // определяем числовые константы
     private static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
@@ -92,13 +94,17 @@ public class MainActivity extends AppCompatActivity
     private static final long UUID_SERIAL = 0x1101;     // нужный UUID
     private static final long UUID_MASK = 0xFFFFFFFF00000000L;  // маска для извлечения нужных битов UUID
     private static final short POSITION_STATUS_SIM = 6; // начальная позиция флагов статуса в общем пакете
+    private static final short POSITION_LATCH_IN = 11;  // начальная позиция флагов статуса защелки входов в общем пакете
+    private static final short POSITION_CURRENT_IN = 37;  // начальная позиция флагов статуса текущего состояния входов в общем пакете
+    private static final short POSITION_TYPE_DATA = 0; // начальная позиция описания типа команды
     private static final short MASK_GUARD = 1;  // маска для извлечения флага нахождения на охране
-    private static final short MASK_ALARM = 32;  // маска для извлечения флага сработала авария
-    private static final short MASK_ALARM_TRIGERED = 16;  // маска для извлечения флага сработала предварительная авария
+    private static final short MASK_ALARM = 512;  // маска для извлечения флага сработала авария
+    private static final short MASK_ALARM_TRIGERED = 256;  // маска для извлечения флага сработала предварительная авария
     private static final int DELAY_TX_INIT_MESSAGE = 3; // задержка перед повторной передачей  INIT_MESSAGE
     private static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
     private static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
     private static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
+    private static final int AUTO_CONNECT_TIMEOUT = 300;  // время между запуском поиска SIM 2 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
     private static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
 
     // определяем стринговые переменные
@@ -138,12 +144,11 @@ public class MainActivity extends AppCompatActivity
     ImageView ivSigState;                   // рисунок состояния сигнализации (на крыше)
     ProgressBar pbIBPress;                  // Индикация длятельности нажатия кнопок
     private int pbProgress;                 // счетчик длительности нажатия кнопок
-    Button pbStart;
-    Button pbPause;
+    private int autoConnectCnt = AUTO_CONNECT_TIMEOUT; // счетчик времени между вызовами AutoConnect
+    private boolean autoConnectFlag;        // флаг активности AutoConnect
 
     MediaPlayer mediaPlayer;
     AudioManager am;
-    Uri AUDIO_FILE_URI;
 
     //endregion
 
@@ -191,7 +196,9 @@ public class MainActivity extends AppCompatActivity
         }
         else if(requestCode == SET_SETTINGS){
             if (data != null){
-                Toast.makeText(getApplicationContext(), data.getStringExtra("address"), Toast.LENGTH_SHORT).show();
+                // читаем значение флага AutoConnect
+                autoConnectFlag = Boolean.parseBoolean(sPref.getString(AUTO_CONNECT, ""));
+                //Toast.makeText(getApplicationContext(), data.getStringExtra("address"), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -200,7 +207,6 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_flip);
-
         // определяем объект для работы с настройками
         sPref = getSharedPreferences(SETTINGS_FILENAME, MODE_PRIVATE);
         // определяем объекты для flipper
@@ -224,7 +230,6 @@ public class MainActivity extends AppCompatActivity
         fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
         fabConnect.setOnClickListener(this);
         ibOpen = (ImageButton) findViewById(R.id.ibOpen);
-        //ibOpen.setOnClickListener(this);
         ibOpen.setOnTouchListener(this);
         ibClose = (ImageButton) findViewById(R.id.ibClose);
         ibClose.setOnTouchListener(this);
@@ -237,10 +242,9 @@ public class MainActivity extends AppCompatActivity
         pbIBPress = (ProgressBar) findViewById(R.id.pbIBPress);
         pbIBPress.setMax(MAX_PROGRESS_VALUE);
         pbIBPress.setProgress(0);
-        pbStart = (Button) findViewById(R.id.start);
-        pbStart.setOnClickListener(this);
-        pbPause = (Button) findViewById(R.id.pause);
-        pbPause.setOnClickListener(this);
+
+        // читаем значение флага AutoConnect
+        autoConnectFlag = Boolean.parseBoolean(sPref.getString(AUTO_CONNECT, ""));
 
         // регистрация активностей
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED));
@@ -249,7 +253,6 @@ public class MainActivity extends AppCompatActivity
 
         // определяем AudioManager
         am = (AudioManager) getSystemService(AUDIO_SERVICE);
-        AUDIO_FILE_URI = Uri.parse("android.resource://your.app.package/" + R.raw.alarm1);
 
         // определяем адаптер
         //region BluetoothAdapter
@@ -283,76 +286,37 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onClick(View v) {
-        // проверяем какая кнопка нажата
-        //try {
-            switch (v.getId()){
-                case R.id.fabConnect:
-                    if (mMainStatus == MainStatus.IDLE){
-                        // выводим сообщение "Запущен поиск сигнализации"
-                        Toast.makeText(getApplicationContext(), R.string.connectionStart, Toast.LENGTH_SHORT).show();
-                        mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
-                        mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
-                        setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
-                        // создаем асинхронную задачу соединения если прошлая уже отработала
-                        if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
-                            bluetooth_Connect = new BTConnect();
-                            // передаем ссылку на основную activity
-                            bluetooth_Connect.link(this);
-                        }
-                        pbConnectHeader();     // запускаем установление соединения
+        switch (v.getId()){
+            case R.id.fabConnect:
+                if (mMainStatus == MainStatus.IDLE){
+                    // выводим сообщение "Запущен поиск сигнализации"
+                    Toast.makeText(getApplicationContext(), R.string.connectionStart, Toast.LENGTH_SHORT).show();
+                    mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
+                    mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
+                    setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
+                    // создаем асинхронную задачу соединения если прошлая уже отработала
+                    if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
+                        bluetooth_Connect = new BTConnect();
+                        // передаем ссылку на основную activity
+                        bluetooth_Connect.link(this);
                     }
-                    else {
-                        if (mMainStatus == MainStatus.CONNECTING){
-                            // выводим сообщение "Поиск сигнализации остановлен"
-                            Toast.makeText(getApplicationContext(), R.string.сonnectionStoped, Toast.LENGTH_SHORT).show();
-                        }
-                        else
-                        if (mMainStatus == MainStatus.CONNECTED){
-                            // выводим сообщение "Соединение разорвано"
-                            Toast.makeText(getApplicationContext(), R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
-                        }
-                        // выключаем поиск сигнализации и переходим в исходное состояние
-                        returnIdleState();
+                    pbConnectHeader();     // запускаем установление соединения
+                }
+                else {
+                    if (mMainStatus == MainStatus.CONNECTING){
+                        // выводим сообщение "Поиск сигнализации остановлен"
+                        Toast.makeText(getApplicationContext(), R.string.сonnectionStoped, Toast.LENGTH_SHORT).show();
                     }
-                    break;
-                case R.id.ibOpen:
-                    //ibOpenHeader(); // обрабатываем нажатие ibOpen
-                    break;
-                case R.id.ibClose:
-                    ibCloseHeader(); // обрабатываем нажатие ibClose
-                    break;
-                case R.id.ibMute:
-                    ibMuteHeader(); // обрабатываем нажатие ibMute
-                    break;
-                case R.id.ibBagage:
-                    ibBaggageHeader(); // обрабатываем нажатие ibBagage
-                    break;
-                case R.id.start:
-                    releaseMP();
-                    Log.d(LOG_TAG, "start Raw");
-                    mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
-                    mediaPlayer.start();
-                    /*
-                    Log.d(LOG_TAG, "start Uri");
-                    mediaPlayer = new MediaPlayer();
-                    mediaPlayer.setDataSource(this, AUDIO_FILE_URI);
-                    mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-                    mediaPlayer.prepare();
-                    mediaPlayer.start();
-                    mediaPlayer.setLooping(false);
-                    mediaPlayer.setOnCompletionListener(this);
-                    */
-                    break;
-                case R.id.pause:
-                    Log.d(LOG_TAG, "Pause");
-                    if (mediaPlayer == null)
-                        return;
-                    mediaPlayer.stop();
-                    break;
-            }
-    //    } catch (IOException e) {
-    //        e.printStackTrace();
-    //    }
+                    else
+                    if (mMainStatus == MainStatus.CONNECTED){
+                        // выводим сообщение "Соединение разорвано"
+                        Toast.makeText(getApplicationContext(), R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
+                    }
+                    // выключаем поиск сигнализации и переходим в исходное состояние
+                    returnIdleState();
+                }
+                break;
+        }
     }
 
     @Override
@@ -590,81 +554,92 @@ public class MainActivity extends AppCompatActivity
     };
 
     private void checkStatus(){
-        if (mMainStatus == MainStatus.CONNECTING) {
-            // показываем что идет поиск сети путем изменения антенны на кнопке
-            changePictureFabConnect();
-            // проверка установлено ли соединение
-            if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
-                // проверяем была ли уже передача ранее
-                if (bluetooth_Tx != null)
-                    if ( bluetooth_Tx.getStatus().toString().equals(FINISHED)) {
-                        // передаем повторно пакет BT_INIT_MESSAGE, если прошлый уже передан
-                        sendDataBT(BT_INIT_MESSAGE, DELAY_TX_INIT_MESSAGE);
-                        // вызываем runCheckStatus с задержкой 100 мс.
-                        timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
-                        // снова запускаем прием данных
-                        listenMessageBT();
-                        return;
-                    }
-            }
+        if (mMainStatus == MainStatus.IDLE & autoConnectFlag) {
+            // включен автоматический поиск SIM - AutoConnect
+            if (autoConnectCnt <= AUTO_CONNECT_TIMEOUT)
+                autoConnectCnt++;
             else {
-                // проверка завершилась ли прошлая задача установки соединения
-                if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
-                    // повторяем попытку соединения если количество попыток меньше MAX_CONNECTION_ATTEMPTS
-                    if (mConnectionAttemptsCnt <= MAX_CONNECTION_ATTEMPTS) {
-                        // запускаем задачу bluetooth_Connect
-                        bluetooth_Connect = new BTConnect();
-                        // передаем ссылку на основную activity
-                        bluetooth_Connect.link(this);
-                        // запускаем задачу с задержкой 12 с
-                        bluetooth_Connect.execute(DELAY_CONNECTING);
-                        // увеличиваем счетчик попыток установления соединения
-                        mConnectionAttemptsCnt++;
-                    } else {
-                        // все попытки установки соединения закончились неудачей
-                        returnIdleState();
-                        // выводим сообщение "Ошибка установления связи"
-                        Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_SHORT).show();
-                    }
-                }
+                autoConnectCnt = 0;
+                // запускаем поиск SIM, нажимаем кнопку поиска
+                onClick(fabConnect);
             }
         }
         else
-            if (mMainStatus != MainStatus.CLOSE){
-                if (ibOpenPress) {
-                    pbIBPress.setProgress(++pbProgress);
-                    if (pbProgress == MAX_PROGRESS_VALUE) {
-                        ibOpenHeader();
-                        Vibrate(VIBRATE_TIME);
+            if (mMainStatus == MainStatus.CONNECTING) {
+                // показываем что идет поиск сети путем изменения антенны на кнопке
+                changePictureFabConnect();
+                // проверка установлено ли соединение
+                if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
+                    // проверяем была ли уже передача ранее
+                    if (bluetooth_Tx != null)
+                        if ( bluetooth_Tx.getStatus().toString().equals(FINISHED)) {
+                            // передаем повторно пакет BT_INIT_MESSAGE, если прошлый уже передан
+                            sendDataBT(BT_INIT_MESSAGE, DELAY_TX_INIT_MESSAGE);
+                            // вызываем runCheckStatus с задержкой 100 мс.
+                            timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
+                            // снова запускаем прием данных
+                            listenMessageBT();
+                            return;
+                        }
+                }
+                else {
+                    // проверка завершилась ли прошлая задача установки соединения
+                    if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
+                        // повторяем попытку соединения если количество попыток меньше MAX_CONNECTION_ATTEMPTS
+                        if (mConnectionAttemptsCnt <= MAX_CONNECTION_ATTEMPTS) {
+                            // запускаем задачу bluetooth_Connect
+                            bluetooth_Connect = new BTConnect();
+                            // передаем ссылку на основную activity
+                            bluetooth_Connect.link(this);
+                            // запускаем задачу с задержкой 12 с
+                            bluetooth_Connect.execute(DELAY_CONNECTING);
+                            // увеличиваем счетчик попыток установления соединения
+                            mConnectionAttemptsCnt++;
+                        } else {
+                            // все попытки установки соединения закончились неудачей
+                            returnIdleState();
+                            // выводим сообщение "Ошибка установления связи"
+                            Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
-                else if (ibClosePress) {
-                    pbIBPress.setProgress(++pbProgress);
-                    if (pbProgress == MAX_PROGRESS_VALUE) {
-                        ibCloseHeader();
-                        Vibrate(VIBRATE_TIME);
-                    }
-                }
-                else if (ibMutePress) {
-                    pbIBPress.setProgress(++pbProgress);
-                    if (pbProgress == MAX_PROGRESS_VALUE) {
-                        ibMuteHeader();
-                        Vibrate(VIBRATE_TIME);
-                    }
-                }
-                else if (ibBagagePress) {
-                    pbIBPress.setProgress(++pbProgress);
-                    if (pbProgress == MAX_PROGRESS_VALUE) {
-                        ibBaggageHeader();
-                        Vibrate(VIBRATE_TIME);
-                    }
-                }
-                // снова запускаем прием данных
-                listenMessageBT();
-                // вызываем runCheckStatus с задержкой 100 мс.
-                timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
-                return;
             }
+            else
+                if (mMainStatus != MainStatus.CLOSE){
+                    if (ibOpenPress) {
+                        pbIBPress.setProgress(++pbProgress);
+                        if (pbProgress == MAX_PROGRESS_VALUE) {
+                            ibOpenHeader();
+                            Vibrate(VIBRATE_TIME);
+                        }
+                    }
+                    else if (ibClosePress) {
+                        pbIBPress.setProgress(++pbProgress);
+                        if (pbProgress == MAX_PROGRESS_VALUE) {
+                            ibCloseHeader();
+                            Vibrate(VIBRATE_TIME);
+                        }
+                    }
+                    else if (ibMutePress) {
+                        pbIBPress.setProgress(++pbProgress);
+                        if (pbProgress == MAX_PROGRESS_VALUE) {
+                            ibMuteHeader();
+                            Vibrate(VIBRATE_TIME);
+                        }
+                    }
+                    else if (ibBagagePress) {
+                        pbIBPress.setProgress(++pbProgress);
+                        if (pbProgress == MAX_PROGRESS_VALUE) {
+                            ibBaggageHeader();
+                            Vibrate(VIBRATE_TIME);
+                        }
+                    }
+                    // снова запускаем прием данных
+                    listenMessageBT();
+                    // вызываем runCheckStatus с задержкой 100 мс.
+                    timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
+                    return;
+                }
         // вызываем runCheckStatus с задержкой 100 мс.
         timerHandler.postDelayed(runCheckStatus, TIMER_CHECK_STATUS);
     }
@@ -746,51 +721,53 @@ public class MainActivity extends AppCompatActivity
      * @return - true/false
      */
     private boolean analiseRxData(String data){
-        if (data.length() > (POSITION_STATUS_SIM + 2)){
-            String strStatusSIM = data.substring(POSITION_STATUS_SIM, (POSITION_STATUS_SIM + 2));
+        if (data.length() > POSITION_LATCH_IN){
+            int startIndexStatusSIM = (data.indexOf(',') + 1);
+            int endIndexStatusSIM = data.indexOf(',', startIndexStatusSIM);
+            String strStatusSIM = data.substring(startIndexStatusSIM, endIndexStatusSIM);
+            String strTypeData = data.substring(POSITION_TYPE_DATA, startIndexStatusSIM);
             try{
-                // получаем значение статуса SIM модуля
-                int statusSIM = Integer.parseInt(strStatusSIM, 16);
-                // устанавливаем нужный рисунок на крыше машины
-                if ((statusSIM & MASK_GUARD) > 0){
-                    // устанавливаем рисунок - close_small "закрыто"
-                    ivSigState.setImageResource(R.drawable.close_small);
-                }
-                else {
-                    // устанавливаем рисунок - close_small "открыто"
-                    ivSigState.setImageResource(R.drawable.open_small);
-                }
-                // включаем/ выключаем звук аварии (предварительной аварии)
-                if ((statusSIM & MASK_ALARM) > 0){
-                    // сработала авария, включаем звук
-                    Log.d(LOG_TAG, "start alarm");
-                    if (mediaPlayer == null & mSoundStatus != SoundStatus.AFTER_ALARM) {
-                        mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
-                        mediaPlayer.setOnCompletionListener(this);
-                        mediaPlayer.start();
-                        mSoundStatus = SoundStatus.AFTER_ALARM;
+                if (strTypeData.equals(TYPE_INPUT)) {
+                    // получаем значение статуса SIM модуля
+                    int statusSIM = Integer.parseInt(strStatusSIM, 16);
+                    // устанавливаем нужный рисунок на крыше машины
+                    if ((statusSIM & MASK_GUARD) > 0) {
+                        // устанавливаем рисунок - close_small "закрыто"
+                        ivSigState.setImageResource(R.drawable.close_small);
+                    } else {
+                        // устанавливаем рисунок - close_small "открыто"
+                        ivSigState.setImageResource(R.drawable.open_small);
                     }
-                }
-                else if ((statusSIM & MASK_ALARM_TRIGERED ) > 0){
-                    // сработала предварительная авария, включаем звук
-                    Log.d(LOG_TAG, "start pre_alarm");
-                    if (mediaPlayer == null & mSoundStatus != SoundStatus.AFTER_PREALARM) {
-                        mediaPlayer = MediaPlayer.create(this, R.raw.prealarm);
-                        mediaPlayer.setOnCompletionListener(this);
-                        mediaPlayer.start();
-                        mSoundStatus = SoundStatus.AFTER_PREALARM;
+                    // включаем/ выключаем звук аварии (предварительной аварии)
+                    if ((statusSIM & MASK_ALARM) > 0) {
+                        // сработала авария, включаем звук
+                        Log.d(LOG_TAG, "start alarm");
+                        if (mediaPlayer == null & mSoundStatus != SoundStatus.AFTER_ALARM) {
+                            mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
+                            mediaPlayer.setOnCompletionListener(this);
+                            mediaPlayer.start();
+                            mSoundStatus = SoundStatus.AFTER_ALARM;
+                        }
+                    } else if ((statusSIM & MASK_ALARM_TRIGERED) > 0) {
+                        // сработала предварительная авария, включаем звук
+                        Log.d(LOG_TAG, "start pre_alarm");
+                        if (mediaPlayer == null & mSoundStatus != SoundStatus.AFTER_PREALARM) {
+                            mediaPlayer = MediaPlayer.create(this, R.raw.prealarm);
+                            mediaPlayer.setOnCompletionListener(this);
+                            mediaPlayer.start();
+                            mSoundStatus = SoundStatus.AFTER_PREALARM;
+                        }
+                    } else {
+                        // авария не сработала либо была выключена, выключаем звук
+                        Log.d(LOG_TAG, "stop media player");
+                        mSoundStatus = SoundStatus.IDLE;
+                        if (mediaPlayer == null)
+                            return true;
+                        mediaPlayer.stop();
+                        mediaPlayer = null;
                     }
+                    return true;
                 }
-                else {
-                    // авария не сработала либо была выключена, выключаем звук
-                    Log.d(LOG_TAG, "stop media player");
-                    mSoundStatus = SoundStatus.IDLE;
-                    if (mediaPlayer == null)
-                        return true;
-                    mediaPlayer.stop();
-                    mediaPlayer = null;
-                }
-                return true;
             }
             catch (NumberFormatException e){
                 Log.d("MY_LOG", "NO_DIGIT");
@@ -955,10 +932,12 @@ public class MainActivity extends AppCompatActivity
             // производим анализ полученных данных
             analiseRxData(rxText);
             // обновляем значение текста в окне
-            String text = String.valueOf(btRxCnt) + " " + rxText;
-            tvBtRxData.setText(text);
-            btRxCnt++;
-            Log.d("MY_LOG", "Recieve:" + rxText);
+            if (!rxText.contains(RX_ERROR)){
+                String text = String.valueOf(btRxCnt) + " " + rxText;
+                tvBtRxData.setText(text);
+                btRxCnt++;
+                Log.d("MY_LOG", "Recieve:" + rxText);
+            }
         }
     }
 
@@ -974,12 +953,6 @@ public class MainActivity extends AppCompatActivity
                 e.printStackTrace();
             }
         }
-    }
-
-    @Override
-    public void onPrepared(MediaPlayer mp) {
-        Log.d(LOG_TAG, "onPrepared");
-        mp.start();
     }
 
     @Override
@@ -1031,9 +1004,9 @@ public class MainActivity extends AppCompatActivity
     // Вызывается перед уничтожением активности
     @Override
     public void onDestroy() {
-        super.onDestroy();
         // Освободить все ресурсы, включая работающие потоки,
         // соединения с БД и т. д.
+        super.onDestroy();
         mMainStatus = MainStatus.CLOSE;
         closeBtStreams();
         releaseMP();    // release the resources of the player
