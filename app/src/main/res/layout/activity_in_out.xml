@@ -7,7 +7,7 @@
     android:layout_height="match_parent">
 
     <TextView
-        android:id="@+id/textView"
+        android:id="@+id/tvTitleInOut"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/title_in_out"
@@ -16,25 +16,40 @@
         android:layout_marginRight="8dp"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp" />
+
+    <LinearLayout
+        android:id="@+id/llListViewInOut"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitleInOut"
+        app:layout_constraintBottom_toTopOf="@+id/pbInOutCancel"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent">
+        <ListView
+            android:id="@+id/lvInOut"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+        </ListView>
+    </LinearLayout>
 
     <Button
-        android:id="@+id/start"
+        android:id="@+id/pbInOutCancel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Запуск"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@+id/textView"
-        android:layout_marginLeft="8dp"
-        app:layout_constraintLeft_toLeftOf="parent" />
+        android:text="@string/pbInOutCancel"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"/>
 
     <Button
-        android:id="@+id/pause"
+        android:id="@+id/pbInOutSave"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Пауза"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@+id/textView"
-        android:layout_marginRight="8dp"
-        app:layout_constraintRight_toRightOf="parent" />
+        android:text="@string/pbInOutSave"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent"/>
 </android.support.constraint.ConstraintLayout>

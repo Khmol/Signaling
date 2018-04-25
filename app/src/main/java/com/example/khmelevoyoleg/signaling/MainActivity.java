@@ -29,9 +29,13 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
+import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
@@ -40,6 +44,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -86,6 +92,10 @@ public class MainActivity extends AppCompatActivity
     static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
     static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
     private static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
+    // имена атрибутов для Map
+    final String ATTRIBUTE_NAME_TEXT = "text";
+    final String ATTRIBUTE_NAME_CHECKED = "checked";
+    final String ATTRIBUTE_NAME_IMAGE = "image";
 
     // определяем числовые константы
     private static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
@@ -106,6 +116,10 @@ public class MainActivity extends AppCompatActivity
     private static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
     private static final int AUTO_CONNECT_TIMEOUT = 300;  // время между запуском поиска SIM 2 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
     private static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
+
+    // переменные для адаптера
+    ListView lvInOut;
+    SimpleAdapter adapter;
 
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
@@ -217,6 +231,48 @@ public class MainActivity extends AppCompatActivity
         for (int layout : layouts)
             flipper.addView(inflater.inflate(layout, null));
 
+        // настраиваем ListView
+        // массивы данных
+        String[] text = { "sometext 1", "sometext 2", "sometext 3",
+                "sometext 4", "sometext 5" };
+        //boolean[] checked = { true, false, false, true, false };
+        int img = R.drawable.close_small;
+
+        // упаковываем данные в понятную для адаптера структуру
+        ArrayList<Map<String, Object>> data = new ArrayList<>(text.length);
+        Map<String, Object> m;
+        for (int i = 0; i < text.length; i++) {
+            m = new HashMap<String, Object>();
+            m.put(ATTRIBUTE_NAME_TEXT, text[i]);
+            //m.put(ATTRIBUTE_NAME_CHECKED, checked[i]);
+            m.put(ATTRIBUTE_NAME_IMAGE, img);
+            data.add(m);
+        }
+
+        // массив имен атрибутов, из которых будут читаться данные
+        String[] from = { ATTRIBUTE_NAME_TEXT, ATTRIBUTE_NAME_IMAGE };
+        // массив ID View-компонентов, в которые будут вставлять данные
+        int[] to = { R.id.tvText,  R.id.ivInOutItem }; //R.id.cbChecked,
+
+        // создаем адаптер
+        adapter = new SimpleAdapter(this, data, R.layout.in_out_item,
+                from, to);
+
+        // определяем список и присваиваем ему адаптер
+        lvInOut = (ListView) findViewById(R.id.lvInOut);
+        lvInOut.setAdapter(adapter);
+        lvInOut.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                           public void onItemClick(AdapterView<?> parent, View view,
+                                                                   int position, long id) {
+                                               Log.d(LOG_TAG, "itemClick: position = " + position + ", id = "
+                                                       + id);
+                                           }
+                                       });
+        Button pbInOutCancel = (Button) findViewById(R.id.pbInOutCancel);
+        pbInOutCancel.setOnClickListener(this);
+        Button pbInOutSave = (Button) findViewById(R.id.pbInOutSave);
+        pbInOutSave.setOnClickListener(this);
+
         // Устанавливаем listener касаний, для последующего перехвата жестов
         ConstraintLayout mainLayout = (ConstraintLayout) findViewById(R.id.main_layout);
         mainLayout.setOnTouchListener(this);
@@ -277,6 +333,8 @@ public class MainActivity extends AppCompatActivity
         //endregion
     }
 
+
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // инициализация меню
@@ -287,6 +345,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onClick(View v) {
         switch (v.getId()){
+            // TODO перенести данную обработку в меню, изменять антенну на Toolbar
             case R.id.fabConnect:
                 if (mMainStatus == MainStatus.IDLE){
                     // выводим сообщение "Запущен поиск сигнализации"
@@ -316,6 +375,16 @@ public class MainActivity extends AppCompatActivity
                     returnIdleState();
                 }
                 break;
+            case R.id.pbInOutSave:
+                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
+                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
+                flipper.showPrevious();
+                break;
+            case R.id.pbInOutCancel:
+                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
+                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
+                flipper.showPrevious();
+                break;
         }
     }
 
@@ -324,32 +393,37 @@ public class MainActivity extends AppCompatActivity
         // получаем код выбранного пункта меню
         int id = item.getItemId();
         // если выбран пункт меню "Настройки"
-        if (id == R.id.action_settings) {
-            // получаем список спаренных устройств
-            pairedDevices = mBluetoothAdapter.getBondedDevices();
-            // новые списки имен и адресов спаренных устройств
-            ArrayList<String> namePairedDevices = new ArrayList<>();
-            ArrayList<String> adressPairedDevices = new ArrayList<>();
-            // запускаем намерение
-            Intent intent = new Intent(MainActivity.this, SigSettings.class);
-            // передаем данные для активности IntentActivity
-            if (pairedDevices.size() > 0) {
-                int i = 0;
-                for (BluetoothDevice device : pairedDevices) {
-                    // читаем имена спаренных устройств
-                    String name = device.getName();
-                    namePairedDevices.add(i, name);
-                    // читаем адреса спаренных устройств
-                    String mac_adress = device.getAddress();
-                    adressPairedDevices.add(i, mac_adress);
-                    i++;    // переход к следующему устройству
+        switch (id) {
+            case R.id.action_settings :
+                // получаем список спаренных устройств
+                pairedDevices = mBluetoothAdapter.getBondedDevices();
+                // новые списки имен и адресов спаренных устройств
+                ArrayList<String> namePairedDevices = new ArrayList<>();
+                ArrayList<String> adressPairedDevices = new ArrayList<>();
+                // запускаем намерение
+                Intent intent = new Intent(MainActivity.this, SigSettings.class);
+                // передаем данные для активности IntentActivity
+                if (pairedDevices.size() > 0) {
+                    int i = 0;
+                    for (BluetoothDevice device : pairedDevices) {
+                        // читаем имена спаренных устройств
+                        String name = device.getName();
+                        namePairedDevices.add(i, name);
+                        // читаем адреса спаренных устройств
+                        String mac_adress = device.getAddress();
+                        adressPairedDevices.add(i, mac_adress);
+                        i++;    // переход к следующему устройству
+                    }
                 }
-            }
-            intent.putExtra("paired_names", namePairedDevices);
-            intent.putExtra("paired_adresses", adressPairedDevices);
-            // запускаем активность
-            startActivityForResult(intent, SET_SETTINGS);
-            return true;
+                intent.putExtra("paired_names", namePairedDevices);
+                intent.putExtra("paired_adresses", adressPairedDevices);
+                // запускаем активность
+                startActivityForResult(intent, SET_SETTINGS);
+                return true;
+            case R.id.action_connect :
+                // запускаем поиск по BT
+                pbConnectHeader();
+                return true;
         }
         // по умолчанию возвращаем обработчик родителя
         return super.onOptionsItemSelected(item);
@@ -359,7 +433,7 @@ public class MainActivity extends AppCompatActivity
      * обработка нажатия кнопки fabConnect
      */
     private void pbConnectHeader(){
-        fabConnect.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        //fabConnect.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
         // получаем список спаренных устройств
         pairedDevices = mBluetoothAdapter.getBondedDevices();
         mConnectionAttemptsCnt++;       // увеличиваем счетчик попыток установления соединения
@@ -515,6 +589,7 @@ public class MainActivity extends AppCompatActivity
                 }
                 break;
             case R.id.main_layout:
+            case R.id.lvInOut:
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
                         // fromPosition - координата по оси X начала выполнения операции

@@ -43,5 +43,7 @@
     <string name="connectionInterrupted">Соединение разорвано</string>
     <string name="connectionFailed">Соединение отсутствует</string>
     <string name="ctvAutoConnect">Автоматическое подключение</string>
+    <string name="pbInOutCancel">Отмена</string>
+    <string name="pbInOutSave">Сохранить</string>
 
 </resources>
