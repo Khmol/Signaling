@@ -22,20 +22,17 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
-import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
@@ -119,7 +116,7 @@ public class MainActivity extends AppCompatActivity
 
     // переменные для адаптера
     ListView lvInOut;
-    SimpleAdapter adapter;
+    InOutListViewAdapter adapter;
 
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
@@ -252,22 +249,26 @@ public class MainActivity extends AppCompatActivity
         // массив имен атрибутов, из которых будут читаться данные
         String[] from = { ATTRIBUTE_NAME_TEXT, ATTRIBUTE_NAME_IMAGE };
         // массив ID View-компонентов, в которые будут вставлять данные
-        int[] to = { R.id.tvText,  R.id.ivInOutItem }; //R.id.cbChecked,
+        int[] to = { R.id.etlvInOutNumber,  R.id.ivInOutItem }; //R.id.cbChecked,
 
         // создаем адаптер
-        adapter = new SimpleAdapter(this, data, R.layout.in_out_item,
-                from, to);
+        adapter = new InOutListViewAdapter(this, data, R.layout.in_out_item, from, to);
+        // передаем ссылку на основную activity
+        adapter.link(this);
 
         // определяем список и присваиваем ему адаптер
         lvInOut = (ListView) findViewById(R.id.lvInOut);
         lvInOut.setAdapter(adapter);
-        lvInOut.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+/*
+        ivInOutItem.setOnItemClickListener(new OnItemClickListener() {
                                            public void onItemClick(AdapterView<?> parent, View view,
                                                                    int position, long id) {
                                                Log.d(LOG_TAG, "itemClick: position = " + position + ", id = "
                                                        + id);
                                            }
                                        });
+                                       */
         Button pbInOutCancel = (Button) findViewById(R.id.pbInOutCancel);
         pbInOutCancel.setOnClickListener(this);
         Button pbInOutSave = (Button) findViewById(R.id.pbInOutSave);
