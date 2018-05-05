@@ -6,25 +6,29 @@
     android:layout_height="wrap_content">
 
         <TextView
-            android:id="@+id/etlvInOutNumber"
+            android:id="@+id/tvlvInOutNumber"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textSize="16sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
-            android:text="1">
+            android:text="">
         </TextView>
         <EditText
-            android:id="@+id/etllInOutName"
+            android:id="@+id/etlvInOutName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintRight_toLeftOf="@+id/ivInOutItem"
-            app:layout_constraintLeft_toRightOf="@+id/etlvInOutNumber"
+            app:layout_constraintLeft_toRightOf="@+id/tvlvInOutNumber"
+            android:textSize="16sp"
             android:ems="10"
             android:inputType="textPersonName"
-            android:layout_marginLeft="8dp" />
+            android:text="132"/>
 
     <ImageView
         android:id="@+id/ivInOutItem"

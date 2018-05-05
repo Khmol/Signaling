@@ -28,8 +28,11 @@
         app:layout_constraintBottom_toTopOf="@+id/pbInOutCancel"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintLeft_toLeftOf="parent">
+
+        <!-- разрешаем фокус для потомков ListViwew-->
         <ListView
             android:id="@+id/lvInOut"
+            android:descendantFocusability="afterDescendants"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
         </ListView>
@@ -53,14 +56,4 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toRightOf="parent"/>
 
-    <EditText
-        android:id="@+id/etllInOutName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        android:ems="10"
-        android:inputType="textPersonName"
-        android:layout_marginLeft="8dp" />
 </android.support.constraint.ConstraintLayout>

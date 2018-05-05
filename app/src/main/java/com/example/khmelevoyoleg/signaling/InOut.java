@@ -30,7 +30,6 @@ public class InOut extends Activity implements View.OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_in_out);
-
     }
 
     @Override
