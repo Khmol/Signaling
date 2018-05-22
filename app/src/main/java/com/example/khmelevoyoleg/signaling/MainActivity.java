@@ -29,6 +29,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -90,7 +91,12 @@ public class MainActivity extends AppCompatActivity
     static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
     private static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
     private static final String IN_OUT_NAMES = "IN_OUT_NAMES_"; // название ключа для имени входа в настройках
+    private static final String IN_OUT_STATE = "IN_OUT_STATE_"; // название ключа для состояния входа в настройках
     private static final String DEFAULT_IN_OUT_NAME = "Вход "; // имя входа по умолчанию
+    private static final String DEFAULT_IN_OUT_STATE = "STATE_ON"; // состояние входа по умолчанию
+    private static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
+    private static final String STATE_ON = "STATE_ON"; // состояние входа - включен
+    private static final String STATE_ACTIVE = "STATE_ACTIVE"; // состояние входа - активен на момент включения
 
     // имена атрибутов для Map
     final String ATRIBUTE_IN_OUT_NUMBER = "number";
@@ -239,20 +245,28 @@ public class MainActivity extends AppCompatActivity
         for (int layout : layouts)
             flipper.addView(inflater.inflate(layout, null));
 
-        // читаем значения настроек входов/выходов
-        loadInOutPreferences(DEFAULT_IN_OUT_NUMBER, inOutName, inOutNumber);
+        // читаем значения настроек входов/выходов, результат в inOutName, inOutNumber
+        loadInOutPreferences(DEFAULT_IN_OUT_NUMBER, inOutName, inOutNumber, inOutState);
 
         //boolean[] checked = { true, false, false, true, false };
-        int img = R.drawable.close_small;
+
 
         // настраиваем ListView
         // упаковываем данные в понятную для адаптера структуру
         ArrayList<Map<String, Object>> data = new ArrayList<>(inOutName.size());
         Map<String, Object> m;
+        int img = R.drawable.close_small;
         for (int i = 0; i < inOutNumber.size(); i++) {
             m = new HashMap<String, Object>();
             m.put(ATRIBUTE_IN_OUT_NUMBER, inOutNumber.get(i));
             m.put(ATTRIBUTE_IN_OUT_NAME, inOutName.get(i));
+            if (inOutState.get(i).equals(STATE_OFF)) {
+                img = R.drawable.open_small;
+            } else if (inOutState.get(i).equals(STATE_ON)) {
+                img = R.drawable.close_small;
+            } else if (inOutState.get(i).equals(STATE_ACTIVE)) {
+                img = R.drawable.no_connect_small;
+            }
             m.put(ATTRIBUTE_IN_OUT_STATE_IMAGE, img);
             data.add(m);
         }
@@ -351,46 +365,87 @@ public class MainActivity extends AppCompatActivity
      * @param defaultInOutNumber - количество входов по умолчанию при создании настроек
      * @param inOutName - массив имен входов/ выходов
      * @param inOutNumber - массив номеров входов/ выходов
+     * @param inOutState - массив состояний входов/ выходов
      */
     private void loadInOutPreferences(short defaultInOutNumber,
                                       ArrayList<String> inOutName,
-                                      ArrayList<String> inOutNumber) {
+                                      ArrayList<String> inOutNumber,
+                                      ArrayList<String> inOutState) {
         StringBuilder  prefKey = new StringBuilder(IN_OUT_NAMES);  // задаем ключ для чтения настроек
         StringBuilder  prefText = new StringBuilder(""); // задаем значение прочтенной настройки
         int i = 0;
         do {
-            // меняем ключ для чтения настроек
-            prefKey.replace(IN_OUT_NAMES.length(), prefKey.capacity(), Integer.toString(i));
+            // меняем ключ для чтения настроек "имени"
+            prefKey.replace(0, prefKey.capacity(), IN_OUT_NAMES + Integer.toString(i));
             // читаем настройки
             prefText.replace(0, prefText.capacity(), sPref.getString(prefKey.toString(), ""));
-            inOutName.add(prefText.toString()); // сохраняем значение имени для вывода на экран
-            inOutNumber.add(Integer.toString(i + 1)); // сохраняем значение номера для вывода на экран
+            // сохраняем значение имени для вывода на экран
+            inOutName.add(prefText.toString());
+            // сохраняем значение номера для вывода на экран
+            inOutNumber.add(Integer.toString(i + 1));
+            // меняем ключ для чтения настроек "состояния"
+            prefKey.replace(0, prefKey.capacity(), IN_OUT_STATE + Integer.toString(i));
+            // читаем настройки
+            prefText.replace(0, prefText.capacity(), sPref.getString(prefKey.toString(), ""));
+            // сохраняем значение имени для вывода на экран
+            inOutState.add(prefText.toString());
             i++;
         } while ( !prefText.toString().equals(""));
         // удаляем последнюю запись, так как она пустая
         inOutName.remove(--i);
+        inOutState.remove(i);
         inOutNumber.remove(i);
         // проверяем есть ли данные в настройках
         if (inOutName.size() == 0) {
             // сохраненных настроек нет, нужно сохранить настройки по умолчанию
-            // указываем значение по умолчанию для вводимой настройки
-            prefText.replace(0, prefText.capacity(), DEFAULT_IN_OUT_NAME);
             // создаем эдитор для записи настройки
             SharedPreferences.Editor ed = sPref.edit();
             for (i = 0; i < defaultInOutNumber; i++){
-                // формируем ключ для чтения настроек
-                prefKey.replace(IN_OUT_NAMES.length(), prefKey.capacity(), Integer.toString(i));
-                // формируем текстовое зхначение настройки
-                prefText.replace(DEFAULT_IN_OUT_NAME.length(),
-                        prefText.capacity(), Integer.toString(i + 1));
+                // формируем ключ для записи настроек "имени"
+                prefKey.replace(0, prefKey.capacity(),IN_OUT_NAMES + Integer.toString(i));
+                // указываем значение для вводимой настройки "имени"
+                prefText.replace(0, prefText.capacity(), DEFAULT_IN_OUT_NAME + Integer.toString(i + 1));
+
+                // формируем текстовое зхначение настройки "имени"
+                //prefText.replace(DEFAULT_IN_OUT_NAME.length(),
+                //        prefText.capacity(), Integer.toString(i + 1));
                 // записываем настройку
                 ed.putString(prefKey.toString(), prefText.toString());
-                // добавляем значение по умолчанию в список
+                // добавляем значение "имени" по умолчанию в список
                 inOutName.add(prefText.toString());
-                inOutNumber.add(Integer.toString(i + 1)); // сохраняем значение номера для вывода на экран
+
+                // формируем ключ для записи настроек "состояния"
+                prefKey.replace(0, prefKey.capacity(), IN_OUT_STATE + Integer.toString(i));
+                // указываем значение для вводимой настройки "состояния"
+                prefText.replace(0, prefText.capacity(), DEFAULT_IN_OUT_STATE);
+                // формируем текстовое зхначение настройки "состояния"
+                //prefText.replace(DEFAULT_IN_OUT_STATE.length(),
+                //        prefText.capacity(), Integer.toString(i + 1));
+                // записываем настройку
+                ed.putString(prefKey.toString(), prefText.toString());
+                // добавляем значение "состояния" по умолчанию в список
+                inOutState.add(prefText.toString());
+
+                // добавляем значение "номера" по умолчанию в список для вывода на экран
+                inOutNumber.add(Integer.toString(i + 1));
             };
             // сохраняем изменения для настроек
             ed.apply();
+        }
+    }
+
+    /**
+     * сохранение настроек InOut в xml файл
+     * @param inOutName - массив имен входов/ выходов
+     * @param inOutNumber - массив номеров входов/ выходов
+     * @param inOutState - массив состояний входов/ выходов
+     */
+    private void saveInOutPreferences(ArrayList<String> inOutName,
+                                      ArrayList<String> inOutNumber,
+                                      ArrayList<String> inOutState) {
+        String s;
+        if (adapter != null) {
+            Log.d(LOG_TAG, "в первом введено - ");
         }
     }
 
@@ -435,6 +490,7 @@ public class MainActivity extends AppCompatActivity
                 }
                 break;
             case R.id.pbInOutSave:
+                saveInOutPreferences(inOutName, inOutNumber, inOutState);
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
                 flipper.showPrevious();
@@ -446,6 +502,7 @@ public class MainActivity extends AppCompatActivity
                 break;
         }
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
