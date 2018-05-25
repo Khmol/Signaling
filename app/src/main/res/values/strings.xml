@@ -45,5 +45,8 @@
     <string name="ctvAutoConnect">Автоматическое подключение</string>
     <string name="pbInOutCancel">Отмена</string>
     <string name="pbInOutSave">Сохранить</string>
+    <string name="swOff">OFF</string>
+    <string name="swOn">ON</string>
+
 
 </resources>

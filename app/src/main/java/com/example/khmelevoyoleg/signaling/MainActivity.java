@@ -29,7 +29,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -90,19 +89,19 @@ public class MainActivity extends AppCompatActivity
     static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
     static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
     private static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
-    private static final String IN_OUT_NAMES = "IN_OUT_NAMES_"; // название ключа для имени входа в настройках
+    private static final String IN_OUT_NAME = "IN_OUT_NAME_"; // название ключа для имени входа в настройках
     private static final String IN_OUT_STATE = "IN_OUT_STATE_"; // название ключа для состояния входа в настройках
     private static final String DEFAULT_IN_OUT_NAME = "Вход "; // имя входа по умолчанию
-    private static final String DEFAULT_IN_OUT_STATE = "STATE_ON"; // состояние входа по умолчанию
-    private static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
+    private static final String DEFAULT_IN_OUT_STATUS = "STATUS_OFF"; // статус входа по умолчанию - выкл
+    private static final String DEFAULT_IN_OUT_STATE = "STATE_OFF"; // состояние входа по умолчанию - выкл
     private static final String STATE_ON = "STATE_ON"; // состояние входа - включен
-    private static final String STATE_ACTIVE = "STATE_ACTIVE"; // состояние входа - активен на момент включения
+    private static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
 
     // имена атрибутов для Map
     final String ATRIBUTE_IN_OUT_NUMBER = "number";
     final String ATTRIBUTE_IN_OUT_NAME = "name";
-    final String ATTRIBUTE_IN_OUT_STATE_IMAGE = "image";
-
+    final String ATTRIBUTE_IN_OUT_STATUS_IMAGE = "image";
+    final String ATTRIBUTE_IN_OUT_STATE = "swith";
 
     // определяем числовые константы
     private static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
@@ -177,7 +176,8 @@ public class MainActivity extends AppCompatActivity
     // создаем массивы данных для имен и состояний входов/выходов
     ArrayList<String> inOutName = new ArrayList<>();
     ArrayList<String> inOutNumber = new ArrayList<>();
-    ArrayList<String> inOutState = new ArrayList<>();
+    ArrayList<String> inOutStatus = new ArrayList<>();
+    ArrayList<Boolean> inOutState = new ArrayList<>();
     //endregion
 
     // приемник широковещательных событий
@@ -245,56 +245,16 @@ public class MainActivity extends AppCompatActivity
         for (int layout : layouts)
             flipper.addView(inflater.inflate(layout, null));
 
-        // читаем значения настроек входов/выходов, результат в inOutName, inOutNumber
-        loadInOutPreferences(DEFAULT_IN_OUT_NUMBER, inOutName, inOutNumber, inOutState);
-
-        //boolean[] checked = { true, false, false, true, false };
-
-
-        // настраиваем ListView
-        // упаковываем данные в понятную для адаптера структуру
-        ArrayList<Map<String, Object>> data = new ArrayList<>(inOutName.size());
-        Map<String, Object> m;
-        int img = R.drawable.close_small;
-        for (int i = 0; i < inOutNumber.size(); i++) {
-            m = new HashMap<String, Object>();
-            m.put(ATRIBUTE_IN_OUT_NUMBER, inOutNumber.get(i));
-            m.put(ATTRIBUTE_IN_OUT_NAME, inOutName.get(i));
-            if (inOutState.get(i).equals(STATE_OFF)) {
-                img = R.drawable.open_small;
-            } else if (inOutState.get(i).equals(STATE_ON)) {
-                img = R.drawable.close_small;
-            } else if (inOutState.get(i).equals(STATE_ACTIVE)) {
-                img = R.drawable.no_connect_small;
-            }
-            m.put(ATTRIBUTE_IN_OUT_STATE_IMAGE, img);
-            data.add(m);
-        }
-        // TODO - сохранять значения имени входа при его изменении
-        // массив имен атрибутов, из которых будут читаться данные
-        String[] from = {ATRIBUTE_IN_OUT_NUMBER, ATTRIBUTE_IN_OUT_NAME, ATTRIBUTE_IN_OUT_STATE_IMAGE};
-        // массив ID View-компонентов, в которые будут вставлять данные
-        int[] to = { R.id.tvlvInOutNumber, R.id.etlvInOutName, R.id.ivInOutItem }; //R.id.cbChecked,
-
-        // создаем адаптер
-        adapter = new InOutListViewAdapter(this, data, R.layout.in_out_item, from, to);
-        // передаем ссылку на основную activity
-        adapter.link(this);
+        // читаем значения настроек входов/выходов, результат в inOutName, inOutNumber, inOutState
+        loadInOutPreferences(DEFAULT_IN_OUT_NUMBER, inOutName, inOutNumber, inOutStatus, inOutState);
+        // заполняем значениями список InOutListView
+        adapter = createInOutListView(inOutName, inOutNumber, inOutState);
 
         // определяем список и присваиваем ему адаптер
         lvInOut = (ListView) findViewById(R.id.lvInOut);
         lvInOut.setAdapter(adapter);    // назначаем адаптер для ListView
         lvInOut.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
 
-/*
-        ivInOutItem.setOnItemClickListener(new OnItemClickListener() {
-                                           public void onItemClick(AdapterView<?> parent, View view,
-                                                                   int position, long id) {
-                                               Log.d(LOG_TAG, "itemClick: position = " + position + ", id = "
-                                                       + id);
-                                           }
-                                       });
-                                       */
         pbInOutCancel = (Button) findViewById(R.id.pbInOutCancel);
         pbInOutCancel.setOnClickListener(this);
         pbInOutSave = (Button) findViewById(R.id.pbInOutSave);
@@ -361,22 +321,58 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
+     * заполнение значениями список InOutListView
+     * @param inOutName - массив имен входов/ выходов
+     * @param inOutNumber - массив номеров входов/ выходов
+     * @param inOutState - массив состояний входов/ выходов
+     */
+    private InOutListViewAdapter createInOutListView(ArrayList<String> inOutName, ArrayList<String> inOutNumber,
+                                     ArrayList<Boolean> inOutState) {
+        // настраиваем ListView
+        // упаковываем данные в понятную для адаптера структуру
+        ArrayList<Map<String, Object>> data = new ArrayList<>(inOutName.size());
+        Map<String, Object> m;
+        InOutListViewAdapter adapter;
+        for (int i = 0; i < inOutNumber.size(); i++) {
+            m = new HashMap<String, Object>();
+            m.put(ATRIBUTE_IN_OUT_NUMBER, inOutNumber.get(i));
+            m.put(ATTRIBUTE_IN_OUT_NAME, inOutName.get(i));
+            m.put(ATTRIBUTE_IN_OUT_STATE, inOutState.get(i));
+            m.put(ATTRIBUTE_IN_OUT_STATUS_IMAGE, R.drawable.circle_grey48);
+            data.add(m);
+        }
+        // массив имен атрибутов, из которых будут читаться данные
+        String[] from = {ATRIBUTE_IN_OUT_NUMBER, ATTRIBUTE_IN_OUT_NAME,
+                ATTRIBUTE_IN_OUT_STATE, ATTRIBUTE_IN_OUT_STATUS_IMAGE};
+        // массив ID View-компонентов, в которые будут вставлять данные
+        int[] to = { R.id.tvInOutNumber, R.id.etInOutName,
+                R.id.swInOutState, R.id.ivInOutStatus}; //R.id.cbChecked,
+        // создаем адаптер
+        adapter = new InOutListViewAdapter(this, data, R.layout.in_out_item, from, to);
+        // передаем ссылку на основную activity
+        adapter.link(this);
+        return adapter;
+    }
+
+    /**
      * загрузка данных из настроек либо сохранение настроек по умолчанию если настроек не было
      * @param defaultInOutNumber - количество входов по умолчанию при создании настроек
      * @param inOutName - массив имен входов/ выходов
      * @param inOutNumber - массив номеров входов/ выходов
+     * @param inOutStatus - массив статусов входов/ выходов
      * @param inOutState - массив состояний входов/ выходов
      */
     private void loadInOutPreferences(short defaultInOutNumber,
                                       ArrayList<String> inOutName,
                                       ArrayList<String> inOutNumber,
-                                      ArrayList<String> inOutState) {
-        StringBuilder  prefKey = new StringBuilder(IN_OUT_NAMES);  // задаем ключ для чтения настроек
+                                      ArrayList<String> inOutStatus,
+                                      ArrayList<Boolean> inOutState) {
+        StringBuilder  prefKey = new StringBuilder(IN_OUT_NAME);  // задаем ключ для чтения настроек
         StringBuilder  prefText = new StringBuilder(""); // задаем значение прочтенной настройки
         int i = 0;
         do {
             // меняем ключ для чтения настроек "имени"
-            prefKey.replace(0, prefKey.capacity(), IN_OUT_NAMES + Integer.toString(i));
+            prefKey.replace(0, prefKey.capacity(), IN_OUT_NAME + Integer.toString(i));
             // читаем настройки
             prefText.replace(0, prefText.capacity(), sPref.getString(prefKey.toString(), ""));
             // сохраняем значение имени для вывода на экран
@@ -388,7 +384,11 @@ public class MainActivity extends AppCompatActivity
             // читаем настройки
             prefText.replace(0, prefText.capacity(), sPref.getString(prefKey.toString(), ""));
             // сохраняем значение имени для вывода на экран
-            inOutState.add(prefText.toString());
+            if (prefText.toString().equals(STATE_ON))
+                inOutState.add(true);
+            else
+                inOutState.add(false);
+            inOutStatus.add(DEFAULT_IN_OUT_STATUS);
             i++;
         } while ( !prefText.toString().equals(""));
         // удаляем последнюю запись, так как она пустая
@@ -402,13 +402,9 @@ public class MainActivity extends AppCompatActivity
             SharedPreferences.Editor ed = sPref.edit();
             for (i = 0; i < defaultInOutNumber; i++){
                 // формируем ключ для записи настроек "имени"
-                prefKey.replace(0, prefKey.capacity(),IN_OUT_NAMES + Integer.toString(i));
+                prefKey.replace(0, prefKey.capacity(), IN_OUT_NAME + Integer.toString(i));
                 // указываем значение для вводимой настройки "имени"
                 prefText.replace(0, prefText.capacity(), DEFAULT_IN_OUT_NAME + Integer.toString(i + 1));
-
-                // формируем текстовое зхначение настройки "имени"
-                //prefText.replace(DEFAULT_IN_OUT_NAME.length(),
-                //        prefText.capacity(), Integer.toString(i + 1));
                 // записываем настройку
                 ed.putString(prefKey.toString(), prefText.toString());
                 // добавляем значение "имени" по умолчанию в список
@@ -418,16 +414,16 @@ public class MainActivity extends AppCompatActivity
                 prefKey.replace(0, prefKey.capacity(), IN_OUT_STATE + Integer.toString(i));
                 // указываем значение для вводимой настройки "состояния"
                 prefText.replace(0, prefText.capacity(), DEFAULT_IN_OUT_STATE);
-                // формируем текстовое зхначение настройки "состояния"
-                //prefText.replace(DEFAULT_IN_OUT_STATE.length(),
-                //        prefText.capacity(), Integer.toString(i + 1));
                 // записываем настройку
                 ed.putString(prefKey.toString(), prefText.toString());
                 // добавляем значение "состояния" по умолчанию в список
-                inOutState.add(prefText.toString());
-
+                if (prefText.toString().equals(STATE_ON))
+                    inOutState.add(true);
+                else
+                    inOutState.add(false);
                 // добавляем значение "номера" по умолчанию в список для вывода на экран
                 inOutNumber.add(Integer.toString(i + 1));
+                inOutStatus.add(DEFAULT_IN_OUT_STATUS);
             };
             // сохраняем изменения для настроек
             ed.apply();
@@ -441,12 +437,32 @@ public class MainActivity extends AppCompatActivity
      * @param inOutState - массив состояний входов/ выходов
      */
     private void saveInOutPreferences(ArrayList<String> inOutName,
-                                      ArrayList<String> inOutNumber,
-                                      ArrayList<String> inOutState) {
-        String s;
-        if (adapter != null) {
-            Log.d(LOG_TAG, "в первом введено - ");
-        }
+                                      ArrayList<Boolean> inOutState) {
+        StringBuilder  prefKey = new StringBuilder(IN_OUT_NAME);  // задаем ключ для чтения настроек
+        StringBuilder  prefText = new StringBuilder(""); // задаем значение прочтенной настройки
+        // создаем эдитор для записи настройки
+        SharedPreferences.Editor ed = sPref.edit();
+
+        for (int i = 0; i < inOutNumber.size(); i++){
+            // формируем ключ для записи настроек "имени"
+            prefKey.replace(0, prefKey.capacity(), IN_OUT_NAME + Integer.toString(i));
+            // указываем значение для вводимой настройки "имени"
+            prefText.replace(0, prefText.capacity(), inOutName.get(i));
+            // записываем настройку
+            ed.putString(prefKey.toString(), prefText.toString());
+
+            // формируем ключ для записи настроек "состояния"
+            prefKey.replace(0, prefKey.capacity(), IN_OUT_STATE + Integer.toString(i));
+            // указываем значение для вводимой настройки "состояния"
+            if (inOutState.get(i))
+                prefText.replace(0, prefText.capacity(), STATE_ON);
+            else
+                prefText.replace(0, prefText.capacity(), STATE_OFF);
+            // записываем настройку
+            ed.putString(prefKey.toString(), prefText.toString());
+        };
+        // сохраняем изменения для настроек
+        ed.apply();
     }
 
     @Override
@@ -490,7 +506,7 @@ public class MainActivity extends AppCompatActivity
                 }
                 break;
             case R.id.pbInOutSave:
-                saveInOutPreferences(inOutName, inOutNumber, inOutState);
+                saveInOutPreferences(inOutName, inOutState);
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
                 flipper.showPrevious();

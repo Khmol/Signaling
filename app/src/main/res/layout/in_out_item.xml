@@ -2,42 +2,53 @@
 <android.support.constraint.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
         <TextView
-            android:id="@+id/tvlvInOutNumber"
+            android:id="@+id/tvInOutNumber"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textSize="16sp"
+            android:textSize="18sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             android:text="">
         </TextView>
         <EditText
-            android:id="@+id/etlvInOutName"
+            android:id="@+id/etInOutName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintRight_toLeftOf="@+id/ivInOutItem"
-            app:layout_constraintLeft_toRightOf="@+id/tvlvInOutNumber"
-            android:textSize="16sp"
-            android:ems="10"
-            android:inputType="textPersonName"
-            android:text="132"/>
+            app:layout_constraintRight_toLeftOf="@+id/ivInOutStatus"
+            app:layout_constraintLeft_toRightOf="@+id/tvInOutNumber"
+            android:textSize="18sp"
+            android:ems="9"
+            android:inputType="textPersonName"/>
 
     <ImageView
-        android:id="@+id/ivInOutItem"
+        android:id="@+id/ivInOutStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/close_small"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/swInOutState"
+        app:layout_constraintLeft_toRightOf="@+id/etInOutName"
         android:contentDescription="ivInOutItem">
     </ImageView>
+
+    <android.support.v7.widget.SwitchCompat
+        android:id="@+id/swInOutState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textOff="@+id/swOff"
+        android:textOn="@+id/swOn"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/ivInOutStatus"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
 </android.support.constraint.ConstraintLayout>
