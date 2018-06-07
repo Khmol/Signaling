@@ -35,8 +35,6 @@ public class InOut extends Activity implements View.OnClickListener {
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
-            case R.id.pbInOutCancel:
-                break;
             case R.id.pbInOutSave:
                 break;
         }

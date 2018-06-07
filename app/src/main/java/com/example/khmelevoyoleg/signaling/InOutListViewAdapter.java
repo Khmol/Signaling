@@ -22,7 +22,6 @@ class InOutListViewAdapter extends SimpleAdapter
     private static final String STATUS_ALARM = "STATUS_ALARM"; // состояние входа - сработал
 
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
-    private int etActiveNumber;
 
     InOutListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
         super(context, data, resource, from, to);
@@ -117,10 +116,13 @@ class InOutListViewAdapter extends SimpleAdapter
         // получаем EditText
         EditText etActive = (EditText) v;
         if (hasFocus){
-            // фокус появился, нужно запомнить номер данного EditText
-            etActiveNumber = (int) etActive.getTag(R.id.etInOutName);;
+            // фокус появился нужно вернуть фокус на данный EditText при обновлении окна
+            etActive.requestFocusFromTouch();
+            // переводим курсор на в конец текста
+            // etActive.setSelection(etActive.getText().toString().length());
         } else {
             // фокус был потерян, нужно сохранить новое значение EditText в inOutName
+            int etActiveNumber = (int) etActive.getTag(R.id.etInOutName);
             activity.inOutName.set(etActiveNumber, etActive.getText().toString());
         }
     }

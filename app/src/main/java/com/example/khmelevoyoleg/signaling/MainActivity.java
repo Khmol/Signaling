@@ -8,10 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ParcelUuid;
@@ -148,6 +146,7 @@ public class MainActivity extends AppCompatActivity
     InputStream mInStream;                   // поток по приему bluetooth
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
     private int fabConnectPicture = 1;
+    private Menu mainMenu;                          // гдавное меню
     private ViewFlipper flipper;                    // определяем flipper для перелистываний экрана
     private float fromPosition;                     // позиция касания при перелистывании экранов
     private TextView tvBtRxData;                    // текст с принятыми данными
@@ -242,9 +241,11 @@ public class MainActivity extends AppCompatActivity
         // Создаем View и добавляем их в уже готовый flipper
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         int layouts[] = new int[]{ R.layout.activity_main, R.layout.activity_in_out};
-        for (int layout : layouts)
-            flipper.addView(inflater.inflate(layout, null));
-
+        for (int layout : layouts) {
+            View currentView = inflater.inflate(layout, null);
+            currentView.setTag(layout);
+            flipper.addView(currentView);
+        }
         // читаем значения настроек входов/выходов, результат в inOutName, inOutNumber, inOutState
         loadInOutPreferences(DEFAULT_IN_OUT_NUMBER, inOutName, inOutNumber, inOutStatus, inOutState);
         // заполняем значениями список InOutListView
@@ -255,8 +256,6 @@ public class MainActivity extends AppCompatActivity
         lvInOut.setAdapter(adapter);    // назначаем адаптер для ListView
         lvInOut.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
 
-        pbInOutCancel = (Button) findViewById(R.id.pbInOutCancel);
-        pbInOutCancel.setOnClickListener(this);
         pbInOutSave = (Button) findViewById(R.id.pbInOutSave);
         pbInOutSave.setOnClickListener(this);
 
@@ -270,8 +269,6 @@ public class MainActivity extends AppCompatActivity
         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;    // вначале состояние NO_CONNECT
         mMainStatus = MainStatus.IDLE;  // вначале состояние IDLE
         // инициализация объектов для View
-        fabConnect = (FloatingActionButton) findViewById(R.id.fabConnect);
-        fabConnect.setOnClickListener(this);
         ibOpen = (ImageButton) findViewById(R.id.ibOpen);
         ibOpen.setOnTouchListener(this);
         ibClose = (ImageButton) findViewById(R.id.ibClose);
@@ -433,7 +430,6 @@ public class MainActivity extends AppCompatActivity
     /**
      * сохранение настроек InOut в xml файл
      * @param inOutName - массив имен входов/ выходов
-     * @param inOutNumber - массив номеров входов/ выходов
      * @param inOutState - массив состояний входов/ выходов
      */
     private void saveInOutPreferences(ArrayList<String> inOutName,
@@ -467,58 +463,24 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        super.onCreateOptionsMenu(menu);
         // инициализация меню
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        mainMenu = menu;
         return true;
     }
 
     @Override
     public void onClick(View v) {
         switch (v.getId()){
-            // TODO перенести данную обработку в меню, изменять антенну на Toolbar
-            case R.id.fabConnect:
-                if (mMainStatus == MainStatus.IDLE){
-                    // выводим сообщение "Запущен поиск сигнализации"
-                    Toast.makeText(getApplicationContext(), R.string.connectionStart, Toast.LENGTH_SHORT).show();
-                    mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
-                    mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
-                    setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
-                    // создаем асинхронную задачу соединения если прошлая уже отработала
-                    if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
-                        bluetooth_Connect = new BTConnect();
-                        // передаем ссылку на основную activity
-                        bluetooth_Connect.link(this);
-                    }
-                    pbConnectHeader();     // запускаем установление соединения
-                }
-                else {
-                    if (mMainStatus == MainStatus.CONNECTING){
-                        // выводим сообщение "Поиск сигнализации остановлен"
-                        Toast.makeText(getApplicationContext(), R.string.сonnectionStoped, Toast.LENGTH_SHORT).show();
-                    }
-                    else
-                    if (mMainStatus == MainStatus.CONNECTED){
-                        // выводим сообщение "Соединение разорвано"
-                        Toast.makeText(getApplicationContext(), R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
-                    }
-                    // выключаем поиск сигнализации и переходим в исходное состояние
-                    returnIdleState();
-                }
-                break;
             case R.id.pbInOutSave:
                 saveInOutPreferences(inOutName, inOutState);
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
                 flipper.showPrevious();
                 break;
-            case R.id.pbInOutCancel:
-                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
-                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
-                flipper.showPrevious();
-                break;
         }
     }
-
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -553,8 +515,35 @@ public class MainActivity extends AppCompatActivity
                 startActivityForResult(intent, SET_SETTINGS);
                 return true;
             case R.id.action_connect :
-                // запускаем поиск по BT
-                pbConnectHeader();
+                // TODO перенести данную обработку в меню, изменять антенну на Toolbar
+                if (mMainStatus == MainStatus.IDLE){
+                    // выводим сообщение "Запущен поиск сигнализации"
+                    Toast.makeText(getApplicationContext(), R.string.connectionStart, Toast.LENGTH_SHORT).show();
+                    mMainStatus = MainStatus.CONNECTING;   // переходим в установку соединения
+                    mConnectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
+                    //setFabConnectColorBlue();   // синий цвет для кнопки FabConnect
+                    // создаем асинхронную задачу соединения если прошлая уже отработала
+                    if (bluetooth_Connect.getStatus().toString().equals(FINISHED)) {
+                        bluetooth_Connect = new BTConnect();
+                        // передаем ссылку на основную activity
+                        bluetooth_Connect.link(this);
+                    }
+                    // запускаем поиск по BT
+                    pbConnectHeader();     // запускаем установление соединения
+                }
+                else {
+                    if (mMainStatus == MainStatus.CONNECTING){
+                        // выводим сообщение "Поиск сигнализации остановлен"
+                        Toast.makeText(getApplicationContext(), R.string.сonnectionStoped, Toast.LENGTH_SHORT).show();
+                    }
+                    else
+                    if (mMainStatus == MainStatus.CONNECTED){
+                        // выводим сообщение "Соединение разорвано"
+                        Toast.makeText(getApplicationContext(), R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
+                    }
+                    // выключаем поиск сигнализации и переходим в исходное состояние
+                    returnIdleState();
+                }
                 return true;
         }
         // по умолчанию возвращаем обработчик родителя
@@ -643,21 +632,6 @@ public class MainActivity extends AppCompatActivity
             }
         }
         return null;
-    }
-
-    // установка цвета для кнопки FloatingActionButton
-    private void setFloatingActionButtonColors(FloatingActionButton fab, int primaryColor, int rippleColor) {
-        int[][] states = {
-                {android.R.attr.state_enabled},
-                {android.R.attr.state_pressed},
-        };
-
-        int[] colors = {
-                primaryColor,
-                rippleColor,
-        };
-        ColorStateList colorStateList = new ColorStateList(states, colors);
-        fab.setBackgroundTintList(colorStateList);
     }
 
     @Override
@@ -774,7 +748,7 @@ public class MainActivity extends AppCompatActivity
         else
             if (mMainStatus == MainStatus.CONNECTING) {
                 // показываем что идет поиск сети путем изменения антенны на кнопке
-                changePictureFabConnect();
+                changePictureMenuConnect();
                 // проверка установлено ли соединение
                 if (mConnectionStatusBT == ConnectionStatusBT.CONNECTED){
                     // проверяем была ли уже передача ранее
@@ -854,16 +828,16 @@ public class MainActivity extends AppCompatActivity
     /**
      * Изменение рисунка на кнопке fabConnect во время поиска базы
      */
-    private void changePictureFabConnect() {
+    private void changePictureMenuConnect() {
         switch (fabConnectPicture) {
             case 1:
-                fabConnect.setImageResource(R.drawable.antenna1);
+                mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna1red);
                 break;
             case 2:
-                fabConnect.setImageResource(R.drawable.antenna2);
+                mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna2red);
                 break;
             case 3:
-                fabConnect.setImageResource(R.drawable.antenna3);
+                mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna3red);
                 break;
         }
         if (fabConnectPicture == 3)
@@ -1044,7 +1018,7 @@ public class MainActivity extends AppCompatActivity
     private void returnIdleState(){
         mMainStatus = MainStatus.IDLE;  // состояние IDLE
         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;    // состояние BT = NO_CONNECT
-        setFabConnectColorRed();    // кнопка соединеия - красная
+        setMenuConnectColorRed();    // кнопка соединеия - красная
         mConnectionAttemptsCnt = 0; // счетчик попыток соединения в 0
         // устанавливаем рисунок - no_connect_small
         ivSigState.setImageResource(R.drawable.no_connect_small);
@@ -1054,51 +1028,17 @@ public class MainActivity extends AppCompatActivity
     /**
      * установка зеленого цвета кнопки fabConnect
      */
-    private void setFabConnectColorGreen(){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            setFloatingActionButtonColors(fabConnect,
-                    getResources().getColor(R.color.colorGreen, null),
-                    getResources().getColor(R.color.colorCarSame, null));
-        }
-        else {
-            setFloatingActionButtonColors(fabConnect,
-                    getResources().getColor(R.color.colorGreen),
-                    getResources().getColor(R.color.colorCarSame));
-        }
-        fabConnect.setImageResource(R.drawable.antenna3);
-    }
-
-    /**
-     * установка синего цвета кнопки fabConnect
-     */
-    private void setFabConnectColorBlue(){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            setFloatingActionButtonColors(fabConnect,
-                    getResources().getColor(R.color.colorCarSame, null),
-                    getResources().getColor(R.color.colorCarSame, null));
-        }
-        else {
-            setFloatingActionButtonColors(fabConnect,
-                    getResources().getColor(R.color.colorCarSame),
-                    getResources().getColor(R.color.colorCarSame));
-        }
+    private void setMenuConnectColorGreen(){
+        // задаем рисунок с 3-мя полосками на антенне
+        mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna3green);
     }
 
     /**
      * установка красного цвета кнопки fabConnect
      */
-    private void setFabConnectColorRed(){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            setFloatingActionButtonColors(fabConnect,
-                    getResources().getColor(R.color.colorRed, null),
-                    getResources().getColor(R.color.colorCarSame, null));
-        }
-        else {
-            setFloatingActionButtonColors(fabConnect,
-                    getResources().getColor(R.color.colorRed),
-                    getResources().getColor(R.color.colorCarSame));
-        }
-        fabConnect.setImageResource(R.drawable.antenna3);
+    private void setMenuConnectColorRed(){
+        // задаем рисунок с 3-мя полосками на антенне
+        mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna3red);
     }
 
     /**
@@ -1133,7 +1073,7 @@ public class MainActivity extends AppCompatActivity
                     // обнуляем счетчик принятых пакетов
                     btRxCnt = 0;
                     // установка зеленого цвета для кнопки FabConnect
-                    setFabConnectColorGreen();
+                    setMenuConnectColorGreen();
                 }
             }
             // производим анализ полученных данных
@@ -1205,6 +1145,25 @@ public class MainActivity extends AppCompatActivity
             mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;
             Toast.makeText(getApplicationContext(),
                     "Ошибка Bluetooth", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        View currentView = flipper.getCurrentView();
+        int currentViewTag = (int) currentView.getTag();
+        // проверка на каком экране нажата кнопка BACK
+        if (currentViewTag != R.layout.activity_main) {
+            //на InOut
+            flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
+            flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
+            flipper.showPrevious();
+        } else {
+            //на главном экране, нужно свернуть программу
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_HOME);
+            startActivity(intent);
         }
     }
 

@@ -27,7 +27,7 @@
     <string name="outTemperature">+25°C</string>
     <string name="base_name">имя базового\nблока</string>
     <string name="settings">Выберите устройство для подключения</string>
-    <string name="title_in_out">Входы/выходы</string>
+    <string name="title_in_out">Состояние входов</string>
     <string name="radioButtomSize">16</string>
     <string name="save">Сохранить</string>
     <string name="noBoundedDevice">Устройство для связи не выбрано.</string>

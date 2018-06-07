@@ -23,17 +23,6 @@
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toTopOf="parent"/>
 
-            <android.support.design.widget.FloatingActionButton
-                android:id="@+id/fabConnect"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:src="@drawable/antenna3"
-                app:backgroundTint="@color/colorRed"
-                android:hapticFeedbackEnabled="true"
-                app:layout_constraintRight_toRightOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
             <ImageButton
                 android:id="@+id/ibOpen"
                 android:layout_width="wrap_content"
