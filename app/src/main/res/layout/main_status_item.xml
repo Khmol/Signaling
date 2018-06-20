@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/tvMainStatusNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textSize="18sp"
+        android:ems="1"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        android:text="">
+    </TextView>
+
+    <TextView
+        android:id="@+id/tvMainStatusName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/ivMaimStatus"
+        app:layout_constraintLeft_toRightOf="@+id/tvMainStatusNumber"
+        android:textSize="18sp"
+        android:ems="9">
+    </TextView>
+
+    <ImageView
+        android:id="@+id/ivMaimStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/tvMainStatusTime"
+        app:layout_constraintLeft_toRightOf="@+id/tvMainStatusName"
+        android:contentDescription="mainItem">
+    </ImageView>
+
+    <TextView
+        android:id="@+id/tvMainStatusTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textSize="18sp"
+        android:ems="3"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/ivMaimStatus"
+        app:layout_constraintRight_toRightOf="parent"
+        android:text="">
+    </TextView>
+
+</android.support.constraint.ConstraintLayout>

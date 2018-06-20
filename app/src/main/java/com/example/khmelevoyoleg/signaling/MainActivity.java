@@ -31,6 +31,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewFlipper;
@@ -38,7 +39,9 @@ import android.widget.ViewFlipper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -64,8 +67,8 @@ public class MainActivity extends AppCompatActivity
         CONNECTED,
     }
     private enum SoundStatus {
-        ALARM_ACTIVE,
-        PREALARM_ACTIVE,
+        //ALARM_ACTIVE,
+        //PREALARM_ACTIVE,
         IDLE,
         AFTER_ALARM,
         AFTER_PREALARM,
@@ -96,10 +99,11 @@ public class MainActivity extends AppCompatActivity
     private static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
 
     // имена атрибутов для Map
-    final String ATRIBUTE_IN_OUT_NUMBER = "number";
-    final String ATTRIBUTE_IN_OUT_NAME = "name";
-    final String ATTRIBUTE_IN_OUT_STATUS_IMAGE = "image";
-    final String ATTRIBUTE_IN_OUT_STATE = "swith";
+    final String ATRIBUTE_NUMBER = "number";
+    final String ATTRIBUTE_NAME = "name";
+    final String ATTRIBUTE_STATUS_IMAGE = "image";
+    final String ATTRIBUTE_TIME = "time";
+    final String ATTRIBUTE_STATE = "swith";
 
     // определяем числовые константы
     private static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
@@ -124,7 +128,9 @@ public class MainActivity extends AppCompatActivity
 
     // переменные для адаптера
     ListView lvInOut;
-    InOutListViewAdapter adapter;
+    InOutListViewAdapter adapterInOut;
+    ListView lvMainInStatus;
+    SimpleAdapter adapterMainInStatus;
 
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
@@ -139,7 +145,7 @@ public class MainActivity extends AppCompatActivity
     BTTx bluetooth_Tx;        // поток передачи
 
     int mConnectionAttemptsCnt = 0;         // счетчик попыток подключения по Bluetooth
-
+    GregorianCalendar currentTime;
     MainStatus mMainStatus; // состояние подключения по Bluetooth
     SoundStatus mSoundStatus; // состояние звукового оповещения
     OutputStream mOutStream;                 // поток по передаче bluetooth
@@ -177,6 +183,12 @@ public class MainActivity extends AppCompatActivity
     ArrayList<String> inOutNumber = new ArrayList<>();
     ArrayList<String> inOutStatus = new ArrayList<>();
     ArrayList<Boolean> inOutState = new ArrayList<>();
+    ArrayList<String> mainStatusNumber = new ArrayList<>();
+    ArrayList<String> mainStatusName = new ArrayList<>();
+    ArrayList<String> mainStatusTime = new ArrayList<>();
+    ArrayList<String> mainStatusImage = new ArrayList<>();
+    ArrayList<Map<String, Object>> arrListInStatus;
+    ArrayList<Map<String, Object>> alMainInStatus;
     //endregion
 
     // приемник широковещательных событий
@@ -248,13 +260,22 @@ public class MainActivity extends AppCompatActivity
         }
         // читаем значения настроек входов/выходов, результат в inOutName, inOutNumber, inOutState
         loadInOutPreferences(DEFAULT_IN_OUT_NUMBER, inOutName, inOutNumber, inOutStatus, inOutState);
-        // заполняем значениями список InOutListView
-        adapter = createInOutListView(inOutName, inOutNumber, inOutState);
 
-        // определяем список и присваиваем ему адаптер
+        // заполняем значениями список InOutListView и создаем адапер
+        adapterInOut = createInOutAdapter(inOutName, inOutNumber, inOutState);
+        mainStatusNumber.add("123");
+        mainStatusName.add("456");
+        mainStatusTime.add("789");
+        mainStatusImage.add("STATUS_OFF");
+        adapterMainInStatus = createMainInStatusAdapter(mainStatusName, mainStatusNumber,
+                mainStatusImage, mainStatusTime);
+        // определяем список lvInOut и присваиваем ему адаптер
         lvInOut = (ListView) findViewById(R.id.lvInOut);
-        lvInOut.setAdapter(adapter);    // назначаем адаптер для ListView
+        lvInOut.setAdapter(adapterInOut);    // назначаем адаптер для ListView
         lvInOut.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
+        // определяем список lvMainInStatus и присваиваем ему адаптер
+        lvMainInStatus = (ListView) findViewById(R.id.lvMainInStatus);
+        lvMainInStatus.setAdapter(adapterMainInStatus);    // назначаем адаптер для lvMainInStatus
 
         pbInOutSave = (Button) findViewById(R.id.pbInOutSave);
         pbInOutSave.setOnClickListener(this);
@@ -323,32 +344,71 @@ public class MainActivity extends AppCompatActivity
      * @param inOutNumber - массив номеров входов/ выходов
      * @param inOutState - массив состояний входов/ выходов
      */
-    private InOutListViewAdapter createInOutListView(ArrayList<String> inOutName, ArrayList<String> inOutNumber,
-                                     ArrayList<Boolean> inOutState) {
+    private InOutListViewAdapter createInOutAdapter(ArrayList<String> inOutName, ArrayList<String> inOutNumber,
+                                                    ArrayList<Boolean> inOutState) {
         // настраиваем ListView
         // упаковываем данные в понятную для адаптера структуру
-        ArrayList<Map<String, Object>> data = new ArrayList<>(inOutName.size());
+        arrListInStatus = new ArrayList<>(1);
         Map<String, Object> m;
         InOutListViewAdapter adapter;
         for (int i = 0; i < inOutNumber.size(); i++) {
-            m = new HashMap<String, Object>();
-            m.put(ATRIBUTE_IN_OUT_NUMBER, inOutNumber.get(i));
-            m.put(ATTRIBUTE_IN_OUT_NAME, inOutName.get(i));
-            m.put(ATTRIBUTE_IN_OUT_STATE, inOutState.get(i));
-            m.put(ATTRIBUTE_IN_OUT_STATUS_IMAGE, R.drawable.circle_grey48);
-            data.add(m);
+            m = new HashMap<>();
+            m.put(ATRIBUTE_NUMBER, inOutNumber.get(i));
+            m.put(ATTRIBUTE_NAME, inOutName.get(i));
+            m.put(ATTRIBUTE_STATE, inOutState.get(i));
+            m.put(ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey48);
+            arrListInStatus.add(m);
         }
         // массив имен атрибутов, из которых будут читаться данные
-        String[] from = {ATRIBUTE_IN_OUT_NUMBER, ATTRIBUTE_IN_OUT_NAME,
-                ATTRIBUTE_IN_OUT_STATE, ATTRIBUTE_IN_OUT_STATUS_IMAGE};
+        String[] from = {ATRIBUTE_NUMBER, ATTRIBUTE_NAME,
+                ATTRIBUTE_STATE, ATTRIBUTE_STATUS_IMAGE};
         // массив ID View-компонентов, в которые будут вставлять данные
         int[] to = { R.id.tvInOutNumber, R.id.etInOutName,
                 R.id.swInOutState, R.id.ivInOutStatus}; //R.id.cbChecked,
         // создаем адаптер
-        adapter = new InOutListViewAdapter(this, data, R.layout.in_out_item, from, to);
+        adapter = new InOutListViewAdapter(this, arrListInStatus, R.layout.in_out_item, from, to);
         // передаем ссылку на основную activity
         adapter.link(this);
         return adapter;
+    }
+
+    /**
+     * заполнение значениями список InOutListView
+     * @param name - массив имен входов/ выходов
+     * @param number - массив номеров входов/ выходов
+     * @param time - массив состояний входов/ выходов
+     */
+    private SimpleAdapter createMainInStatusAdapter(ArrayList<String> name, ArrayList<String> number,
+                                                        ArrayList<String> image, ArrayList<String> time) {
+        // настраиваем ListView
+        // упаковываем данные в понятную для адаптера структуру
+        alMainInStatus = new ArrayList<>(name.size());
+        Map<String, Object> m;
+        SimpleAdapter adapter;
+        for (int i = 0; i < mainStatusNumber.size(); i++) {
+            m = new HashMap<>();
+            m.put(ATRIBUTE_NUMBER, number.get(i));
+            m.put(ATTRIBUTE_NAME, name.get(i));
+            m.put(ATTRIBUTE_TIME, time.get(i));
+            m.put(ATTRIBUTE_STATUS_IMAGE, getStatusImage(image));
+            alMainInStatus.add(m);
+        }
+
+        // массив имен атрибутов, из которых будут читаться данные
+        String[] from = {ATRIBUTE_NUMBER, ATTRIBUTE_NAME,
+                ATTRIBUTE_TIME, ATTRIBUTE_STATUS_IMAGE};
+        // массив ID View-компонентов, в которые будут вставлять данные
+        int[] to = { R.id.tvMainStatusNumber, R.id.tvMainStatusName,
+                R.id.tvMainStatusTime, R.id.ivMaimStatus}; //R.id.cbChecked,
+        // создаем адаптер
+        adapter = new SimpleAdapter(this, alMainInStatus, R.layout.main_status_item, from, to);
+        // передаем ссылку на основную activity
+        //adapter.link(this);
+        return adapter;
+    }
+
+    private int getStatusImage(ArrayList<String> image) {
+        return R.drawable.circle_grey48;
     }
 
     /**
@@ -474,10 +534,31 @@ public class MainActivity extends AppCompatActivity
     public void onClick(View v) {
         switch (v.getId()){
             case R.id.pbInOutSave:
+                /*
+                adapterInOut.notifyDataSetChanged();
+                break;
+                */
                 saveInOutPreferences(inOutName, inOutState);
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
                 flipper.showPrevious();
+                if (adapterMainInStatus != null){
+                    mainStatusNumber.add("123");
+                    mainStatusName.add("456");
+                    String s = new SimpleDateFormat("dd.MM-HH:mm:ss").format(GregorianCalendar.getInstance().getTime());
+                    mainStatusTime.add(s);
+                    mainStatusImage.add("STATUS_OFF");
+                    Map<String, Object> m;
+                    m = new HashMap<>();
+                    m.put(ATRIBUTE_NUMBER, "123");
+                    m.put(ATTRIBUTE_NAME, "456");
+                    m.put(ATTRIBUTE_TIME, s);
+                    m.put(ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey48);
+                    alMainInStatus.add(m);
+                    //Toast.makeText(getApplicationContext(), s, Toast.LENGTH_SHORT).show();
+                    adapterMainInStatus.notifyDataSetChanged();
+                }
+
                 break;
         }
     }

@@ -16,18 +16,16 @@ import java.util.Map;
 class InOutListViewAdapter extends SimpleAdapter
         implements View.OnFocusChangeListener, CompoundButton.OnCheckedChangeListener{
 
-    private static final String STATUS_OFF = "STATUS_OFF"; // состояние входа - выключен
-    private static final String STATUS_ON = "STATUS_ON"; // состояние входа - включен
-    private static final String STATUS_START_ACTIVE = "STATUS_START_ACTIVE"; // состояние входа - активен на момент включения
-    private static final String STATUS_ALARM = "STATUS_ALARM"; // состояние входа - сработал
+    static final String STATUS_OFF = "STATUS_OFF"; // состояние входа - выключен
+    static final String STATUS_ON = "STATUS_ON"; // состояние входа - включен
+    static final String STATUS_START_ACTIVE = "STATUS_START_ACTIVE"; // состояние входа - активен на момент включения
+    static final String STATUS_ALARM = "STATUS_ALARM"; // состояние входа - сработал
 
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
     InOutListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
         super(context, data, resource, from, to);
     }
-    // TODO сделать обработку кнопки CANCEL
-    // TODO сделать переход на нужный EditText при появлении клавиатуры
 
     // получаем ссылку на MainActivity
     void link(MainActivity act) {
@@ -118,8 +116,6 @@ class InOutListViewAdapter extends SimpleAdapter
         if (hasFocus){
             // фокус появился нужно вернуть фокус на данный EditText при обновлении окна
             etActive.requestFocusFromTouch();
-            // переводим курсор на в конец текста
-            // etActive.setSelection(etActive.getText().toString().length());
         } else {
             // фокус был потерян, нужно сохранить новое значение EditText в inOutName
             int etActiveNumber = (int) etActive.getTag(R.id.etInOutName);
