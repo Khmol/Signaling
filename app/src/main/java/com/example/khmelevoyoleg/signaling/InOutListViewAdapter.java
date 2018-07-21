@@ -16,11 +16,6 @@ import java.util.Map;
 class InOutListViewAdapter extends SimpleAdapter
         implements View.OnFocusChangeListener, CompoundButton.OnCheckedChangeListener{
 
-    static final String STATUS_OFF = "STATUS_OFF"; // состояние входа - выключен
-    static final String STATUS_ON = "STATUS_ON"; // состояние входа - включен
-    static final String STATUS_START_ACTIVE = "STATUS_START_ACTIVE"; // состояние входа - активен на момент включения
-    static final String STATUS_ALARM = "STATUS_ALARM"; // состояние входа - сработал
-
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
     InOutListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
@@ -97,13 +92,13 @@ class InOutListViewAdapter extends SimpleAdapter
      * @return - номер ресурса
      */
     private int getImageViewValue(int position) {
-        if (activity.inOutStatus.get(position).equals(STATUS_OFF)) {
+        if (activity.inOutStatus.get(position).equals(MainActivity.STATUS_OFF)) {
             return R.drawable.circle_grey48;
-        } else if (activity.inOutStatus.get(position).equals(STATUS_ON)) {
+        } else if (activity.inOutStatus.get(position).equals(MainActivity.STATUS_ON)) {
             return R.drawable.circle_green48;
-        } else if (activity.inOutStatus.get(position).equals(STATUS_START_ACTIVE)) {
+        } else if (activity.inOutStatus.get(position).equals(MainActivity.STATUS_START_ACTIVE)) {
             return R.drawable.circle_blue48;
-        } else if (activity.inOutStatus.get(position).equals(STATUS_ALARM)) {
+        } else if (activity.inOutStatus.get(position).equals(MainActivity.STATUS_ALARM)) {
             return R.drawable.circle_red48;
         }
         return 0;

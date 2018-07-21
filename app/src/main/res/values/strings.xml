@@ -21,6 +21,8 @@
     <string name="recieveError">Ошибка получения данных</string>
     <string name="Recieve">Получено:</string>
     <string name="action_settings">Настройки</string>
+    <string name="action_clear_main_listview">Очистить список</string>
+    <string name="action_connect">Поиск базы</string>
     <string name="inVoltage">12В</string>
     <string name="ivCarDescription">Car</string>
     <string name="tvOutTemperature">+20°C</string>

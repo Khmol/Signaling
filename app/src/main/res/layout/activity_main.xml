@@ -15,6 +15,7 @@
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/appBar">
 
+
             <ImageView
                 android:id="@+id/ivCar"
                 android:layout_width="wrap_content"
@@ -63,6 +64,14 @@
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/tvBtRxData"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toTopOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                android:text="Режим отладки" />
         </android.support.constraint.ConstraintLayout>
 
         <android.support.design.widget.AppBarLayout
@@ -87,7 +96,7 @@
 
     <android.support.constraint.ConstraintLayout
         android:id="@+id/BotLayout"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -96,12 +105,14 @@
 
         <LinearLayout
             android:id="@+id/llMainInOutStatus"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toTopOf="@+id/tvBtRxData"
+            app:layout_constraintBottom_toTopOf="@+id/ibMute"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintVertical_bias="1.0">
 
             <!-- разрешаем фокус для потомков ListViwew-->
             <ListView
@@ -111,16 +122,6 @@
                 android:descendantFocusability="afterDescendants">
             </ListView>
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/tvBtRxData"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@+id/ibMute"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            android:text="Режим отладки"
-            />
 
         <ImageButton
             android:id="@+id/ibOpen"
