@@ -110,6 +110,7 @@ public class MainActivity extends AppCompatActivity
     static final String STATUS_CLEAR_ALARM = "STATUS_CLEAR_ALARM"; // отключение оповещения об аварии
     static final String STATUS_INPUT_ON = "STATUS_INPUT_ON"; // сработал цифровой вход
     static final String STATUS_INPUT_OFF = "STATUS_INPUT_OFF"; // цифровой вход разомкнулся
+    static final String STATUS_INPUT_FAULT = "STATUS_INPUT_FAULT"; // цифровой вход не обрабатывается
 
     // имена атрибутов для Map
     final String ATRIBUTE_NUMBER = "number";
@@ -220,6 +221,7 @@ public class MainActivity extends AppCompatActivity
     boolean[] oldDigitalInputCurrent;  // прошные фдаги статусов цифровых входов текущие
     boolean[] digitalInputActive;      // фдаги статусов включенных входов
     boolean[] digitalInputACurOn;      // фдаги текущих статусов сработавших входов
+    boolean[] oldDigitalInputACurOn;   // прошлые фдаги текущих статусов сработавших входов
 
     // приемник широковещательных событий
     // region BroadcastReceiver
@@ -346,7 +348,8 @@ public class MainActivity extends AppCompatActivity
         digitalInputCurrent = new boolean[NUMBER_DIGITAL_INPUTS]; // текущие
         oldDigitalInputCurrent = new boolean[NUMBER_DIGITAL_INPUTS]; // текущие
         digitalInputActive = new boolean[NUMBER_DIGITAL_INPUTS]; // активные
-        digitalInputACurOn = new boolean[NUMBER_DIGITAL_INPUTS]; // текущие при посановке на охр.
+        digitalInputACurOn = new boolean[NUMBER_DIGITAL_INPUTS]; // текущие при постановке на охр.
+        oldDigitalInputACurOn = new boolean[NUMBER_DIGITAL_INPUTS]; // прошлое при постановке на охр.
 
         // TODO - удалить
         tvBtRxData.setOnClickListener(this);
@@ -1016,6 +1019,7 @@ public class MainActivity extends AppCompatActivity
                 // region INPUT
                 if (parseData.indexOf(TYPE_INPUT) > 0){
                     // принята команда INPUT
+                    // TODO - значек на крыше после прерывания связи нужно восстанавливать
                     String strStatusSIM = parseData.substring(CMD_INPUT_STATUS_FROM,
                             CMD_INPUT_LATCH_FROM - 1);
                     // обновляем значение статуса SIM модуля
@@ -1052,29 +1056,21 @@ public class MainActivity extends AppCompatActivity
                         // включаем/ выключаем звук аварии
                         if (getValueOnMask(statusSIM, MASK_ALARM) > 0) {
                             // сработала авария, включаем звук
-                            if ( getValueOnMask(statusSIM, MASK_ALARM_CUR) > 0 |
-                                    getValueOnMask(statusSIM, MASK_ALARM) !=
-                                    getValueOnMask(oldStatusSIM, MASK_ALARM) |
+                            if ( getValueOnMask(statusSIM, MASK_ALARM) != getValueOnMask(oldStatusSIM, MASK_ALARM) |
                                     oldStatusSIM == FIRST_START ) {
-                                Log.d(LOG_TAG, "start alarm");
-                                // выключаем предварительную аварию если она есть
-                                if ( mSoundStatus == SoundStatus.PREALARM_ACTIVE )
+                                // запуск аварии
+                                startAlarm();
+                            } else
+                                if (getValueOnMask(statusSIM, MASK_ALARM_CUR) > 0) {
+                                    // запуск аварии
+                                    startAlarm();
+                                } else {
+                                    // выключаем звук аварии
                                     stopMediaPlayer();
-                                // включаем запуск сигнала "Авария"
-                                if ( mediaPlayer == null ) {
-                                    // включаем звук "Авария"
-                                    mSoundStatus = SoundStatus.ALARM_ACTIVE;
-                                    mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
-                                    mediaPlayer.setOnCompletionListener(this);
-                                    mediaPlayer.start();
-                                    // добавляем событие "Авария" в главный список
-                                    addEventStatusList(STATUS_GENERAL_ALARM, null);
                                 }
-                            }
                         } else  if ( getValueOnMask(statusSIM, MASK_ALARM) !=
                                 getValueOnMask(oldStatusSIM, MASK_ALARM) &
                                 oldStatusSIM != FIRST_START ) {
-                            // TODO - время звучания авари управляется из сигналки
                             // авария не сработала либо была выключена, выключаем звук
                             stopMediaPlayer();
                             // добавляем событие "Сброс оповещения" в главный список
@@ -1113,8 +1109,8 @@ public class MainActivity extends AppCompatActivity
                     }
                 }
                 // endregion
-                // region TYPE_INPUT_A
-                //TODO - обработка вывода инф. о включенных датчиках при постановке на охрану
+                // проверка на команду INPUT_А
+                // region INPUT_A
                 if (parseData.indexOf(TYPE_INPUT_A) > 0) {
                     // принята команда INPUT_A
                     // получаем значение обрабаываемых входов
@@ -1123,13 +1119,49 @@ public class MainActivity extends AppCompatActivity
                     // получаем статус включенных входов
                     parseRxInputFlags(parseData, CMD_INPUT_A_STATUS_FROM, parseData.length(),
                             LENGTH_INPUT_GROUP, digitalInputActive);
+                    // проверка были ли изменения в состоянии датчиков
+                    for (int i = 0; i < NUMBER_DIGITAL_INPUTS; i++) {
+                        if (digitalInputACurOn[i] != oldDigitalInputACurOn[i]) {
+                            // проверка включен ли вход
+                            if (digitalInputActive[i]) {
+                                // вход ключен проверка обрабатывается ли он
+                                if ( !digitalInputACurOn[i]) {
+                                    // вход не обрабатывается
+                                    // добавляем событие "Вход выключен" в главный список
+                                    addEventStatusList(STATUS_INPUT_FAULT, inOutName.get(i));
+                                }
+                            }
+                        }
+                        // перезаписываем старое значение флагов
+                        oldDigitalInputACurOn[i] = digitalInputACurOn[i];
+                    }
                 }
-                // endregion
+            // endregion
             }
         }
         // выводим сообщение, "Соединение отсутствует"
         //Toast.makeText(getApplicationContext(), statusSIM, Toast.LENGTH_SHORT).show();
         return true;
+    }
+
+    /**
+     * запуск звучания аварии и добавление события в главный список
+     */
+    private void startAlarm () {
+        Log.d(LOG_TAG, "start alarm");
+        // выключаем предварительную аварию если она есть
+        if ( mSoundStatus == SoundStatus.PREALARM_ACTIVE )
+            stopMediaPlayer();
+        // включаем запуск сигнала "Авария"
+        if ( mediaPlayer == null ) {
+            // включаем звук "Авария"
+            mSoundStatus = SoundStatus.ALARM_ACTIVE;
+            mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
+            mediaPlayer.setOnCompletionListener(this);
+            mediaPlayer.start();
+            // добавляем событие "Авария" в главный список
+            addEventStatusList(STATUS_GENERAL_ALARM, null);
+        }
     }
 
     /**
@@ -1276,10 +1308,16 @@ public class MainActivity extends AppCompatActivity
                 mainStatusImage.add(STATUS_INPUT_ON);
         } else // проверка вход разомкнулся ??
             if (event.equals(STATUS_INPUT_OFF)) {
-                // выводим надпись Охрана установлена
+                // выводим надпись - иня входа
                 mainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mainStatusImage.add(STATUS_INPUT_OFF);
+        } else // проверка вход не обрабатывается ??
+            if (event.equals(STATUS_INPUT_FAULT)) {
+                // выводим надпись - иня входа
+                mainStatusName.add(input_name);
+                // добавляем нужную картинку
+                mainStatusImage.add(STATUS_INPUT_FAULT);
             }
         // добавляем информацию о времени срабатывания
         String strTime = new SimpleDateFormat("dd.MM\nHH:mm:ss").format(GregorianCalendar.getInstance().getTime());
@@ -1318,6 +1356,8 @@ public class MainActivity extends AppCompatActivity
             return R.drawable.circle_red32;
         } else if (value.equals(STATUS_INPUT_OFF)) {
             return R.drawable.circle_green32;
+        } else if (value.equals(STATUS_INPUT_FAULT)) {
+            return R.drawable.circle_blue32;
         }
         return 0;
     }
@@ -1469,7 +1509,12 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onCompletion(MediaPlayer mp) {
         Log.d(LOG_TAG, "onCompletion");
-        stopMediaPlayer();
+        // выключаем предварительную аварию если она есть
+        if ( mSoundStatus == SoundStatus.PREALARM_ACTIVE )
+            stopMediaPlayer();
+        else
+            mediaPlayer.start();
+        //stopMediaPlayer();
     }
 
     /**
