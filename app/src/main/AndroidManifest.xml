@@ -29,11 +29,6 @@
             android:label="Settings"
             android:theme="@style/AppTheme.NoActionBar">
         </activity>
-        <activity
-            android:name=".InOut"
-            android:label="InOut"
-            android:theme="@style/AppTheme.NoActionBar">
-        </activity>
     </application>
 
 </manifest>

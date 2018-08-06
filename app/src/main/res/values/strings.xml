@@ -29,7 +29,8 @@
     <string name="outTemperature">+25°C</string>
     <string name="base_name">имя базового\nблока</string>
     <string name="settings">Выберите устройство для подключения</string>
-    <string name="title_in_out">Состояние входов</string>
+    <string name="title_in">Состояние входов</string>
+    <string name="title_out">Состояние выходов</string>
     <string name="radioButtomSize">16</string>
     <string name="save">Сохранить</string>
     <string name="noBoundedDevice">Устройство для связи не выбрано.</string>
@@ -47,6 +48,8 @@
     <string name="ctvAutoConnect">Автоматическое подключение</string>
     <string name="pbInOutCancel">Отмена</string>
     <string name="pbInOutSave">Сохранить</string>
+    <string name="pbPrevious">Назад</string>
+    <string name="pbNext">Далее</string>
     <string name="swOff">OFF</string>
     <string name="swOn">ON</string>
 

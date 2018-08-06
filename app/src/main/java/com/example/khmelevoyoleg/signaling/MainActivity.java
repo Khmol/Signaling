@@ -91,9 +91,12 @@ public class MainActivity extends AppCompatActivity
     static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
     static final String TYPE_INPUT_A = "INPUT A,"; // тип команды в ответе от SIM
     private static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
-    private static final String IN_OUT_NAME = "IN_OUT_NAME_"; // название ключа для имени входа в настройках
-    private static final String IN_OUT_STATE = "IN_OUT_STATE_"; // название ключа для состояния входа в настройках
-    private static final String DEFAULT_IN_OUT_NAME = "Вход "; // имя входа по умолчанию
+    private static final String IN_NAME = "IN_NAME_"; // название ключа для имени входа в настройках
+    private static final String OUT_NAME = "OUT_NAME_"; // название ключа для имени выхода в настройках
+    private static final String IN_STATE = "IN_STATE_"; // название ключа для состояния входа в настройках
+    private static final String OUT_STATE = "OUT_STATE_"; // название ключа для состояния входа в настройках
+    private static final String DEFAULT_IN_NAME = "Вход "; // имя входа по умолчанию
+    private static final String DEFAULT_OUT_NAME = "Выход "; // имя выхода по умолчанию
     private static final String DEFAULT_IN_OUT_STATUS = "STATUS_OFF"; // статус входа по умолчанию - выкл
     private static final String DEFAULT_IN_OUT_STATE = "STATE_OFF"; // состояние входа по умолчанию - выкл
     private static final String STATE_ON = "STATE_ON"; // состояние входа - включен
@@ -126,8 +129,6 @@ public class MainActivity extends AppCompatActivity
     private static final int SET_SETTINGS = 2;          // редактирование настроек
     private static final long UUID_SERIAL = 0x1101;     // нужный UUID
     private static final long UUID_MASK = 0xFFFFFFFF00000000L;  // маска для извлечения нужных битов UUID
-    private static final short POSITION_LATCH_IN = 11;  // начальная позиция флагов статуса защелки входов в общем пакете
-    private static final short POSITION_TYPE_DATA = 0; // начальная позиция описания типа команды
     private static final short MASK_GUARD = 0;  // 0-й бит в маске - для извлечения флага нахождения на охране
     private static final short MASK_ALARM = 9;  // 9-й бит в маске - для извлечения флага сработала авария
     private static final short MASK_ALARM_CUR = 13;  // 13-й бит в маске - текущее значение флага сработала авария
@@ -140,6 +141,7 @@ public class MainActivity extends AppCompatActivity
     private static final int AUTO_CONNECT_TIMEOUT = 300;  // время между запуском поиска SIM 2 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
     private static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
     private static final short DEFAULT_DIG_IN_NUMBER = 20; // количество входов по умолчанию
+    private static final short DEFAULT_OUT_NUMBER = 10; // количество выходов по умолчанию
     private static final short CMD_INPUT_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
     private static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
     private static final short CMD_INPUT_CUR_LATCH_FROM = 37; // начало флагов защелки статуса входов в команде INPUT
@@ -149,12 +151,13 @@ public class MainActivity extends AppCompatActivity
     private static final short LENGTH_INPUT_GROUP = 4; // длина данных для группы входов (по 16 входов)
     private static final short NUMBER_DIGITAL_INPUTS = 96; // количество цифровых входов
 
-            // переменные для адаптера
-    ListView lvInOut;
-    InOutListViewAdapter adapterInOut;
+    // переменные для адаптера
+    ListView lvDigIn;
+    DigInListViewAdapter adapterDigIn;
     ListView lvMainInStatus;
     SimpleAdapter adapterMainInStatus;
-
+    ListView lvOutSettigs;
+    OutListViewAdapter adapterOut;
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
 
@@ -195,21 +198,29 @@ public class MainActivity extends AppCompatActivity
     private int pbProgress;                 // счетчик длительности нажатия кнопок
     private int autoConnectCnt = AUTO_CONNECT_TIMEOUT; // счетчик времени между вызовами AutoConnect
     private boolean autoConnectFlag;        // флаг активности AutoConnect
-    Button pbInOutSave;                     // кнопка сохранить изменения на вкладке InOut
+    Button pbDigInSave;                     // кнопка сохранить изменения на вкладке In
+    Button pbNext;                          // кнопка перейти к следующим настройкам
+    Button pbPrevious;                      // кнопка перейти к предыдущим настройкам
+    Button pbOutSave;                       // кнопка сохранить изменения на вкладке Out
 
     MediaPlayer mediaPlayer;
     AudioManager am;
 
     // создаем массивы данных для имен и состояний входов/выходов
-    ArrayList<String> inOutName = new ArrayList<>();
-    ArrayList<String> inOutNumber = new ArrayList<>();
-    ArrayList<String> inOutStatus = new ArrayList<>();
-    ArrayList<Boolean> inOutState = new ArrayList<>();
+    ArrayList<String> digInName = new ArrayList<>();
+    ArrayList<String> digInNumber = new ArrayList<>();
+    ArrayList<String> digInStatus = new ArrayList<>();
+    ArrayList<Boolean> digInState = new ArrayList<>();
+    ArrayList<String> outName = new ArrayList<>();
+    ArrayList<String> outNumber = new ArrayList<>();
+    ArrayList<String> outStatus = new ArrayList<>();
+    ArrayList<Boolean> outState = new ArrayList<>();
     ArrayList<String> mainStatusNumber = new ArrayList<>();
     ArrayList<String> mainStatusName = new ArrayList<>();
     ArrayList<String> mainStatusTime = new ArrayList<>();
     ArrayList<String> mainStatusImage = new ArrayList<>();
-    ArrayList<Map<String, Object>> arrListInStatus;
+    ArrayList<Map<String, Object>> alDigInStatus;
+    ArrayList<Map<String, Object>> alOutStatus;
     ArrayList<Map<String, Object>> alMainInStatus;
     //endregion
 
@@ -284,29 +295,43 @@ public class MainActivity extends AppCompatActivity
         flipper = (ViewFlipper) findViewById(R.id.flipper);
         // Создаем View и добавляем их в уже готовый flipper
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        int layouts[] = new int[]{ R.layout.activity_main, R.layout.activity_in_out};
+        int layouts[] = new int[]{ R.layout.activity_main, R.layout.activity_dig_in, R.layout.activity_out};
         for (int layout : layouts) {
             View currentView = inflater.inflate(layout, null);
             currentView.setTag(layout);
             flipper.addView(currentView);
         }
-        // читаем значения настроек входов/выходов, результат в inOutName, inOutNumber, inOutState
-        loadInOutPreferences(DEFAULT_DIG_IN_NUMBER, inOutName, inOutNumber, inOutStatus, inOutState);
+        // читаем значения настроек входов, результат в digInName, digInNumber, digInState
+        loadInOutPreferences(DEFAULT_DIG_IN_NUMBER, IN_NAME, DEFAULT_IN_NAME, digInName,
+                digInNumber, DEFAULT_IN_OUT_STATUS, digInStatus, IN_STATE, DEFAULT_IN_OUT_STATE, digInState);
+        // читаем значения настроек выходов, результат в outName, outNumber, outState
+        loadInOutPreferences(DEFAULT_OUT_NUMBER, OUT_NAME, DEFAULT_OUT_NAME, outName,
+                outNumber, null, null, OUT_STATE, DEFAULT_IN_OUT_STATE, outState);
 
         // заполняем значениями список InOutListView и создаем адапер
-        adapterInOut = createInOutAdapter(inOutName, inOutNumber, inOutState);
+        adapterDigIn = createDigInAdapter(digInName, digInNumber, digInState);
         adapterMainInStatus = createMainInStatusAdapter();
-        // определяем список lvInOut и присваиваем ему адаптер
-        lvInOut = (ListView) findViewById(R.id.lvInOut);
-        lvInOut.setAdapter(adapterInOut);    // назначаем адаптер для ListView
-        lvInOut.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
+        adapterOut = createOutSettingsAdapter();
+        // определяем список lvDigIn и присваиваем ему адаптер
+        lvDigIn = (ListView) findViewById(R.id.lvDigIn);
+        lvDigIn.setAdapter(adapterDigIn);    // назначаем адаптер для ListView
+        lvDigIn.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
         // определяем список lvMainInStatus и присваиваем ему адаптер
         lvMainInStatus = (ListView) findViewById(R.id.lvMainInStatus);
         lvMainInStatus.setAdapter(adapterMainInStatus);    // назначаем адаптер для lvMainInStatus
+        // определяем список lvOutSettigs и присваиваем ему адаптер
+        lvOutSettigs = (ListView) findViewById(R.id.lvOut);
+        lvOutSettigs.setAdapter(adapterOut);    // назначаем адаптер для lvOutSettigs
+        addItemsAdapterOut();      // добавляем данные в адаптер Out
 
-        pbInOutSave = (Button) findViewById(R.id.pbInOutSave);
-        pbInOutSave.setOnClickListener(this);
-
+        pbDigInSave = (Button) findViewById(R.id.pbDigInSave);
+        pbDigInSave.setOnClickListener(this);
+        pbNext = (Button) findViewById(R.id.pbNext);
+        pbNext.setOnClickListener(this);
+        pbPrevious = (Button) findViewById(R.id.pbPrevious);
+        pbPrevious.setOnClickListener(this);
+        pbOutSave = (Button) findViewById(R.id.pbOutSave);
+        pbOutSave.setOnClickListener(this);
 
         // Устанавливаем listener касаний, для последующего перехвата жестов
         ConstraintLayout mainLayout = (ConstraintLayout) findViewById(R.id.main_layout);
@@ -383,29 +408,29 @@ public class MainActivity extends AppCompatActivity
      * @param inOutNumber - массив номеров входов/ выходов
      * @param inOutState - массив состояний входов/ выходов
      */
-    private InOutListViewAdapter createInOutAdapter(ArrayList<String> inOutName, ArrayList<String> inOutNumber,
+    private DigInListViewAdapter createDigInAdapter(ArrayList<String> inOutName, ArrayList<String> inOutNumber,
                                                     ArrayList<Boolean> inOutState) {
         // настраиваем ListView
         // упаковываем данные в понятную для адаптера структуру
-        arrListInStatus = new ArrayList<>(1);
+        alDigInStatus = new ArrayList<>(1);
         Map<String, Object> m;
-        InOutListViewAdapter adapter;
+        DigInListViewAdapter adapter;
         for (int i = 0; i < inOutNumber.size(); i++) {
             m = new HashMap<>();
             m.put(ATRIBUTE_NUMBER, inOutNumber.get(i));
             m.put(ATTRIBUTE_NAME, inOutName.get(i));
             m.put(ATTRIBUTE_STATE, inOutState.get(i));
             m.put(ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey48);
-            arrListInStatus.add(m);
+            alDigInStatus.add(m);
         }
         // массив имен атрибутов, из которых будут читаться данные
         String[] from = {ATRIBUTE_NUMBER, ATTRIBUTE_NAME,
                 ATTRIBUTE_STATE, ATTRIBUTE_STATUS_IMAGE};
         // массив ID View-компонентов, в которые будут вставлять данные
-        int[] to = { R.id.tvInOutNumber, R.id.etInOutName,
-                R.id.swInOutState, R.id.ivInOutStatus}; //R.id.cbChecked,
+        int[] to = { R.id.tvDigInNumber, R.id.etDigInName,
+                R.id.swDigInState, R.id.ivDigInStatus}; //R.id.cbChecked,
         // создаем адаптер
-        adapter = new InOutListViewAdapter(this, arrListInStatus, R.layout.in_out_item, from, to);
+        adapter = new DigInListViewAdapter(this, alDigInStatus, R.layout.dig_in_item, from, to);
         // передаем ссылку на основную activity
         adapter.link(this);
         return adapter;
@@ -416,7 +441,7 @@ public class MainActivity extends AppCompatActivity
      */
     private SimpleAdapter createMainInStatusAdapter() {
         // настраиваем ListView
-        // упаковываем данные в понятную для адаптера структуру
+        // упаковываем данные в понятную для адаптеру структуру
         alMainInStatus = new ArrayList<>(0);
         SimpleAdapter adapter;
         // массив имен атрибутов, из которых будут читаться данные
@@ -432,6 +457,26 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
+     * заполнение значениями список MainInStatus
+     */
+    private OutListViewAdapter createOutSettingsAdapter() {
+        // настраиваем ListView
+        // упаковываем данные в понятную для адаптера структуру
+        alOutStatus = new ArrayList<>(0);
+        OutListViewAdapter adapter;
+        // массив имен атрибутов, из которых будут читаться данные
+        String[] from = {ATRIBUTE_NUMBER, ATTRIBUTE_NAME,
+                ATTRIBUTE_STATUS_IMAGE, ATTRIBUTE_STATE};
+        // массив ID View-компонентов, в которые будут вставлять данные
+        int[] to = { R.id.tvDigInNumber, R.id.etDigInName,
+                R.id.ivDigInStatus, R.id.swDigInState}; //R.id.cbChecked,
+        // создаем адаптер
+        adapter = new OutListViewAdapter(this, alOutStatus, R.layout.out_item, from, to);
+        // передаем ссылку на основную activity
+        return adapter;
+    }
+
+    /**
      * загрузка данных из настроек либо сохранение настроек по умолчанию если настроек не было
      * @param defaultInOutNumber - количество входов по умолчанию при создании настроек
      * @param inOutName - массив имен входов/ выходов
@@ -440,16 +485,21 @@ public class MainActivity extends AppCompatActivity
      * @param inOutState - массив состояний входов/ выходов
      */
     private void loadInOutPreferences(short defaultInOutNumber,
+                                      String keyName,
+                                      String defaultName,
                                       ArrayList<String> inOutName,
                                       ArrayList<String> inOutNumber,
+                                      String defaultStatus,
                                       ArrayList<String> inOutStatus,
+                                      String keyState,
+                                      String defaultState,
                                       ArrayList<Boolean> inOutState) {
-        StringBuilder  prefKey = new StringBuilder(IN_OUT_NAME);  // задаем ключ для чтения настроек
+        StringBuilder  prefKey = new StringBuilder(keyName);  // задаем ключ для чтения настроек
         StringBuilder  prefText = new StringBuilder(""); // задаем значение прочтенной настройки
         int i = 0;
         do {
             // меняем ключ для чтения настроек "имени"
-            prefKey.replace(0, prefKey.capacity(), IN_OUT_NAME + Integer.toString(i));
+            prefKey.replace(0, prefKey.capacity(), keyName + Integer.toString(i));
             // читаем настройки
             prefText.replace(0, prefText.capacity(), sPref.getString(prefKey.toString(), ""));
             // сохраняем значение имени для вывода на экран
@@ -457,7 +507,7 @@ public class MainActivity extends AppCompatActivity
             // сохраняем значение номера для вывода на экран
             inOutNumber.add(Integer.toString(i + 1));
             // меняем ключ для чтения настроек "состояния"
-            prefKey.replace(0, prefKey.capacity(), IN_OUT_STATE + Integer.toString(i));
+            prefKey.replace(0, prefKey.capacity(), keyState + Integer.toString(i));
             // читаем настройки
             prefText.replace(0, prefText.capacity(), sPref.getString(prefKey.toString(), ""));
             // сохраняем значение имени для вывода на экран
@@ -465,7 +515,8 @@ public class MainActivity extends AppCompatActivity
                 inOutState.add(true);
             else
                 inOutState.add(false);
-            inOutStatus.add(DEFAULT_IN_OUT_STATUS);
+            if (inOutStatus != null)
+                inOutStatus.add(defaultStatus);
             i++;
         } while ( !prefText.toString().equals(""));
         // удаляем последнюю запись, так как она пустая
@@ -479,18 +530,18 @@ public class MainActivity extends AppCompatActivity
             SharedPreferences.Editor ed = sPref.edit();
             for (i = 0; i < defaultInOutNumber; i++){
                 // формируем ключ для записи настроек "имени"
-                prefKey.replace(0, prefKey.capacity(), IN_OUT_NAME + Integer.toString(i));
+                prefKey.replace(0, prefKey.capacity(), keyName + Integer.toString(i));
                 // указываем значение для вводимой настройки "имени"
-                prefText.replace(0, prefText.capacity(), DEFAULT_IN_OUT_NAME + Integer.toString(i + 1));
+                prefText.replace(0, prefText.capacity(), defaultName + Integer.toString(i + 1));
                 // записываем настройку
                 ed.putString(prefKey.toString(), prefText.toString());
                 // добавляем значение "имени" по умолчанию в список
                 inOutName.add(prefText.toString());
 
                 // формируем ключ для записи настроек "состояния"
-                prefKey.replace(0, prefKey.capacity(), IN_OUT_STATE + Integer.toString(i));
+                prefKey.replace(0, prefKey.capacity(), keyState + Integer.toString(i));
                 // указываем значение для вводимой настройки "состояния"
-                prefText.replace(0, prefText.capacity(), DEFAULT_IN_OUT_STATE);
+                prefText.replace(0, prefText.capacity(), defaultState);
                 // записываем настройку
                 ed.putString(prefKey.toString(), prefText.toString());
                 // добавляем значение "состояния" по умолчанию в список
@@ -500,7 +551,8 @@ public class MainActivity extends AppCompatActivity
                     inOutState.add(false);
                 // добавляем значение "номера" по умолчанию в список для вывода на экран
                 inOutNumber.add(Integer.toString(i + 1));
-                inOutStatus.add(DEFAULT_IN_OUT_STATUS);
+                if (inOutStatus != null)
+                    inOutStatus.add(defaultStatus);
             }
             // сохраняем изменения для настроек
             ed.apply();
@@ -512,30 +564,32 @@ public class MainActivity extends AppCompatActivity
      * @param inOutName - массив имен входов/ выходов
      * @param inOutState - массив состояний входов/ выходов
      */
-    private void saveInOutPreferences(ArrayList<String> inOutName,
-                                      ArrayList<Boolean> inOutState) {
-        StringBuilder  prefKey = new StringBuilder(IN_OUT_NAME);  // задаем ключ для чтения настроек
+    private void saveInOutPreferences(String keyName, ArrayList<String> inOutName,
+                                      String keyState, ArrayList<Boolean> inOutState) {
+        StringBuilder  prefKey = new StringBuilder(keyName);  // задаем ключ для чтения настроек
         StringBuilder  prefText = new StringBuilder(""); // задаем значение прочтенной настройки
         // создаем эдитор для записи настройки
         SharedPreferences.Editor ed = sPref.edit();
 
-        for (int i = 0; i < inOutNumber.size(); i++){
+        for (int i = 0; i < inOutName.size(); i++){
             // формируем ключ для записи настроек "имени"
-            prefKey.replace(0, prefKey.capacity(), IN_OUT_NAME + Integer.toString(i));
+            prefKey.replace(0, prefKey.capacity(), keyName + Integer.toString(i));
             // указываем значение для вводимой настройки "имени"
             prefText.replace(0, prefText.capacity(), inOutName.get(i));
             // записываем настройку
             ed.putString(prefKey.toString(), prefText.toString());
 
             // формируем ключ для записи настроек "состояния"
-            prefKey.replace(0, prefKey.capacity(), IN_OUT_STATE + Integer.toString(i));
-            // указываем значение для вводимой настройки "состояния"
-            if (inOutState.get(i))
-                prefText.replace(0, prefText.capacity(), STATE_ON);
-            else
-                prefText.replace(0, prefText.capacity(), STATE_OFF);
-            // записываем настройку
-            ed.putString(prefKey.toString(), prefText.toString());
+            if (inOutState != null) {
+                prefKey.replace(0, prefKey.capacity(), keyState + Integer.toString(i));
+                // указываем значение для вводимой настройки "состояния"
+                if (inOutState.get(i))
+                    prefText.replace(0, prefText.capacity(), STATE_ON);
+                else
+                    prefText.replace(0, prefText.capacity(), STATE_OFF);
+                // записываем настройку
+                ed.putString(prefKey.toString(), prefText.toString());
+            }
         };
         // сохраняем изменения для настроек
         ed.apply();
@@ -553,15 +607,30 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onClick(View v) {
         switch (v.getId()){
-            case R.id.pbInOutSave:
+            case R.id.pbDigInSave:
                 // сохраняем настройки
-                saveInOutPreferences(inOutName, inOutState);
+                saveInOutPreferences(IN_NAME, digInName, IN_STATE, digInState);
+            case R.id.pbPrevious:
                 // переходим на предыдущую страницу
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
                 flipper.showPrevious();
                 break;
+            case R.id.pbNext:
+                // переходим на предыдущую страницу
+                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
+                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
+                flipper.showNext();
+                break;
             case R.id.tvBtRxData:
+                break;
+            case R.id.pbOutSave:
+                // сохраняем настройки
+                saveInOutPreferences(OUT_NAME, outName, null, null);
+                // переходим на предыдущую страницу
+                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
+                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
+                flipper.showPrevious();
                 break;
         }
     }
@@ -1019,7 +1088,6 @@ public class MainActivity extends AppCompatActivity
                 // region INPUT
                 if (parseData.indexOf(TYPE_INPUT) > 0){
                     // принята команда INPUT
-                    // TODO - значек на крыше после прерывания связи нужно восстанавливать
                     String strStatusSIM = parseData.substring(CMD_INPUT_STATUS_FROM,
                             CMD_INPUT_LATCH_FROM - 1);
                     // обновляем значение статуса SIM модуля
@@ -1128,7 +1196,7 @@ public class MainActivity extends AppCompatActivity
                                 if ( !digitalInputACurOn[i]) {
                                     // вход не обрабатывается
                                     // добавляем событие "Вход выключен" в главный список
-                                    addEventStatusList(STATUS_INPUT_FAULT, inOutName.get(i));
+                                    addEventStatusList(STATUS_INPUT_FAULT, digInName.get(i));
                                 }
                             }
                         }
@@ -1206,13 +1274,13 @@ public class MainActivity extends AppCompatActivity
             if ( digitalInputLatch[i] != oldDigitalInputLatch[i] ) {
                 if (digitalInputLatch[i]) {
                     // добавляем событие "сработал вход" в главный список
-                    addEventStatusList(STATUS_INPUT_ON, inOutName.get(i));
+                    addEventStatusList(STATUS_INPUT_ON, digInName.get(i));
                 }
             } else // проверяем изменения состояния текущих входов
                 if ( digitalInputCurrent[i] != oldDigitalInputCurrent[i] ) {
                     if (digitalInputCurrent[i]) {
                         // добавляем событие "сработал вход" в главный список
-                        addEventStatusList(STATUS_INPUT_ON, inOutName.get(i));
+                        addEventStatusList(STATUS_INPUT_ON, digInName.get(i));
                     }
                 }
             oldDigitalInputLatch[i] = digitalInputLatch[i];
@@ -1255,6 +1323,25 @@ public class MainActivity extends AppCompatActivity
         int temp = 1 << bit_number;
         int t2 = (value & (temp));
         return ( t2 > 0 );
+    }
+
+    /**
+     * занесение информации для вывода в alOutStatus
+     */
+    private void addItemsAdapterOut() {
+        // получаем размер массива номеров входов
+        int cnt = outNumber.size();
+        Map<String, Object> m;
+        for (int i = 0; i < cnt; i++) {
+            // добавляем пункт в список
+            m = new HashMap<>();
+            m.put(ATRIBUTE_NUMBER, outNumber.get(i));
+            m.put(ATTRIBUTE_NAME, outName.get(i));
+            m.put(ATTRIBUTE_STATE, outState.get(i));
+            alOutStatus.add(m);
+        }
+        // обновляем адаптер
+        adapterOut.notifyDataSetChanged();
     }
 
     /**
@@ -1522,6 +1609,7 @@ public class MainActivity extends AppCompatActivity
      */
     private void closeBtStreams(){
         try{
+            oldStatusSIM = FIRST_START;  // обнуляем прошлое сосояние
             mBluetoothDevice = null;
             if (bluetooth_Connect != null) {
                 // завершаем задачу установки соединения

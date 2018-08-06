@@ -1,13 +1,10 @@
 package com.example.khmelevoyoleg.signaling;
 
 import android.content.Context;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -72,18 +69,18 @@ public class StatusListAdapter extends SimpleAdapter {
     }
 */
     /**
-     * получение нужной картинки для вывода в ivInOutStatus
+     * получение нужной картинки для вывода в ivDigInStatus
      * @param position - позиция элемента в списке
      * @return - номер ресурса
      */
     private int getImageViewValue(int position) {
-        if (activity.inOutStatus.get(position).equals("STATUS_OFF")) {
+        if (activity.digInStatus.get(position).equals("STATUS_OFF")) {
             return R.drawable.circle_grey48;
-        } else if (activity.inOutStatus.get(position).equals("STATUS_ON")) {
+        } else if (activity.digInStatus.get(position).equals("STATUS_ON")) {
             return R.drawable.circle_green48;
-        } else if (activity.inOutStatus.get(position).equals("STATUS_START_ACTIVE")) {
+        } else if (activity.digInStatus.get(position).equals("STATUS_START_ACTIVE")) {
             return R.drawable.circle_blue48;
-        } else if (activity.inOutStatus.get(position).equals("STATUS_ALARM")) {
+        } else if (activity.digInStatus.get(position).equals("STATUS_ALARM")) {
             return R.drawable.circle_red48;
         }
         return 0;
