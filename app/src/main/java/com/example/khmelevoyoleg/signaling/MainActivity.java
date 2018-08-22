@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -17,6 +18,7 @@ import android.os.Vibrator;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -60,7 +62,7 @@ public class MainActivity extends AppCompatActivity
         CONNECTED
     }
 
-    private enum MainStatus {
+    public enum MainStatus {
         CLOSE,
         IDLE,
         CONNECTING,
@@ -101,6 +103,10 @@ public class MainActivity extends AppCompatActivity
     private static final String DEFAULT_IN_OUT_STATE = "STATE_OFF"; // состояние входа по умолчанию - выкл
     private static final String STATE_ON = "STATE_ON"; // состояние входа - включен
     private static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
+    static final String OUT_OFF_TIME = "OUT OFF TIME,"; // команда выключить реле по времени
+    static final String OUT_OFF = "OUT OFF,"; // команда выключить реле по времени
+    static final String OUT_ON_TIME = "OUT ON TIME,"; // команда включить реле по времени
+    static final String OUT_ON = "OUT ON,"; // команда включить реле
 
     static final String STATUS_OFF = "STATUS_OFF"; // состояние входа - выключен
     static final String STATUS_ON = "STATUS_ON"; // состояние входа - включен
@@ -150,6 +156,7 @@ public class MainActivity extends AppCompatActivity
     private static final short CMD_INPUT_A_STATUS_FROM = 34; // начало флагов сатуса входов в команде INPUT_А
     private static final short LENGTH_INPUT_GROUP = 4; // длина данных для группы входов (по 16 входов)
     private static final short NUMBER_DIGITAL_INPUTS = 96; // количество цифровых входов
+    private static final short ALL_OUT = 0;         // количество для выключения всех выходов
 
     // переменные для адаптера
     ListView lvDigIn;
@@ -322,7 +329,7 @@ public class MainActivity extends AppCompatActivity
         // определяем список lvOutSettigs и присваиваем ему адаптер
         lvOutSettigs = (ListView) findViewById(R.id.lvOut);
         lvOutSettigs.setAdapter(adapterOut);    // назначаем адаптер для lvOutSettigs
-        addItemsAdapterOut();      // добавляем данные в адаптер Out
+        lvOutSettigs.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
 
         pbDigInSave = (Button) findViewById(R.id.pbDigInSave);
         pbDigInSave.setOnClickListener(this);
@@ -463,15 +470,29 @@ public class MainActivity extends AppCompatActivity
         // настраиваем ListView
         // упаковываем данные в понятную для адаптера структуру
         alOutStatus = new ArrayList<>(0);
+        // добавляем данные в адаптер Out
+        // получаем размер массива номеров входов
+        int cnt = outNumber.size();
+        Map<String, Object> m;
+        for (int i = 0; i < cnt; i++) {
+            // добавляем пункт в список
+            m = new HashMap<>();
+            m.put(ATRIBUTE_NUMBER, outNumber.get(i));
+            m.put(ATTRIBUTE_NAME, outName.get(i));
+            m.put(ATTRIBUTE_STATE, outState.get(i));
+            m.put(ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey32);
+            alOutStatus.add(m);
+        }
+        // обновляем адаптер
+        //adapterOut.notifyDataSetChanged();
         OutListViewAdapter adapter;
         // массив имен атрибутов, из которых будут читаться данные
-        String[] from = {ATRIBUTE_NUMBER, ATTRIBUTE_NAME,
-                ATTRIBUTE_STATUS_IMAGE, ATTRIBUTE_STATE};
+        String[] from = {ATRIBUTE_NUMBER, ATTRIBUTE_NAME, ATTRIBUTE_STATE, ATTRIBUTE_STATUS_IMAGE};
         // массив ID View-компонентов, в которые будут вставлять данные
-        int[] to = { R.id.tvDigInNumber, R.id.etDigInName,
-                R.id.ivDigInStatus, R.id.swDigInState}; //R.id.cbChecked,
+        int[] to = { R.id.tvOutNumber, R.id.etOutName, R.id.swOutState, R.id.ivOutTimeSwitch}; //R.id.cbChecked,
         // создаем адаптер
         adapter = new OutListViewAdapter(this, alOutStatus, R.layout.out_item, from, to);
+        adapter.link(this);
         // передаем ссылку на основную activity
         return adapter;
     }
@@ -625,12 +646,10 @@ public class MainActivity extends AppCompatActivity
             case R.id.tvBtRxData:
                 break;
             case R.id.pbOutSave:
+                // задаем вопрос нужно ли выключить все реле при выходе из окна
+                showDialogOut();
                 // сохраняем настройки
                 saveInOutPreferences(OUT_NAME, outName, null, null);
-                // переходим на предыдущую страницу
-                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
-                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
-                flipper.showPrevious();
                 break;
         }
     }
@@ -1017,7 +1036,7 @@ public class MainActivity extends AppCompatActivity
      * @param data - данные для передачи
      * @param delay - задержка перед передачей данных в секундах
      */
-    private boolean sendDataBT(String data, int delay){
+    boolean sendDataBT(String data, int delay){
         // проверка завершилась ли прошлая задача передачи
         if ( bluetooth_Tx == null || bluetooth_Tx.getStatus().toString().equals(FINISHED)) {
             // передача завершилась, создаем новую задачу передачи
@@ -1025,7 +1044,7 @@ public class MainActivity extends AppCompatActivity
             // передаем ссылку на основную activity
             bluetooth_Tx.link(this);
             bluetooth_Tx.execute(delay);
-            Log.d("MY_LOG", "Send: " + data);
+            Log.d("MY_LOG_TX", "Send: " + data);
             return true;
         }
         else {
@@ -1213,6 +1232,13 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
+     * проверка возможно ли осуществляь передачу по BT
+     */
+    boolean checkAbilityTxBT() {
+        return mMainStatus == MainStatus.CONNECTED;
+    }
+
+    /**
      * запуск звучания аварии и добавление события в главный список
      */
     private void startAlarm () {
@@ -1323,25 +1349,6 @@ public class MainActivity extends AppCompatActivity
         int temp = 1 << bit_number;
         int t2 = (value & (temp));
         return ( t2 > 0 );
-    }
-
-    /**
-     * занесение информации для вывода в alOutStatus
-     */
-    private void addItemsAdapterOut() {
-        // получаем размер массива номеров входов
-        int cnt = outNumber.size();
-        Map<String, Object> m;
-        for (int i = 0; i < cnt; i++) {
-            // добавляем пункт в список
-            m = new HashMap<>();
-            m.put(ATRIBUTE_NUMBER, outNumber.get(i));
-            m.put(ATTRIBUTE_NAME, outName.get(i));
-            m.put(ATTRIBUTE_STATE, outState.get(i));
-            alOutStatus.add(m);
-        }
-        // обновляем адаптер
-        adapterOut.notifyDataSetChanged();
     }
 
     /**
@@ -1650,18 +1657,59 @@ public class MainActivity extends AppCompatActivity
         View currentView = flipper.getCurrentView();
         int currentViewTag = (int) currentView.getTag();
         // проверка на каком экране нажата кнопка BACK
-        if (currentViewTag != R.layout.activity_main) {
-            //на InOut
-            flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
-            flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
-            flipper.showPrevious();
-        } else {
-            //на главном экране, нужно свернуть программу
-            Intent intent = new Intent();
-            intent.setAction(Intent.ACTION_MAIN);
-            intent.addCategory(Intent.CATEGORY_HOME);
-            startActivity(intent);
+        switch (currentViewTag) {
+            case R.layout.activity_main:
+                //на главном экране, нужно свернуть программу
+                Intent intent = new Intent();
+                intent.setAction(Intent.ACTION_MAIN);
+                intent.addCategory(Intent.CATEGORY_HOME);
+                startActivity(intent);
+                break;
+            case R.layout.activity_out:
+                // задаем вопрос нужно ли выключить все реле при выходе из окна
+                showDialogOut();
+                break;
+            case R.layout.activity_dig_in:
+                //на InOut
+                showPreviousActivity();
+                break;
         }
+    }
+
+    /**
+     * диалог при закрытии окна Out
+     */
+    private void showDialogOut () {
+        AlertDialog.Builder alertDialog;
+        // настраиваем alertDialog
+        alertDialog = new AlertDialog.Builder(this);
+        alertDialog.setTitle(R.string.daOutState);  // заголовок
+        alertDialog.setMessage(R.string.daOutQuestion); // сообщение
+        alertDialog.setPositiveButton(R.string.daOutAnswerOn, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // оставляем адаптер Out без изменений (т.е. все остается включенным)
+                showPreviousActivity();
+                dialog.cancel();
+            }
+        });
+        alertDialog.setNegativeButton(R.string.daOutAnswerOff, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                // обновляем адаптер Out, чтобы вернуть переключатели в выключенное состояние
+                adapterOut.notifyDataSetChanged();
+                sendDataBT(String.format("%s%d\r", OUT_OFF, ALL_OUT), 0);
+                showPreviousActivity();
+                dialog.cancel();
+            }
+        });
+        alertDialog.setCancelable(false);
+        alertDialog.show();
+    }
+
+    // показать предыдущий экран настроек
+    private void showPreviousActivity () {
+        flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
+        flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
+        flipper.showPrevious();
     }
 
     // Вызывается перед уничтожением активности

@@ -44,7 +44,7 @@
     <string name="connectionError">Ошибка установления связи</string>
     <string name="connectionActiv">Соединение уже активно</string>
     <string name="connectionInterrupted">Соединение разорвано</string>
-    <string name="connectionFailed">Соединение отсутствует</string>
+    <string name="connectionFailed">Соединение с сигнализацией отсутствует</string>
     <string name="ctvAutoConnect">Автоматическое подключение</string>
     <string name="pbInOutCancel">Отмена</string>
     <string name="pbInOutSave">Сохранить</string>
@@ -52,6 +52,12 @@
     <string name="pbNext">Далее</string>
     <string name="swOff">OFF</string>
     <string name="swOn">ON</string>
-
+    <string name="outOnTimeBegin">"Включен выход "</string>
+    <string name="outOff">"Выключен выход "</string>
+    <string name="outOnTimeEnd">" по времени"</string>
+    <string name="daOutState">Состояние выходов</string>
+    <string name="daOutQuestion">Что делать с включенными выходами?</string>
+    <string name="daOutAnswerOn">Оставить включенными</string>
+    <string name="daOutAnswerOff">Выключить</string>
 
 </resources>
