@@ -9,6 +9,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
@@ -21,6 +22,8 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -151,12 +154,13 @@ public class MainActivity extends AppCompatActivity
     private static final short CMD_INPUT_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
     private static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
     private static final short CMD_INPUT_CUR_LATCH_FROM = 37; // начало флагов защелки статуса входов в команде INPUT
-    private static final short CMD_INPUT_RSSI_FROM = 61; // начало значения RSSI в команде INPUT
+    private static final short CMD_INPUT_RSSI_FROM = 62; // начало значения RSSI в команде INPUT
     private static final short CMD_INPUT_A_CUR_ON_FROM = 9; // начало флагов включенных датчиков в команде INPUT_A
     private static final short CMD_INPUT_A_STATUS_FROM = 34; // начало флагов сатуса входов в команде INPUT_А
     private static final short LENGTH_INPUT_GROUP = 4; // длина данных для группы входов (по 16 входов)
     private static final short NUMBER_DIGITAL_INPUTS = 96; // количество цифровых входов
     private static final short ALL_OUT = 0;         // количество для выключения всех выходов
+    private static final short RSSI_MASK = 127;         // маска для извлечения RSSI
 
     // переменные для адаптера
     ListView lvDigIn;
@@ -184,7 +188,7 @@ public class MainActivity extends AppCompatActivity
     OutputStream mOutStream;                 // поток по передаче bluetooth
     InputStream mInStream;                   // поток по приему bluetooth
     private FloatingActionButton fabConnect;        // кнопка поиска "Базового блока"
-    private int fabConnectPicture = 1;
+    private short fabConnectPicture = 1;
     private Menu mainMenu;                          // гдавное меню
     private ViewFlipper flipper;                    // определяем flipper для перелистываний экрана
     private float fromPosition;                     // позиция касания при перелистывании экранов
@@ -1020,10 +1024,26 @@ public class MainActivity extends AppCompatActivity
             case 3:
                 mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna3red);
                 break;
+            case 4:
+                mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna3green);
+                break;
+            case 5:
+                mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna3green_light);
+                break;
         }
-        if (fabConnectPicture == 3)
-            fabConnectPicture = 1;
-        else fabConnectPicture++;
+        // проверка идет поиск базы
+        if (fabConnectPicture <= 3) {
+            if (fabConnectPicture == 3)
+                fabConnectPicture = 1;
+            else fabConnectPicture++;
+        }
+        // соединение установлено идет прием данных
+        else {
+            if (fabConnectPicture == 4)
+                fabConnectPicture = 5;
+            else
+                fabConnectPicture = 4;
+        }
     }
 
     private void Vibrate(Long time) {
@@ -1117,6 +1137,11 @@ public class MainActivity extends AppCompatActivity
                     // обновляем текущие значения флагов входов
                     parseRxInputFlags(parseData, CMD_INPUT_CUR_LATCH_FROM, CMD_INPUT_RSSI_FROM,
                             LENGTH_INPUT_GROUP, digitalInputCurrent);
+                    // обновляем значение RSSI в главном меню
+                    String rssi = "-" + Integer.toString(parseRxRSSI(parseData, CMD_INPUT_RSSI_FROM)) + "dB";
+                    mainMenu.findItem(R.id.RSSI).setTitle(rssi);
+                    // обновляем рисунок показывая что связь установлена и есть прием данных
+                    changePictureMenuConnect();
                     // проверка изменилось ли состояние модуля
                     if (statusSIM != oldStatusSIM) {
                         // устанавливаем нужный рисунок на крыше машины
@@ -1229,6 +1254,16 @@ public class MainActivity extends AppCompatActivity
         // выводим сообщение, "Соединение отсутствует"
         //Toast.makeText(getApplicationContext(), statusSIM, Toast.LENGTH_SHORT).show();
         return true;
+    }
+
+    /**
+     * выделение значения RSSI из принятых данных
+     */
+    private int parseRxRSSI(String parse_data, int start_index) {
+        String strInput = parse_data.substring(start_index, start_index + 2);
+        int val = Integer.parseInt(strInput, 16);
+
+        return (val & RSSI_MASK);
     }
 
     /**
@@ -1527,6 +1562,8 @@ public class MainActivity extends AppCompatActivity
     private void setMenuConnectColorGreen(){
         // задаем рисунок с 3-мя полосками на антенне
         mainMenu.findItem(R.id.action_connect).setIcon(R.drawable.antenna3green);
+        // переходим в режим соединения с базоцй
+        fabConnectPicture = 4;
     }
 
     /**

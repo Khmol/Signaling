@@ -10,9 +10,12 @@
         android:title="@string/action_settings"
         android:orderInCategory="100"
         app:showAsAction="never" />
+    <item android:id="@+id/RSSI"
+        android:title="@string/RSSI"
+        app:showAsAction="always" />
     <item android:id="@+id/action_connect"
         android:title="@string/action_connect"
         android:icon="@drawable/antenna3red"
         app:backgroundTint="@color/colorRed"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 </menu>
