@@ -69,7 +69,7 @@ public class StatusListAdapter extends SimpleAdapter {
     }
 */
     /**
-     * получение нужной картинки для вывода в ivDigInStatus
+     * получение нужной картинки для вывода в ivAnalogInStatus
      * @param position - позиция элемента в списке
      * @return - номер ресурса
      */

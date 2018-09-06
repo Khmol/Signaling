@@ -29,7 +29,8 @@
     <string name="outTemperature">+25°C</string>
     <string name="base_name">имя базового\nблока</string>
     <string name="settings">Выберите устройство для подключения</string>
-    <string name="title_in">Состояние входов</string>
+    <string name="title_in">Состояние дискретных входов</string>
+    <string name="title_analog_in">Состояние аналоговых входов</string>
     <string name="title_out">Состояние выходов</string>
     <string name="radioButtomSize">16</string>
     <string name="save">Сохранить</string>
@@ -60,5 +61,6 @@
     <string name="daOutAnswerOn">Оставить включенными</string>
     <string name="daOutAnswerOff">Выключить</string>
     <string name="RSSI">0dB</string>
+    <string name="iv_analog_description">ivAnalogInStatus</string>
 
 </resources>

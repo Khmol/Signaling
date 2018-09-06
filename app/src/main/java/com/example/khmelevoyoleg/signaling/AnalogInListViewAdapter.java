@@ -13,16 +13,16 @@ import android.widget.TextView;
 import java.util.List;
 import java.util.Map;
 
-class DigInListViewAdapter extends SimpleAdapter
+class AnalogInListViewAdapter extends SimpleAdapter
         implements View.OnFocusChangeListener, CompoundButton.OnCheckedChangeListener{
 
-    private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
+        private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
-    DigInListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
-        super(context, data, resource, from, to);
-    }
+        AnalogInListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
+            super(context, data, resource, from, to);
+        }
 
-    // получаем ссылку на MainActivity
+        // получаем ссылку на MainActivity
     void link(MainActivity act) {
         activity = act;
     }
@@ -32,56 +32,56 @@ class DigInListViewAdapter extends SimpleAdapter
         // получаем SwitchCompat
         SwitchCompat swActive = (SwitchCompat) buttonView;
         // получаем номер данного SwitchCompat
-        int swNumber = (int) swActive.getTag(R.id.swDigInState);
+        int swNumber = (int) swActive.getTag(R.id.swAnalogInState);
         // усанавливаем новое значение переключателя
-        activity.digInState.set(swNumber, isChecked);
+        activity.analogInState.set(swNumber, isChecked);
     }
 
     private static class ViewHolder {
-        TextView tvDigInNumber; // номер входа в списке
-        EditText etDigInName; // имя входа в списке
-        ImageView ivDigInStatus; // состояние входа в списке
-        SwitchCompat swDigInState; // состояние входа - вкл/выкл
+        TextView tvAnalogInNumber; // номер входа в списке
+        EditText etAnalogInName; // имя входа в списке
+        ImageView ivAnalogInStatus; // состояние входа в списке
+        SwitchCompat swAnalogInState; // состояние входа - вкл/выкл
     }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         // получаем View
-        ViewHolder viewHolder;
+        AnalogInListViewAdapter.ViewHolder viewHolder;
         if (convertView == null) {
             convertView = super.getView(position, null, parent);
-            viewHolder = new ViewHolder();
-            viewHolder.tvDigInNumber = (TextView) convertView.findViewById(R.id.tvDigInNumber);
-            viewHolder.etDigInName = (EditText) convertView.findViewById(R.id.etDigInName);
-            viewHolder.ivDigInStatus = (ImageView) convertView.findViewById(R.id.ivDigInStatus);
-            viewHolder.swDigInState = (SwitchCompat) convertView.findViewById(R.id.swDigInState);
+            viewHolder = new AnalogInListViewAdapter.ViewHolder();
+            viewHolder.tvAnalogInNumber = (TextView) convertView.findViewById(R.id.tvAnalogInNumber);
+            viewHolder.etAnalogInName = (EditText) convertView.findViewById(R.id.etAnalogInName);
+            viewHolder.ivAnalogInStatus = (ImageView) convertView.findViewById(R.id.ivAnalogInStatus);
+            viewHolder.swAnalogInState = (SwitchCompat) convertView.findViewById(R.id.swAnalogInState);
             // задаем Tag для группы View
             convertView.setTag(viewHolder);
             // задаем Tag для всех элементнов группы
-            viewHolder.tvDigInNumber.setTag(R.id.tvDigInNumber, position);
-            viewHolder.etDigInName.setTag(R.id.etDigInName, position);
-            viewHolder.ivDigInStatus.setTag(R.id.ivDigInStatus, position);
-            viewHolder.swDigInState.setTag(R.id.swDigInState, position);
+            viewHolder.tvAnalogInNumber.setTag(R.id.tvAnalogInNumber, position);
+            viewHolder.etAnalogInName.setTag(R.id.etAnalogInName, position);
+            viewHolder.ivAnalogInStatus.setTag(R.id.ivAnalogInStatus, position);
+            viewHolder.swAnalogInState.setTag(R.id.swAnalogInState, position);
             // для EditText задаем обработчик изменения фокуса
-            viewHolder.etDigInName.setOnFocusChangeListener(this);
-            viewHolder.swDigInState.setOnCheckedChangeListener(this);
+            viewHolder.etAnalogInName.setOnFocusChangeListener(this);
+            viewHolder.swAnalogInState.setOnCheckedChangeListener(this);
             // устанавливаем значение картинки состояния входа
-            viewHolder.ivDigInStatus.setImageResource(getImageViewValue(position));
+            viewHolder.ivAnalogInStatus.setImageResource(getImageViewValue(position));
         } else {
             // задаем Tag для EditText
-            viewHolder = (ViewHolder) convertView.getTag();
+            viewHolder = (AnalogInListViewAdapter.ViewHolder) convertView.getTag();
             // задаем Tag для всех элементнов группы
-            viewHolder.tvDigInNumber.setTag(R.id.tvDigInNumber, position);
-            viewHolder.etDigInName.setTag(R.id.etDigInName, position);
-            viewHolder.ivDigInStatus.setTag(R.id.ivDigInStatus, position);
-            viewHolder.swDigInState.setTag(R.id.swDigInState, position);
+            viewHolder.tvAnalogInNumber.setTag(R.id.tvAnalogInNumber, position);
+            viewHolder.etAnalogInName.setTag(R.id.etAnalogInName, position);
+            viewHolder.ivAnalogInStatus.setTag(R.id.ivAnalogInStatus, position);
+            viewHolder.swAnalogInState.setTag(R.id.swAnalogInState, position);
             // устанавливаем значение текстовых полей группы
-            viewHolder.tvDigInNumber.setText(activity.digInNumber.get(position));
-            viewHolder.etDigInName.setText(activity.digInName.get(position));
+            viewHolder.tvAnalogInNumber.setText(activity.analogInNumber.get(position));
+            viewHolder.etAnalogInName.setText(activity.analogInName.get(position));
             // устанавливаем значение картинки
-            viewHolder.ivDigInStatus.setImageResource(getImageViewValue(position));
+            viewHolder.ivAnalogInStatus.setImageResource(getImageViewValue(position));
             // устанавливаем значение переключателя
-            viewHolder.swDigInState.setChecked(activity.digInState.get(position));
+            viewHolder.swAnalogInState.setChecked(activity.analogInState.get(position));
         }
         return convertView;
     }
@@ -113,8 +113,8 @@ class DigInListViewAdapter extends SimpleAdapter
             etActive.requestFocusFromTouch();
         } else {
             // фокус был потерян, нужно сохранить новое значение EditText в digInName
-            int etActiveNumber = (int) etActive.getTag(R.id.etDigInName);
-            activity.digInName.set(etActiveNumber, etActive.getText().toString());
+            int etActiveNumber = (int) etActive.getTag(R.id.etAnalogInName);
+            activity.analogInName.set(etActiveNumber, etActive.getText().toString());
         }
     }
 }

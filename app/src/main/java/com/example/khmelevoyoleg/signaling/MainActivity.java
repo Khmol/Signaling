@@ -97,8 +97,10 @@ public class MainActivity extends AppCompatActivity
     static final String TYPE_INPUT_A = "INPUT A,"; // тип команды в ответе от SIM
     private static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
     private static final String IN_NAME = "IN_NAME_"; // название ключа для имени входа в настройках
+    private static final String ANALOG_IN_NAME = "ANALOG_IN_NAME"; // название ключа для имени входа в настройках
     private static final String OUT_NAME = "OUT_NAME_"; // название ключа для имени выхода в настройках
     private static final String IN_STATE = "IN_STATE_"; // название ключа для состояния входа в настройках
+    private static final String ANALOG_IN_STATE = "ANALOG_IN_STATE_"; // название ключа для состояния входа в настройках
     private static final String OUT_STATE = "OUT_STATE_"; // название ключа для состояния входа в настройках
     private static final String DEFAULT_IN_NAME = "Вход "; // имя входа по умолчанию
     private static final String DEFAULT_OUT_NAME = "Выход "; // имя выхода по умолчанию
@@ -150,6 +152,7 @@ public class MainActivity extends AppCompatActivity
     private static final int AUTO_CONNECT_TIMEOUT = 300;  // время между запуском поиска SIM 2 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
     private static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
     private static final short DEFAULT_DIG_IN_NUMBER = 20; // количество входов по умолчанию
+    private static final short DEFAULT_ANALOG_IN_NUMBER = 3; // количество входов по умолчанию
     private static final short DEFAULT_OUT_NUMBER = 10; // количество выходов по умолчанию
     private static final short CMD_INPUT_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
     private static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
@@ -164,7 +167,9 @@ public class MainActivity extends AppCompatActivity
 
     // переменные для адаптера
     ListView lvDigIn;
+    ListView lvAnalogIn;
     DigInListViewAdapter adapterDigIn;
+    AnalogInListViewAdapter adapterAnalogIn;
     ListView lvMainInStatus;
     SimpleAdapter adapterMainInStatus;
     ListView lvOutSettigs;
@@ -210,8 +215,12 @@ public class MainActivity extends AppCompatActivity
     private int autoConnectCnt = AUTO_CONNECT_TIMEOUT; // счетчик времени между вызовами AutoConnect
     private boolean autoConnectFlag;        // флаг активности AutoConnect
     Button pbDigInSave;                     // кнопка сохранить изменения на вкладке In
+    Button pbAnalogInSave;                  // кнопка сохранить изменения на вкладке AnalogIn
     Button pbNext;                          // кнопка перейти к следующим настройкам
+    Button pbAnalogNext;                          // кнопка перейти к следующим настройкам
     Button pbPrevious;                      // кнопка перейти к предыдущим настройкам
+    Button pbAnalogPrevious;                // кнопка перейти к предыдущим настройкам
+    Button pbOutPrevious;                   // кнопка перейти к предыдущим настройкам
     Button pbOutSave;                       // кнопка сохранить изменения на вкладке Out
 
     MediaPlayer mediaPlayer;
@@ -222,15 +231,19 @@ public class MainActivity extends AppCompatActivity
     ArrayList<String> digInNumber = new ArrayList<>();
     ArrayList<String> digInStatus = new ArrayList<>();
     ArrayList<Boolean> digInState = new ArrayList<>();
+    ArrayList<String> analogInName = new ArrayList<>();
+    ArrayList<String> analogInNumber = new ArrayList<>();
+    ArrayList<String> analogInStatus = new ArrayList<>();
+    ArrayList<Boolean> analogInState = new ArrayList<>();
     ArrayList<String> outName = new ArrayList<>();
     ArrayList<String> outNumber = new ArrayList<>();
-    ArrayList<String> outStatus = new ArrayList<>();
     ArrayList<Boolean> outState = new ArrayList<>();
     ArrayList<String> mainStatusNumber = new ArrayList<>();
     ArrayList<String> mainStatusName = new ArrayList<>();
     ArrayList<String> mainStatusTime = new ArrayList<>();
     ArrayList<String> mainStatusImage = new ArrayList<>();
     ArrayList<Map<String, Object>> alDigInStatus;
+    ArrayList<Map<String, Object>> alAnalogInStatus;
     ArrayList<Map<String, Object>> alOutStatus;
     ArrayList<Map<String, Object>> alMainInStatus;
     //endregion
@@ -306,27 +319,37 @@ public class MainActivity extends AppCompatActivity
         flipper = (ViewFlipper) findViewById(R.id.flipper);
         // Создаем View и добавляем их в уже готовый flipper
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        int layouts[] = new int[]{ R.layout.activity_main, R.layout.activity_dig_in, R.layout.activity_out};
+        int layouts[] = new int[]{ R.layout.activity_main, R.layout.activity_dig_in,
+                R.layout.activity_analog_in, R.layout.activity_out};
         for (int layout : layouts) {
             View currentView = inflater.inflate(layout, null);
             currentView.setTag(layout);
             flipper.addView(currentView);
         }
-        // читаем значения настроек входов, результат в digInName, digInNumber, digInState
+        // читаем значения настроек дискретных входов, результат в digInName, digInNumber, digInState
         loadInOutPreferences(DEFAULT_DIG_IN_NUMBER, IN_NAME, DEFAULT_IN_NAME, digInName,
                 digInNumber, DEFAULT_IN_OUT_STATUS, digInStatus, IN_STATE, DEFAULT_IN_OUT_STATE, digInState);
+        // читаем значения настроек аналоговых входов, результат в analogInName, analogInNumber, analogInState
+        loadInOutPreferences(DEFAULT_ANALOG_IN_NUMBER, ANALOG_IN_NAME, DEFAULT_IN_NAME, analogInName,
+                analogInNumber, DEFAULT_IN_OUT_STATUS, analogInStatus, ANALOG_IN_STATE,
+                DEFAULT_IN_OUT_STATE, analogInState);
         // читаем значения настроек выходов, результат в outName, outNumber, outState
         loadInOutPreferences(DEFAULT_OUT_NUMBER, OUT_NAME, DEFAULT_OUT_NAME, outName,
                 outNumber, null, null, OUT_STATE, DEFAULT_IN_OUT_STATE, outState);
 
         // заполняем значениями список InOutListView и создаем адапер
         adapterDigIn = createDigInAdapter(digInName, digInNumber, digInState);
+        adapterAnalogIn = createAnalogInAdapter(analogInName, analogInNumber, analogInState);
         adapterMainInStatus = createMainInStatusAdapter();
         adapterOut = createOutSettingsAdapter();
         // определяем список lvDigIn и присваиваем ему адаптер
         lvDigIn = (ListView) findViewById(R.id.lvDigIn);
         lvDigIn.setAdapter(adapterDigIn);    // назначаем адаптер для ListView
         lvDigIn.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
+        // определяем список lvDigIn и присваиваем ему адаптер
+        lvAnalogIn = (ListView) findViewById(R.id.lvAnalogIn);
+        lvAnalogIn.setAdapter(adapterAnalogIn);    // назначаем адаптер для ListView
+        lvAnalogIn.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
         // определяем список lvMainInStatus и присваиваем ему адаптер
         lvMainInStatus = (ListView) findViewById(R.id.lvMainInStatus);
         lvMainInStatus.setAdapter(adapterMainInStatus);    // назначаем адаптер для lvMainInStatus
@@ -337,10 +360,18 @@ public class MainActivity extends AppCompatActivity
 
         pbDigInSave = (Button) findViewById(R.id.pbDigInSave);
         pbDigInSave.setOnClickListener(this);
+        pbAnalogInSave = (Button) findViewById(R.id.pbAnalogInSave);
+        pbAnalogInSave.setOnClickListener(this);
         pbNext = (Button) findViewById(R.id.pbNext);
         pbNext.setOnClickListener(this);
         pbPrevious = (Button) findViewById(R.id.pbPrevious);
         pbPrevious.setOnClickListener(this);
+        pbAnalogNext = (Button) findViewById(R.id.pbAnalogNext);
+        pbAnalogNext.setOnClickListener(this);
+        pbAnalogPrevious = (Button) findViewById(R.id.pbAnalogPrevious);
+        pbAnalogPrevious.setOnClickListener(this);
+        pbOutPrevious = (Button) findViewById(R.id.pbOutPrevious);
+        pbOutPrevious.setOnClickListener(this);
         pbOutSave = (Button) findViewById(R.id.pbOutSave);
         pbOutSave.setOnClickListener(this);
 
@@ -442,6 +473,40 @@ public class MainActivity extends AppCompatActivity
                 R.id.swDigInState, R.id.ivDigInStatus}; //R.id.cbChecked,
         // создаем адаптер
         adapter = new DigInListViewAdapter(this, alDigInStatus, R.layout.dig_in_item, from, to);
+        // передаем ссылку на основную activity
+        adapter.link(this);
+        return adapter;
+    }
+
+    /**
+     * заполнение значениями список InOutListView
+     * @param inOutName - массив имен входов/ выходов
+     * @param inOutNumber - массив номеров входов/ выходов
+     * @param inOutState - массив состояний входов/ выходов
+     */
+    private AnalogInListViewAdapter createAnalogInAdapter(ArrayList<String> inOutName, ArrayList<String> inOutNumber,
+                                                    ArrayList<Boolean> inOutState) {
+        // настраиваем ListView
+        // упаковываем данные в понятную для адаптера структуру
+        alAnalogInStatus = new ArrayList<>(1);
+        Map<String, Object> m;
+        AnalogInListViewAdapter adapter;
+        for (int i = 0; i < inOutNumber.size(); i++) {
+            m = new HashMap<>();
+            m.put(ATRIBUTE_NUMBER, inOutNumber.get(i));
+            m.put(ATTRIBUTE_NAME, inOutName.get(i));
+            m.put(ATTRIBUTE_STATE, inOutState.get(i));
+            m.put(ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey48);
+            alAnalogInStatus.add(m);
+        }
+        // массив имен атрибутов, из которых будут читаться данные
+        String[] from = {ATRIBUTE_NUMBER, ATTRIBUTE_NAME,
+                ATTRIBUTE_STATE, ATTRIBUTE_STATUS_IMAGE};
+        // массив ID View-компонентов, в которые будут вставлять данные
+        int[] to = { R.id.tvAnalogInNumber, R.id.etAnalogInName,
+                R.id.swAnalogInState, R.id.ivAnalogInStatus}; //R.id.cbChecked,
+        // создаем адаптер
+        adapter = new AnalogInListViewAdapter(this, alAnalogInStatus, R.layout.analog_item, from, to);
         // передаем ссылку на основную activity
         adapter.link(this);
         return adapter;
@@ -635,13 +700,18 @@ public class MainActivity extends AppCompatActivity
             case R.id.pbDigInSave:
                 // сохраняем настройки
                 saveInOutPreferences(IN_NAME, digInName, IN_STATE, digInState);
+            case R.id.pbAnalogInSave:
+                // сохраняем настройки
+                saveInOutPreferences(ANALOG_IN_NAME, analogInName, ANALOG_IN_STATE, analogInState);
             case R.id.pbPrevious:
+            case R.id.pbAnalogPrevious:
                 // переходим на предыдущую страницу
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
                 flipper.showPrevious();
                 break;
             case R.id.pbNext:
+            case R.id.pbAnalogNext:
                 // переходим на предыдущую страницу
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
@@ -650,10 +720,11 @@ public class MainActivity extends AppCompatActivity
             case R.id.tvBtRxData:
                 break;
             case R.id.pbOutSave:
-                // задаем вопрос нужно ли выключить все реле при выходе из окна
-                showDialogOut();
                 // сохраняем настройки
                 saveInOutPreferences(OUT_NAME, outName, null, null);
+            case R.id.pbOutPrevious:
+                // задаем вопрос нужно ли выключить все реле при выходе из окна
+                showDialogOut();
                 break;
         }
     }
@@ -1707,6 +1778,7 @@ public class MainActivity extends AppCompatActivity
                 showDialogOut();
                 break;
             case R.layout.activity_dig_in:
+            case R.layout.activity_analog_in:
                 //на InOut
                 showPreviousActivity();
                 break;
