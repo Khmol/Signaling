@@ -2,13 +2,16 @@ package com.example.khmelevoyoleg.signaling;
 
 import android.content.Context;
 import android.support.v7.widget.SwitchCompat;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.List;
 import java.util.Map;
@@ -33,8 +36,26 @@ class DigInListViewAdapter extends SimpleAdapter
         SwitchCompat swActive = (SwitchCompat) buttonView;
         // получаем номер данного SwitchCompat
         int swNumber = (int) swActive.getTag(R.id.swDigInState);
-        // усанавливаем новое значение переключателя
+        // запоминаем новое значение переключателя (входа)
         activity.digInState.set(swNumber, isChecked);
+        // передаем в BT команду на включение/ отключение входа
+        if (isChecked) {
+            if (activity.checkAbilityTxBT())
+                activity.sendDataBT(String.format("%s%d\r", activity.IN_ON, (swNumber + 1)), 0);
+            else
+                // выдаем текстовое оповещение что соединение отсутствует
+                Toast.makeText(activity.getApplicationContext(),
+                        R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
+                        Toast.LENGTH_SHORT).show();
+        } else {
+            if (activity.checkAbilityTxBT())
+                activity.sendDataBT(String.format("%s%d\r", activity.IN_OFF, (swNumber + 1)), 0);
+            else
+                // выдаем текстовое оповещение что соединение отсутствует
+                Toast.makeText(activity.getApplicationContext(),
+                        R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
+                        Toast.LENGTH_SHORT).show();
+        }
     }
 
     private static class ViewHolder {
@@ -65,9 +86,8 @@ class DigInListViewAdapter extends SimpleAdapter
             // для EditText задаем обработчик изменения фокуса
             viewHolder.etDigInName.setOnFocusChangeListener(this);
             viewHolder.swDigInState.setOnCheckedChangeListener(this);
-            // устанавливаем значение картинки состояния входа
-            viewHolder.ivDigInStatus.setImageResource(getImageViewValue(position));
         } else {
+            convertView = super.getView(position, convertView, parent);
             // задаем Tag для EditText
             viewHolder = (ViewHolder) convertView.getTag();
             // задаем Tag для всех элементнов группы
@@ -79,36 +99,18 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder.tvDigInNumber.setText(activity.digInNumber.get(position));
             viewHolder.etDigInName.setText(activity.digInName.get(position));
             // устанавливаем значение картинки
-            viewHolder.ivDigInStatus.setImageResource(getImageViewValue(position));
+            viewHolder.ivDigInStatus.setImageResource(activity.getDigInImageViewValue(position));
             // устанавливаем значение переключателя
             viewHolder.swDigInState.setChecked(activity.digInState.get(position));
         }
         return convertView;
     }
 
-    /**
-     * получение нужной картинки для вывода в ivAnalogInStatus
-     * @param position - позиция элемента в списке
-     * @return - номер ресурса
-     */
-    private int getImageViewValue(int position) {
-        if (activity.digInStatus.get(position).equals(MainActivity.STATUS_OFF)) {
-            return R.drawable.circle_grey48;
-        } else if (activity.digInStatus.get(position).equals(MainActivity.STATUS_ON)) {
-            return R.drawable.circle_green48;
-        } else if (activity.digInStatus.get(position).equals(MainActivity.STATUS_START_ACTIVE)) {
-            return R.drawable.circle_blue48;
-        } else if (activity.digInStatus.get(position).equals(MainActivity.STATUS_ALARM)) {
-            return R.drawable.circle_red48;
-        }
-        return 0;
-    }
-
     @Override
     public void onFocusChange(View v, boolean hasFocus) {
         // получаем EditText
         EditText etActive = (EditText) v;
-        if (hasFocus){
+        if (hasFocus) {
             // фокус появился нужно вернуть фокус на данный EditText при обновлении окна
             etActive.requestFocusFromTouch();
         } else {

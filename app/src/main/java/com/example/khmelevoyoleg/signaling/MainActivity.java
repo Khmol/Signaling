@@ -25,12 +25,14 @@ import android.support.v7.widget.Toolbar;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -87,14 +89,6 @@ public class MainActivity extends AppCompatActivity
     static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
     static final String PENDING = "PENDING";        // задача ожидает запуска
     static final String FINISHED = "FINISHED";      // задача завершена
-    static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r"; //SIMCOMSPPFORAPP посылка для инициализации SIM
-    static final String SET_ALARM = "SET ALARM,1\r"; // посылка для установки на охрану
-    static final String CLEAR_ALARM = "CLEAR ALARM,1\r"; // посылка для снятия с охраны
-    static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r"; // посылка для снятия аварии с SIM
-    static final String OUT_1_ON = "OUT ON,1\r"; // посылка для открытия 1-го выхода
-    static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
-    static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
-    static final String TYPE_INPUT_A = "INPUT A,"; // тип команды в ответе от SIM
     private static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
     private static final String IN_NAME = "IN_NAME_"; // название ключа для имени входа в настройках
     private static final String ANALOG_IN_NAME = "ANALOG_IN_NAME"; // название ключа для имени входа в настройках
@@ -108,10 +102,23 @@ public class MainActivity extends AppCompatActivity
     private static final String DEFAULT_IN_OUT_STATE = "STATE_OFF"; // состояние входа по умолчанию - выкл
     private static final String STATE_ON = "STATE_ON"; // состояние входа - включен
     private static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
-    static final String OUT_OFF_TIME = "OUT OFF TIME,"; // команда выключить реле по времени
+
+    // команды по BT
+    static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r"; //SIMCOMSPPFORAPP посылка для инициализации SIM
+    static final String SET_ALARM = "SET ALARM,1\r"; // посылка для установки на охрану
+    static final String CLEAR_ALARM = "CLEAR ALARM,1\r"; // посылка для снятия с охраны
+    static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r"; // посылка для снятия аварии с SIM
+    static final String OUT_1_ON = "OUT ON,1\r"; // посылка для открытия 1-го выхода
+    static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
+    static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
+    static final String TYPE_INPUT_A = "INPUT A,"; // тип команды в ответе от SIM
+    static final String TYPE_INPUT_ON_OFF = "INPUT ON OFF,"; // тип команды в ответе на IN GET ON от SIM
     static final String OUT_OFF = "OUT OFF,"; // команда выключить реле по времени
     static final String OUT_ON_TIME = "OUT ON TIME,"; // команда включить реле по времени
     static final String OUT_ON = "OUT ON,"; // команда включить реле
+    static final String IN_GET_ON = "IN GET ON,00\r"; // команда Запросить статус включенных входов
+    static final String IN_ON = "IN ON,"; // команда включить вход для обработки
+    static final String IN_OFF = "IN OFF,"; // команда выключить вход для обработки
 
     static final String STATUS_OFF = "STATUS_OFF"; // состояние входа - выключен
     static final String STATUS_ON = "STATUS_ON"; // состояние входа - включен
@@ -160,6 +167,7 @@ public class MainActivity extends AppCompatActivity
     private static final short CMD_INPUT_RSSI_FROM = 62; // начало значения RSSI в команде INPUT
     private static final short CMD_INPUT_A_CUR_ON_FROM = 9; // начало флагов включенных датчиков в команде INPUT_A
     private static final short CMD_INPUT_A_STATUS_FROM = 34; // начало флагов сатуса входов в команде INPUT_А
+    private static final short CMD_INPUT_ON_OFF_STATUS_FROM = 14; // начало флагов сатуса входов в команде INPUT_ON_OFF
     private static final short LENGTH_INPUT_GROUP = 4; // длина данных для группы входов (по 16 входов)
     private static final short NUMBER_DIGITAL_INPUTS = 96; // количество цифровых входов
     private static final short ALL_OUT = 0;         // количество для выключения всех выходов
@@ -257,6 +265,7 @@ public class MainActivity extends AppCompatActivity
     boolean[] digitalInputActive;      // фдаги статусов включенных входов
     boolean[] digitalInputACurOn;      // фдаги текущих статусов сработавших входов
     boolean[] oldDigitalInputACurOn;   // прошлые фдаги текущих статусов сработавших входов
+    boolean[] digitalInputOnOffStatus; // фдаги текущих статусов входов - включены или выключены
 
     // приемник широковещательных событий
     // region BroadcastReceiver
@@ -417,6 +426,7 @@ public class MainActivity extends AppCompatActivity
         digitalInputActive = new boolean[NUMBER_DIGITAL_INPUTS]; // активные
         digitalInputACurOn = new boolean[NUMBER_DIGITAL_INPUTS]; // текущие при постановке на охр.
         oldDigitalInputACurOn = new boolean[NUMBER_DIGITAL_INPUTS]; // прошлое при постановке на охр.
+        digitalInputOnOffStatus = new boolean[NUMBER_DIGITAL_INPUTS]; // текущее состояне входов
 
         // TODO - удалить
         tvBtRxData.setOnClickListener(this);
@@ -477,6 +487,24 @@ public class MainActivity extends AppCompatActivity
         adapter.link(this);
         return adapter;
     }
+
+    /**
+     * изменяем адаптер adapterDigIn
+     */
+    void modifyDigInAdapter () {
+        Map<String, Object> m;
+        for (int i = 0; i < digInNumber.size(); i++) {
+            m = new HashMap<>();
+            m.put(ATRIBUTE_NUMBER, digInNumber.get(i));
+            m.put(ATTRIBUTE_NAME, digInName.get(i));
+            m.put(ATTRIBUTE_STATE, digInState.get(i));
+            m.put(ATTRIBUTE_STATUS_IMAGE, getDigInImageViewValue(i));
+            alDigInStatus.set(i, m);
+        }
+        // подтверждаем изменения
+        adapterDigIn.notifyDataSetChanged();
+    }
+
 
     /**
      * заполнение значениями список InOutListView
@@ -696,23 +724,46 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onClick(View v) {
+        View view = this.getCurrentFocus();
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         switch (v.getId()){
             case R.id.pbDigInSave:
                 // сохраняем настройки
                 saveInOutPreferences(IN_NAME, digInName, IN_STATE, digInState);
+            case R.id.pbPrevious:
+                // фиксируем изменения в адаптере
+                modifyDigInAdapter();
+                // закрываем экранную клавиатуру
+                if (view != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+                // переходим на предыдущую страницу
+                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
+                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
+                flipper.showPrevious();
+                break;
             case R.id.pbAnalogInSave:
                 // сохраняем настройки
                 saveInOutPreferences(ANALOG_IN_NAME, analogInName, ANALOG_IN_STATE, analogInState);
-            case R.id.pbPrevious:
             case R.id.pbAnalogPrevious:
+                // закрываем экранную клавиатуру
+                if (view != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
                 // переходим на предыдущую страницу
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
                 flipper.showPrevious();
                 break;
             case R.id.pbNext:
+                // фиксируем изменения в адаптере
+                modifyDigInAdapter();
             case R.id.pbAnalogNext:
-                // переходим на предыдущую страницу
+                // закрываем экранную клавиатуру
+                if (view != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+                // переходим на следующую страницу
                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                 flipper.showNext();
@@ -723,6 +774,10 @@ public class MainActivity extends AppCompatActivity
                 // сохраняем настройки
                 saveInOutPreferences(OUT_NAME, outName, null, null);
             case R.id.pbOutPrevious:
+                // закрываем экранную клавиатуру
+                if (view != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
                 // задаем вопрос нужно ли выключить все реле при выходе из окна
                 showDialogOut();
                 break;
@@ -964,6 +1019,14 @@ public class MainActivity extends AppCompatActivity
                                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
                                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                                 flipper.showNext();
+                                if (checkAbilityTxBT())
+                                    // запрашиваем новое значения входов (включенные или выключенные)
+                                    sendDataBT(IN_GET_ON, 0);
+                                else
+                                    // выдаем текстовое оповещение что соединение отсутствует
+                                    Toast.makeText(getApplicationContext(),
+                                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
+                                            Toast.LENGTH_SHORT).show();
                             }
                         } else if (fromPosition < toPosition) {
                             if ((toPosition - fromPosition) > 100) {
@@ -1319,7 +1382,21 @@ public class MainActivity extends AppCompatActivity
                         oldDigitalInputACurOn[i] = digitalInputACurOn[i];
                     }
                 }
-            // endregion
+                // endregion
+                // проверка на команду INPUT_ON_OFF
+                // region INPUT_ON_OFF
+                if (parseData.indexOf(TYPE_INPUT_ON_OFF) > 0) {
+                    // получаем значения состояний входов
+                    parseRxInputFlags(parseData, CMD_INPUT_ON_OFF_STATUS_FROM, parseData.length(),
+                            LENGTH_INPUT_GROUP, digitalInputOnOffStatus);
+                    // обновляем значения состояний входов которые отображаются
+                    for(int i = 0; i < DEFAULT_DIG_IN_NUMBER; i++) {
+                        digInState.set(i, digitalInputOnOffStatus[i]);
+                    }
+                    // обновляем список для настроек цифровых входов
+                    modifyDigInAdapter();
+                }
+                // endregion
             }
         }
         // выводим сообщение, "Соединение отсутствует"
@@ -1778,6 +1855,8 @@ public class MainActivity extends AppCompatActivity
                 showDialogOut();
                 break;
             case R.layout.activity_dig_in:
+                // фиксируем изменения в адаптере
+                modifyDigInAdapter();
             case R.layout.activity_analog_in:
                 //на InOut
                 showPreviousActivity();
@@ -1805,7 +1884,13 @@ public class MainActivity extends AppCompatActivity
             public void onClick(DialogInterface dialog, int id) {
                 // обновляем адаптер Out, чтобы вернуть переключатели в выключенное состояние
                 adapterOut.notifyDataSetChanged();
-                sendDataBT(String.format("%s%d\r", OUT_OFF, ALL_OUT), 0);
+                if (checkAbilityTxBT())
+                    sendDataBT(String.format("%s%d\r", OUT_OFF, ALL_OUT), 0);
+                else
+                    // выдаем текстовое оповещение что соединение отсутствует
+                    Toast.makeText(getApplicationContext(),
+                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
+                            Toast.LENGTH_SHORT).show();
                 showPreviousActivity();
                 dialog.cancel();
             }
@@ -1821,6 +1906,24 @@ public class MainActivity extends AppCompatActivity
         flipper.showPrevious();
     }
 
+    /**
+     * получение нужной картинки для вывода в ivAnalogInStatus
+     * @param position - позиция элемента в списке
+     * @return - номер ресурса
+     */
+    int getDigInImageViewValue(int position) {
+        if (digInStatus.get(position).equals(STATUS_OFF)) {
+            return R.drawable.circle_grey48;
+        } else if (digInStatus.get(position).equals(STATUS_ON)) {
+            return R.drawable.circle_green48;
+        } else if (digInStatus.get(position).equals(STATUS_START_ACTIVE)) {
+            return R.drawable.circle_blue48;
+        } else if (digInStatus.get(position).equals(STATUS_ALARM)) {
+            return R.drawable.circle_red48;
+        }
+        return 0;
+    }
+
     // Вызывается перед уничтожением активности
     @Override
     public void onDestroy() {
@@ -1831,5 +1934,6 @@ public class MainActivity extends AppCompatActivity
         closeBtStreams();
         releaseMP();    // release the resources of the player
     }
+
 }
 
