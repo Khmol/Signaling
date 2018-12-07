@@ -38,7 +38,7 @@ class BTTx extends AsyncTask<Integer, Void, String> {
     protected String doInBackground(Integer... delays) {
         try {
             long delay = delays[0];
-            TimeUnit.SECONDS.sleep(delay);
+            TimeUnit.MILLISECONDS.sleep(delay);
             if (activity.mClientSocket != null) {
                 if (activity.mOutStream == null)
                     activity.mOutStream = activity.mClientSocket.getOutputStream();

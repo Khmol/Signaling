@@ -9,20 +9,27 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 class AnalogInListViewAdapter extends SimpleAdapter
         implements View.OnFocusChangeListener, CompoundButton.OnCheckedChangeListener{
 
-        private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
+    private ArrayList<ViewHolder> viewHolderList;
+    private ArrayList<String> oldAnalogInStatus;
 
-        AnalogInListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
-            super(context, data, resource, from, to);
-        }
+    private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
-        // получаем ссылку на MainActivity
+    AnalogInListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
+        super(context, data, resource, from, to);
+        viewHolderList = new ArrayList<>();
+        oldAnalogInStatus = new ArrayList<>();
+    }
+
+    // получаем ссылку на MainActivity
     void link(MainActivity act) {
         activity = act;
     }
@@ -33,8 +40,30 @@ class AnalogInListViewAdapter extends SimpleAdapter
         SwitchCompat swActive = (SwitchCompat) buttonView;
         // получаем номер данного SwitchCompat
         int swNumber = (int) swActive.getTag(R.id.swAnalogInState);
-        // усанавливаем новое значение переключателя
-        activity.analogInState.set(swNumber, isChecked);
+        // запоминаем новое значение переключателя (входа)
+        // проверяем изменилось ли состояние переключателя относительно сохраненного значения
+        if (activity.mAnalogInState.get(swNumber) != isChecked) {
+            // изменяем сохраненное значене
+            activity.mAnalogInState.set(swNumber, isChecked);
+            // передаем в BT команду на включение/ отключение входа
+            if (isChecked) {
+                if (activity.checkAbilityTxBT())
+                    activity.sendDataBT(String.format("%s%d\r", Utils.ADC_IN_ON, (swNumber + 1)), 0);
+                else
+                    // выдаем текстовое оповещение что соединение отсутствует
+                    Toast.makeText(activity.getApplicationContext(),
+                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
+                            Toast.LENGTH_SHORT).show();
+            } else {
+                if (activity.checkAbilityTxBT())
+                    activity.sendDataBT(String.format("%s%d\r", Utils.ADC_IN_OFF, (swNumber + 1)), 0);
+                else
+                    // выдаем текстовое оповещение что соединение отсутствует
+                    Toast.makeText(activity.getApplicationContext(),
+                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
+                            Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private static class ViewHolder {
@@ -47,7 +76,7 @@ class AnalogInListViewAdapter extends SimpleAdapter
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         // получаем View
-        AnalogInListViewAdapter.ViewHolder viewHolder;
+        ViewHolder viewHolder;
         if (convertView == null) {
             convertView = super.getView(position, null, parent);
             viewHolder = new AnalogInListViewAdapter.ViewHolder();
@@ -66,7 +95,8 @@ class AnalogInListViewAdapter extends SimpleAdapter
             viewHolder.etAnalogInName.setOnFocusChangeListener(this);
             viewHolder.swAnalogInState.setOnCheckedChangeListener(this);
             // устанавливаем значение картинки состояния входа
-            viewHolder.ivAnalogInStatus.setImageResource(getImageViewValue(position));
+            viewHolder.ivAnalogInStatus.setImageResource(Utils.getImageViewValue(activity.mAnalogInStatus, position));
+            viewHolderList.add(viewHolder);
         } else {
             // задаем Tag для EditText
             viewHolder = (AnalogInListViewAdapter.ViewHolder) convertView.getTag();
@@ -76,32 +106,14 @@ class AnalogInListViewAdapter extends SimpleAdapter
             viewHolder.ivAnalogInStatus.setTag(R.id.ivAnalogInStatus, position);
             viewHolder.swAnalogInState.setTag(R.id.swAnalogInState, position);
             // устанавливаем значение текстовых полей группы
-            viewHolder.tvAnalogInNumber.setText(activity.analogInNumber.get(position));
-            viewHolder.etAnalogInName.setText(activity.analogInName.get(position));
+            viewHolder.tvAnalogInNumber.setText(activity.mAnalogInNumber.get(position));
+            viewHolder.etAnalogInName.setText(activity.mAnalogInName.get(position));
             // устанавливаем значение картинки
-            viewHolder.ivAnalogInStatus.setImageResource(getImageViewValue(position));
+            viewHolder.ivAnalogInStatus.setImageResource(Utils.getImageViewValue(activity.mAnalogInStatus, position));
             // устанавливаем значение переключателя
-            viewHolder.swAnalogInState.setChecked(activity.analogInState.get(position));
+            viewHolder.swAnalogInState.setChecked(activity.mAnalogInState.get(position));
         }
         return convertView;
-    }
-
-    /**
-     * получение нужной картинки для вывода в ivAnalogInStatus
-     * @param position - позиция элемента в списке
-     * @return - номер ресурса
-     */
-    private int getImageViewValue(int position) {
-        if (activity.digInStatus.get(position).equals(MainActivity.STATUS_OFF)) {
-            return R.drawable.circle_grey48;
-        } else if (activity.digInStatus.get(position).equals(MainActivity.STATUS_ON)) {
-            return R.drawable.circle_green48;
-        } else if (activity.digInStatus.get(position).equals(MainActivity.STATUS_START_ACTIVE)) {
-            return R.drawable.circle_blue48;
-        } else if (activity.digInStatus.get(position).equals(MainActivity.STATUS_ALARM)) {
-            return R.drawable.circle_red48;
-        }
-        return 0;
     }
 
     @Override
@@ -112,9 +124,35 @@ class AnalogInListViewAdapter extends SimpleAdapter
             // фокус появился нужно вернуть фокус на данный EditText при обновлении окна
             etActive.requestFocusFromTouch();
         } else {
-            // фокус был потерян, нужно сохранить новое значение EditText в digInName
+            // фокус был потерян, нужно сохранить новое значение EditText в mDigInName
             int etActiveNumber = (int) etActive.getTag(R.id.etAnalogInName);
-            activity.analogInName.set(etActiveNumber, etActive.getText().toString());
+            activity.mAnalogInName.set(etActiveNumber, etActive.getText().toString());
+        }
+    }
+
+    /**
+     * изменение картинки для входов если это нужно
+     */
+    void checkStatusPictureAnalogIn(ArrayList<String> analogInStatus) {
+        int len = analogInStatus.size();
+        if (oldAnalogInStatus.size() != len) {
+            for (String curStatus : analogInStatus) {
+                oldAnalogInStatus.add(curStatus);
+            }
+        }
+        for (int i = 0; i < len; i++) {
+            // проверяем изменился ли статус входа
+            if ( ! analogInStatus.get(i).equals(oldAnalogInStatus.get(i))) {
+                // изменился
+                for(ViewHolder viewHolder: viewHolderList) {
+                    int position = (int) viewHolder.ivAnalogInStatus.getTag(R.id.ivAnalogInStatus);
+                    if (position == i) {
+                        // устанавливаем значение картинки
+                        viewHolder.ivAnalogInStatus.setImageResource(Utils.getImageViewValue(activity.mAnalogInStatus, i));
+                    }
+                }
+                oldAnalogInStatus.set(i, analogInStatus.get(i));
+            }
         }
     }
 }

@@ -77,7 +77,7 @@ class OutListViewAdapter extends SimpleAdapter
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
                 // activity.sendDataBT(activity.OUT_ON + Integer.toString(swNumber + 1), 0);
-                activity.sendDataBT(String.format("%s%d\r", activity.OUT_ON_TIME, (ivNumber + 1)), 0);
+                activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON_TIME, (ivNumber + 1)), 0);
                 ivActive.setImageResource(R.drawable.circle_grey32_dark);
                 // вызываем runCheckStatus с задержкой 100 мс.
                 timerHandler.postDelayed(runCheckStatus, TIMER_ON_BUTTON);
@@ -118,7 +118,7 @@ class OutListViewAdapter extends SimpleAdapter
     public View getView(int position, View convertView, ViewGroup parent) {
         // получаем View
         ViewHolder viewHolder;
-        // alOutStatus
+        // mAlOutStatus
         if (convertView == null) {
             convertView = super.getView(position, null, parent);
             viewHolder = new ViewHolder();
@@ -140,10 +140,10 @@ class OutListViewAdapter extends SimpleAdapter
             // задаем Tag для всех элементнов группы
             setTagToItem(viewHolder, position);
             // устанавливаем значение текстовых полей группы
-            viewHolder.tvOutNumber.setText(activity.outNumber.get(position));
-            viewHolder.etOutName.setText(activity.outName.get(position));
+            viewHolder.tvOutNumber.setText(activity.mOutNumber.get(position));
+            viewHolder.etOutName.setText(activity.mOutName.get(position));
             // устанавливаем значение переключателя
-            viewHolder.swOutState.setChecked(activity.outState.get(position));
+            viewHolder.swOutState.setChecked(activity.mOutState.get(position));
         }
         return convertView;
     }
@@ -165,15 +165,15 @@ class OutListViewAdapter extends SimpleAdapter
         } else {
             // фокус был потерян, нужно сохранить новое значение EditText в etOutName
             int etActiveNumber = (int) etActive.getTag(R.id.etOutName);
-            activity.outName.set(etActiveNumber, etActive.getText().toString());
+            activity.mOutName.set(etActiveNumber, etActive.getText().toString());
         }
     }
 
     @Override
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        // определяем список при первом влючении длиной равной outNumber
+        // определяем список при первом влючении длиной равной mOutNumber
         if (scOutState == null) {
-            scOutState = new boolean[activity.outNumber.size()];
+            scOutState = new boolean[activity.mOutNumber.size()];
         }
         // получаем SwitchCompat
         SwitchCompat swActive = (SwitchCompat) buttonView;
@@ -185,7 +185,7 @@ class OutListViewAdapter extends SimpleAdapter
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
                 scOutState[swNumber] = true;
-                activity.sendDataBT(String.format("%s%d\r", activity.OUT_ON, (swNumber + 1)), 0);
+                activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON, (swNumber + 1)), 0);
                 View parent = (View) swActive.getParent();
                 ViewHolder vh = (ViewHolder) parent.getTag();
                 vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_off);
@@ -208,7 +208,7 @@ class OutListViewAdapter extends SimpleAdapter
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
                 //activity.sendDataBT(activity.OUT_OFF + Integer.toString(swNumber + 1), 0);
-                activity.sendDataBT(String.format("%s%d\r", activity.OUT_OFF, (swNumber + 1)), 0);
+                activity.sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, (swNumber + 1)), 0);
                 View parent = (View) swActive.getParent();
                 ViewHolder vh = (ViewHolder) parent.getTag();
                 vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32);
@@ -226,7 +226,6 @@ class OutListViewAdapter extends SimpleAdapter
                         Toast.LENGTH_SHORT).show();
             }
         }
-        // TODO - выключить все реле при выходе из окна настроек
     }
 
     public boolean[] getSwithCompactOutState () {
