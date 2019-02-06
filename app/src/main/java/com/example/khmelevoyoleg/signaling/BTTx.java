@@ -8,10 +8,10 @@ import java.util.concurrent.TimeUnit;
 
 class BTTx extends AsyncTask<Integer, Void, String> {
 
-    private static final String LOG_TAG = "MY_LOG";  // вывод в LOG
-    private static final String TX_ERROR = "TX_ERROR";  // ошибка передачи
-    private static final String TX_INTERRUPTED = "TX_INTERRUPTED";  // передача прервана
-    private static final String TX_OK = "TX_OK";  // передача выполнена успешно
+    static final String LOG_TAG = "MY_LOG";  // вывод в LOG
+    static final String TX_ERROR = "TX_ERROR";  // ошибка передачи
+    static final String TX_INTERRUPTED = "TX_INTERRUPTED";  // передача прервана
+    static final String TX_OK = "TX_OK";  // передача выполнена успешно
     private String txData;      // данные для передачи
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
@@ -62,7 +62,7 @@ class BTTx extends AsyncTask<Integer, Void, String> {
     @Override
     protected void onPostExecute(String result) {
         super.onPostExecute(result);
-        activity.onPostExecuteBTConnect(result);
+        activity.onPostExecuteBTTx(result);
         Log.d(LOG_TAG, "Tx end. Result = " + result);
     }
 

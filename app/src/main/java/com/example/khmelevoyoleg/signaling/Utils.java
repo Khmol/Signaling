@@ -1,6 +1,8 @@
 package com.example.khmelevoyoleg.signaling;
 
 
+import android.util.Log;
+
 import java.util.ArrayList;
 
 class Utils {
@@ -23,9 +25,10 @@ class Utils {
     static final String DEFAULT_IN_NAME = "Вход "; // имя входа по умолчанию
     static final String DEFAULT_OUT_NAME = "Выход "; // имя выхода по умолчанию
     static final String DEFAULT_IN_OUT_STATUS = "STATUS_INPUT_OFF"; // статус входа по умолчанию - выкл
-    static final String DEFAULT_IN_OUT_STATE = "STATE_OFF"; // состояние входа по умолчанию - выкл
+    static final String DEFAULT_IN_OUT_STATE = "STATE_ON"; // состояние входа по умолчанию - выкл
     static final String STATE_ON = "STATE_ON"; // состояние входа - включен
     static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
+    static final String STATE_OFF_TIME = "STATE_OFF_TIME"; // состояние входа - выключен по времени
     // команды по BT
     static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r"; //SIMCOMSPPFORAPP посылка для инициализации SIM
     static final String SET_ALARM = "SET ALARM,1\r"; // посылка для установки на охрану
@@ -47,6 +50,7 @@ class Utils {
     static final String IN_GET_ON = "IN GET ON,00\r"; // команда Запросить статус включенных входов
     static final String IN_ON = "IN ON,"; // команда включить вход для обработки
     static final String IN_OFF = "IN OFF,"; // команда выключить вход для обработки
+    static final String IN_OFF_TIME = "IN OFF TIME,"; // команда выключить вход для обработки на время
     static final String STATUS_GENERAL_ALARM = "STATUS_GENERAL_ALARM"; // состояние модуля - АВАРИЯ
     static final String STATUS_ALARM_TRIGGERED = "STATUS_ALARM_TRIGGERED"; // состояние модуля - предварительная АВАРИЯ
     static final String STATUS_GUARD_ON = "STATUS_GUARD_ON"; // состояние модуля - на охране
@@ -87,7 +91,11 @@ class Utils {
     static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
     static final short DEFAULT_DIG_IN_NUMBER = 20; // количество входов по умолчанию
     static final short DEFAULT_ANALOG_IN_NUMBER = 3; // количество входов по умолчанию
-    static final short DEFAULT_OUT_NUMBER = 10; // количество выходов по умолчанию
+    static final short DEFAULT_OUT_NUMBER = 15; // количество выходов по умолчанию
+    static final short SB_DIG_IN_ON = 1; // SeekBar для цифровых входов в среднем положении
+    static final short SB_DIG_IN_OFF = 0; // SeekBar для цифровых входов в левом положении
+    static final short SB_DIG_IN_TIME_OFF = 2; // SeekBar для цифровых входов в правом положении
+    static final int DRFAULT_DIG_IN_TIME_OFF = 0; // время выключения дискретного входа по умолчанию
 
     static final short CMD_INPUT_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
     static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
@@ -260,4 +268,5 @@ class Utils {
         }
         return 0;
     }
+
 }

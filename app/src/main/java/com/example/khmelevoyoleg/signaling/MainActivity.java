@@ -11,6 +11,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ParcelUuid;
@@ -97,6 +98,7 @@ public class MainActivity extends AppCompatActivity
     BTRx bluetooth_Rx;        // поток приема
     BTConnect bluetooth_Connect;   // задача установления соединения
     BTTx bluetooth_Tx;        // поток передачи
+    ArrayList<String> mBTDataTx = new ArrayList<>();
 
     int mConnectionAttemptsCnt = 0;         // счетчик попыток подключения по Bluetooth
     GregorianCalendar currentTime;
@@ -143,6 +145,7 @@ public class MainActivity extends AppCompatActivity
     ArrayList<String> mDigInNumber = new ArrayList<>();
     ArrayList<String> mDigInStatus = new ArrayList<>();
     ArrayList<Boolean> mDigInState = new ArrayList<>();
+    ArrayList<Integer> mDigInTimeOff = new ArrayList<>();
     ArrayList<String> mAnalogInName = new ArrayList<>();
     ArrayList<String> mAnalogInNumber = new ArrayList<>();
     ArrayList<String> mAnalogInStatus = new ArrayList<>();
@@ -261,17 +264,18 @@ public class MainActivity extends AppCompatActivity
         }
         // читаем значения настроек дискретных входов, результат в mDigInName, mDigInNumber, mDigInState
         loadInOutPreferences(Utils.DEFAULT_DIG_IN_NUMBER, Utils.IN_NAME, Utils.DEFAULT_IN_NAME, mDigInName,
-                mDigInNumber, Utils.DEFAULT_IN_OUT_STATUS, mDigInStatus, Utils.IN_STATE, Utils.DEFAULT_IN_OUT_STATE, mDigInState);
+                mDigInNumber, Utils.DEFAULT_IN_OUT_STATUS, mDigInStatus, Utils.IN_STATE, Utils.DEFAULT_IN_OUT_STATE,
+                mDigInState, mDigInTimeOff);
         // читаем значения настроек аналоговых входов, результат в mAnalogInName, mAnalogInNumber, mAnalogInState
         loadInOutPreferences(Utils.DEFAULT_ANALOG_IN_NUMBER, Utils.ANALOG_IN_NAME, Utils.DEFAULT_IN_NAME, mAnalogInName,
                 mAnalogInNumber, Utils.DEFAULT_IN_OUT_STATUS, mAnalogInStatus, Utils.ANALOG_IN_STATE,
-                Utils.DEFAULT_IN_OUT_STATE, mAnalogInState);
+                Utils.DEFAULT_IN_OUT_STATE, mAnalogInState, null);
         // читаем значения настроек выходов, результат в mOutName, mOutNumber, mOutState
         loadInOutPreferences(Utils.DEFAULT_OUT_NUMBER, Utils.OUT_NAME, Utils.DEFAULT_OUT_NAME, mOutName,
-                mOutNumber, null, null, Utils.OUT_STATE, Utils.DEFAULT_IN_OUT_STATE, mOutState);
-
+                mOutNumber, null, null, Utils.OUT_STATE, Utils.DEFAULT_IN_OUT_STATE, mOutState, null);
+// TODO - изменить значения по умолчанию для входов и выходов по разному
         // заполняем значениями список InOutListView и создаем адапер
-        adapterDigIn = createDigInAdapter(mDigInName, mDigInNumber, mDigInState);
+        adapterDigIn = createDigInAdapter(mDigInName, mDigInNumber, mDigInTimeOff);
         adapterAnalogIn = createAnalogInAdapter(mAnalogInName, mAnalogInNumber, mAnalogInState);
         adapterMainInStatus = createMainInStatusAdapter();
         adapterOut = createOutSettingsAdapter();
@@ -405,10 +409,10 @@ public class MainActivity extends AppCompatActivity
      * заполнение значениями список InOutListView
      * @param inOutName - массив имен входов/ выходов
      * @param inOutNumber - массив номеров входов/ выходов
-     * @param inOutState - массив состояний входов/ выходов
+     * @param inOutStateTime - массив состояний входов/ выходов
      */
     private DigInListViewAdapter createDigInAdapter(ArrayList<String> inOutName, ArrayList<String> inOutNumber,
-                                                    ArrayList<Boolean> inOutState) {
+                                                    ArrayList<Integer> inOutStateTime) {
         // настраиваем ListView
         // упаковываем данные в понятную для адаптера структуру
         mAlDigInStatus = new ArrayList<>(1);
@@ -418,16 +422,16 @@ public class MainActivity extends AppCompatActivity
             m = new HashMap<>();
             m.put(Utils.ATRIBUTE_NUMBER, inOutNumber.get(i));
             m.put(Utils.ATTRIBUTE_NAME, inOutName.get(i));
-            m.put(Utils.ATTRIBUTE_STATE, inOutState.get(i));
+            m.put(Utils.ATTRIBUTE_STATE, inOutStateTime.get(i));
             m.put(Utils.ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey48);
             mAlDigInStatus.add(m);
         }
         // массив имен атрибутов, из которых будут читаться данные
         String[] from = {Utils.ATRIBUTE_NUMBER, Utils.ATTRIBUTE_NAME,
-                Utils.ATTRIBUTE_STATE, Utils.ATTRIBUTE_STATUS_IMAGE};
+                /*Utils.ATTRIBUTE_STATE,*/ Utils.ATTRIBUTE_STATUS_IMAGE};
         // массив ID View-компонентов, в которые будут вставлять данные
         int[] to = { R.id.tvDigInNumber, R.id.etDigInName,
-                R.id.swDigInState, R.id.ivDigInStatus}; //R.id.cbChecked,
+                /*R.id.sbDigInState,*/ R.id.ivDigInStatus}; //R.id.cbChecked,
         // создаем адаптер
         adapter = new DigInListViewAdapter(this, mAlDigInStatus, R.layout.dig_in_item, from, to);
         // передаем ссылку на основную activity
@@ -566,6 +570,7 @@ public class MainActivity extends AppCompatActivity
      * @param inOutNumber - массив номеров входов/ выходов
      * @param inOutStatus - массив статусов входов/ выходов
      * @param inOutState - массив состояний входов/ выходов
+     * @param digInTimeOff - массив времен выключенного состояния
      */
     private void loadInOutPreferences(short defaultInOutNumber,
                                       String keyName,
@@ -576,7 +581,8 @@ public class MainActivity extends AppCompatActivity
                                       ArrayList<String> inOutStatus,
                                       String keyState,
                                       String defaultState,
-                                      ArrayList<Boolean> inOutState) {
+                                      ArrayList<Boolean> inOutState,
+                                      ArrayList<Integer> digInTimeOff ) {
         StringBuilder  prefKey = new StringBuilder(keyName);  // задаем ключ для чтения настроек
         StringBuilder  prefText = new StringBuilder(""); // задаем значение прочтенной настройки
         int i = 0;
@@ -600,6 +606,9 @@ public class MainActivity extends AppCompatActivity
                 inOutState.add(false);
             if (inOutStatus != null)
                 inOutStatus.add(defaultStatus);
+            // время отключения входа пока 0, они вычитываются
+            if (digInTimeOff != null)
+                digInTimeOff.add(0);
             i++;
         } while ( !prefText.toString().equals(""));
         // удаляем последнюю запись, так как она пустая
@@ -636,6 +645,9 @@ public class MainActivity extends AppCompatActivity
                 inOutNumber.add(Integer.toString(i + 1));
                 if (inOutStatus != null)
                     inOutStatus.add(defaultStatus);
+                // время отключения входа пока 0
+                if (digInTimeOff != null)
+                    digInTimeOff.add(Utils.DRFAULT_DIG_IN_TIME_OFF);
             }
             // сохраняем изменения для настроек
             ed.apply();
@@ -725,14 +737,8 @@ public class MainActivity extends AppCompatActivity
             case R.id.pbNext:
                 // фиксируем изменения в адаптере
                 modifyDigInAdapter();
-                if (checkAbilityTxBT())
-                    // запрашиваем новое значения входов (включенные или выключенные)
-                    sendDataBT(Utils.ADC_IN_GET_ON, 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
+                // запрашиваем новое значения входов (включенные или выключенные)
+                sendDataBT(Utils.ADC_IN_GET_ON, 0);
             case R.id.pbAnalogNext:
                 // фиксируем изменения в адаптере
                 modifyAnalogInAdapter();
@@ -746,9 +752,8 @@ public class MainActivity extends AppCompatActivity
                 flipper.showNext();
                 break;
             case R.id.tvBtRxData:
-                if (checkAbilityTxBT())
-                    // запрашиваем новое значения входов (включенные или выключенные)
-                    sendDataBT(Utils.ADC_IN_GET_ON, 0);
+                // запрашиваем новое значения входов (включенные или выключенные)
+                sendDataBT(Utils.ADC_IN_GET_ON, 0);
                 break;
             case R.id.pbOutSave:
                 // сохраняем настройки
@@ -996,15 +1001,9 @@ public class MainActivity extends AppCompatActivity
                         float toPosition = event.getX();
                         if (fromPosition > toPosition) {
                             if ((fromPosition - toPosition) > 100) {
-                                if (checkAbilityTxBT())
-                                   // запрашиваем новое значения входов (включенные или выключенные)
-                                   sendDataBT(Utils.IN_GET_ON, 0);
-                                else
-                                    // выдаем текстовое оповещение что соединение отсутствует
-                                    Toast.makeText(getApplicationContext(),
-                                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                                            Toast.LENGTH_SHORT).show();
-
+                                // запрашиваем новое значения входов (включенные или выключенные)
+                                sendDataBT(Utils.IN_GET_ON, 0);
+                                // меняем экран
                                 flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
                                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                                 flipper.showNext();
@@ -1031,6 +1030,8 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void run() {
             checkStatus();
+            // передаем данные в очереди Bluetooth
+            sendDataBT(null, 0);
         }
     };
 
@@ -1055,7 +1056,14 @@ public class MainActivity extends AppCompatActivity
                     if (bluetooth_Tx != null)
                         if ( bluetooth_Tx.getStatus().toString().equals(Utils.FINISHED)) {
                             // передаем повторно пакет BT_INIT_MESSAGE, если прошлый уже передан
-                            sendDataBT(Utils.BT_INIT_MESSAGE, Utils.DELAY_TX_INIT_MESSAGE);
+                            //sendDataBT(Utils.BT_INIT_MESSAGE, Utils.DELAY_TX_INIT_MESSAGE);
+                            mBTDataTx.add(Utils.BT_INIT_MESSAGE);
+                            // передача завершилась, создаем новую задачу передачи
+                            bluetooth_Tx = new BTTx(mBTDataTx.get(0));
+                            // передаем ссылку на основную activity
+                            bluetooth_Tx.link(this);
+                            bluetooth_Tx.execute(Utils.DELAY_TX_INIT_MESSAGE);
+                            Log.d("MY_LOG_TX", "Send: " + mBTDataTx.get(0));
                             // вызываем runCheckStatus с задержкой 100 мс.
                             timerHandler.postDelayed(runCheckStatus, Utils.TIMER_CHECK_STATUS);
                             // снова запускаем прием данных
@@ -1171,19 +1179,22 @@ public class MainActivity extends AppCompatActivity
      * @param data - данные для передачи
      * @param delay - задержка перед передачей данных в секундах
      */
-    boolean sendDataBT(String data, int delay){
+    void sendDataBT(String data, int delay){
+        // добавляем данные для передачи, если они есть
+        if (data != null)
+            mBTDataTx.add(data);
         // проверка завершилась ли прошлая задача передачи
-        if ( bluetooth_Tx == null || bluetooth_Tx.getStatus().toString().equals(Utils.FINISHED)) {
-            // передача завершилась, создаем новую задачу передачи
-            bluetooth_Tx = new BTTx(data);
-            // передаем ссылку на основную activity
-            bluetooth_Tx.link(this);
-            bluetooth_Tx.execute(delay);
-            Log.d("MY_LOG_TX", "Send: " + data);
-            return true;
-        }
-        else {
-            return false;
+        if (mBTDataTx.size() > 0) {
+            if (checkAbilityTxBT()) {
+                if (bluetooth_Tx.getStatus() == AsyncTask.Status.FINISHED) {
+                    // передача завершилась, создаем новую задачу передачи
+                    bluetooth_Tx = new BTTx(mBTDataTx.get(0));
+                    // передаем ссылку на основную activity
+                    bluetooth_Tx.link(this);
+                    bluetooth_Tx.execute(delay);
+                    Log.d("MY_LOG_TX", "Send: " + mBTDataTx.get(0));
+                }
+            }
         }
     }
 
@@ -1834,52 +1845,32 @@ public class MainActivity extends AppCompatActivity
      * обработка нажатия кнопки ibClose
      */
     private void ibCloseHeader(){
-        if (mMainStatus == MainStatus.CONNECTED){
-            // посылаем команду установить на охрану в 1-м режиме
-            sendDataBT(Utils.SET_ALARM, 0);
-        }
-        else
-            // выводим сообщение, "Соединение отсутствует"
-            Toast.makeText(getApplicationContext(), R.string.connectionFailed, Toast.LENGTH_SHORT).show();
+        // посылаем команду установить на охрану в 1-м режиме
+        sendDataBT(Utils.SET_ALARM, 0);
     }
 
     /**
      *  обработка нажатия кнопки ibOpen
      */
     private void ibOpenHeader(){
-        if (mMainStatus == MainStatus.CONNECTED){
-            // посылаем команду снять с охраны в 1-м режиме
-            sendDataBT(Utils.CLEAR_ALARM, 0);
-        }
-        else
-            // выводим сообщение, "Соединение отсутствует"
-            Toast.makeText(getApplicationContext(), R.string.connectionFailed, Toast.LENGTH_SHORT).show();
+        // посылаем команду снять с охраны в 1-м режиме
+        sendDataBT(Utils.CLEAR_ALARM, 0);
     }
 
     /**
      *  обработка нажатия кнопки ibMute
      */
     private void ibMuteHeader(){
-        if (mMainStatus == MainStatus.CONNECTED){
-            // посылаем команду снять с охраны d 1-м режиме
-            sendDataBT(Utils.CLEAR_ALARM_TRIGGERED, 0);
-        }
-        else
-            // выводим сообщение, "Соединение отсутствует"
-            Toast.makeText(getApplicationContext(), R.string.connectionFailed, Toast.LENGTH_SHORT).show();
+        // посылаем команду снять с охраны d 1-м режиме
+        sendDataBT(Utils.CLEAR_ALARM_TRIGGERED, 0);
     }
 
     /**
      *     обработка нажатия кнопки ibBagage
      */
     private void ibBaggageHeader(){
-        if (mMainStatus == MainStatus.CONNECTED){
-            // посылаем команду открыть 1-й выход
-            sendDataBT(Utils.OUT_1_ON, 0);
-        }
-        else
-            // выводим сообщение, "Соединение отсутствует"
-            Toast.makeText(getApplicationContext(), R.string.connectionFailed, Toast.LENGTH_SHORT).show();
+        // посылаем команду открыть 1-й выход
+        sendDataBT(Utils.OUT_1_ON, 0);
     }
 
     /**
@@ -1931,7 +1922,16 @@ public class MainActivity extends AppCompatActivity
                 // обнуляем счетчик попыток установления связи
                 mConnectionAttemptsCnt = 0;
                 // переходим к отправке посылки инициаизации, состояние CONNECTED
-                sendDataBT(Utils.BT_INIT_MESSAGE, Utils.DELAY_TX_INIT_MESSAGE);
+                //sendDataBT(Utils.BT_INIT_MESSAGE, Utils.DELAY_TX_INIT_MESSAGE);
+                if (bluetooth_Tx == null || bluetooth_Tx.getStatus().toString().equals(Utils.FINISHED)) {
+                    mBTDataTx.add(Utils.BT_INIT_MESSAGE);
+                    // передача завершилась, создаем новую задачу передачи
+                    bluetooth_Tx = new BTTx(mBTDataTx.get(0));
+                    // передаем ссылку на основную activity
+                    bluetooth_Tx.link(this);
+                    bluetooth_Tx.execute(Utils.DELAY_TX_INIT_MESSAGE);
+                    Log.d("MY_LOG_TX", "Send: " + mBTDataTx.get(0));
+                }
                 listenMessageBT();
             }
         }
@@ -1953,13 +1953,10 @@ public class MainActivity extends AppCompatActivity
                     btRxCnt = 0;
                     // установка зеленого цвета для кнопки FabConnect
                     setMenuConnectColorGreen();
-                    // запрашиваем новое значения входов (включенные или выключенные)
-                    if (checkAbilityTxBT())
-                        sendDataBT(Utils.ADC_IN_GET_ON, 0);
-                    //if (checkAbilityTxBT())
-                        // запрашиваем новое значения аналоговых входов (включенные или выключенные)
-                    //    sendDataBT(Utils.IN_GET_ON, 0);
-                    // TODO - сделать очередь на передачу
+                    // запрашиваем новое значения аналоговых входов (включенные или выключенные)
+                    sendDataBT(Utils.ADC_IN_GET_ON, 0);
+                    // запрашиваем новое значения цифровых входов (включенные или выключенные)
+                    sendDataBT(Utils.IN_GET_ON, 0);
                 }
             }
 
@@ -1976,6 +1973,16 @@ public class MainActivity extends AppCompatActivity
             else {
                 Log.d(LOG_TAG, "Error RX:" + rxText);
             }
+        }
+    }
+
+    /**
+     * метод вызываемый в конце выполнения задачи bluetooth_Tx
+     */
+    void onPostExecuteBTTx(String result){
+        if (result.equals(BTTx.TX_OK)){
+            // данные были переданы успешно, удаляем их
+            mBTDataTx.remove(0);
         }
     }
 
@@ -2093,13 +2100,8 @@ public class MainActivity extends AppCompatActivity
             public void onClick(DialogInterface dialog, int id) {
                 // обновляем адаптер Out, чтобы вернуть переключатели в выключенное состояние
                 adapterOut.notifyDataSetChanged();
-                if (checkAbilityTxBT())
-                    sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, Utils.ALL_OUT), 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
+                // передаем OUT_OFF
+                sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, Utils.ALL_OUT), 0);
                 showPreviousActivity();
                 dialog.cancel();
             }
