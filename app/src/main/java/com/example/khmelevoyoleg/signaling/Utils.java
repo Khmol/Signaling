@@ -22,19 +22,23 @@ class Utils {
     static final String IN_STATE = "IN_STATE_"; // название ключа для состояния входа в настройках
     static final String ANALOG_IN_STATE = "ANALOG_IN_STATE_"; // название ключа для состояния входа в настройках
     static final String OUT_STATE = "OUT_STATE_"; // название ключа для состояния входа в настройках
-    static final String DEFAULT_IN_NAME = "Вход "; // имя входа по умолчанию
+    static final String DEFAULT_IN_NAME = "Вход замыкания"; // имя входа по умолчанию
+    static final String DEFAULT_AN_IN_NAME = "Вход сигнала"; // имя входа по умолчанию
     static final String DEFAULT_OUT_NAME = "Выход "; // имя выхода по умолчанию
     static final String DEFAULT_IN_OUT_STATUS = "STATUS_INPUT_OFF"; // статус входа по умолчанию - выкл
     static final String DEFAULT_IN_OUT_STATE = "STATE_ON"; // состояние входа по умолчанию - выкл
+    static final String DEFAULT_OUT_STATE = "STATE_OFF"; // состояние выхода по умолчанию - выкл
     static final String STATE_ON = "STATE_ON"; // состояние входа - включен
     static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
     static final String STATE_OFF_TIME = "STATE_OFF_TIME"; // состояние входа - выключен по времени
     // команды по BT
     static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r"; //SIMCOMSPPFORAPP посылка для инициализации SIM
     static final String SET_ALARM = "SET ALARM,1\r"; // посылка для установки на охрану
+    static final String SET_ALARM_SILENT = "SET ALARM,2\r"; // посылка для установки на охрану в беззвучном режиме
     static final String CLEAR_ALARM = "CLEAR ALARM,1\r"; // посылка для снятия с охраны
+    static final String CLEAR_ALARM_SILENT = "CLEAR ALARM,2\r"; // посылка для снятия с охраны в беззвучном режиме
     static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r"; // посылка для снятия аварии с SIM
-    static final String OUT_1_ON = "OUT ON,1\r"; // посылка для открытия 1-го выхода
+    static final String OUT_1_ON_TIME = "OUT ON TIME,1\r"; // посылка для открытия 1-го выхода по времени
     static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
     static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
     static final String TYPE_INPUT_A = "INPUT A,"; // тип команды в ответе от SIM
@@ -43,14 +47,17 @@ class Utils {
     static final String TYPE_ADC_A = "ADC A,"; // тип команды "ADC A" в ответе от SIM
     static final String TYPE_ADC_VAL = "ADC VAL int,"; // тип команды "ADC A" в ответе от SIM
     static final String TYPE_ADC_ON_OFF = "ADC ON OFF,"; // тип команды "ADC ON OFF" в ответе от SIM
-    static final String ADC_IN_GET_ON = "ADC IN GET ON,00\r"; // команда Запросить статус включенных входов
+    static final String TYPE_INPUT_TIME_OFF = "INPUT TIME OFF,"; // тип команды "INPUT TIME OFF" в ответе от SIM
+
+    static final String ADC_IN_GET_ON = "ADC IN GET ON,01\r"; // команда Запросить статус включенных входов
     static final String OUT_OFF = "OUT OFF,"; // команда выключить реле по времени
     static final String OUT_ON_TIME = "OUT ON TIME,"; // команда включить реле по времени
     static final String OUT_ON = "OUT ON,"; // команда включить реле
-    static final String IN_GET_ON = "IN GET ON,00\r"; // команда Запросить статус включенных входов
+    static final String IN_GET_ON = "IN GET ON,01\r"; // команда Запросить статус включенных входов
     static final String IN_ON = "IN ON,"; // команда включить вход для обработки
     static final String IN_OFF = "IN OFF,"; // команда выключить вход для обработки
     static final String IN_OFF_TIME = "IN OFF TIME,"; // команда выключить вход для обработки на время
+    static final String IN_GET_TIME_OFF = "IN GET TIME OFF,01\r"; // запросить время выключения входов
     static final String STATUS_GENERAL_ALARM = "STATUS_GENERAL_ALARM"; // состояние модуля - АВАРИЯ
     static final String STATUS_ALARM_TRIGGERED = "STATUS_ALARM_TRIGGERED"; // состояние модуля - предварительная АВАРИЯ
     static final String STATUS_GUARD_ON = "STATUS_GUARD_ON"; // состояние модуля - на охране
@@ -85,24 +92,28 @@ class Utils {
     static final short MASK_ALARM_TRIGERED_CUR = 12;  // 12-й бит в маске - текущее значение флага предварительной аварии
     static final int DELAY_TX_INIT_MESSAGE = 3; // задержка перед повторной передачей  INIT_MESSAGE
     static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
+    static final int TIMER_INIT_MESSAGE = 10000;  // периодичность вызова runCheckStatus
+    static final int TIMER_LISTEN_BT = 500;  // периодичность вызова runListenMessageBT
     static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
     static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
     static final int AUTO_CONNECT_TIMEOUT = 300;  // время между запуском поиска SIM 2 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
     static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
-    static final short DEFAULT_DIG_IN_NUMBER = 20; // количество входов по умолчанию
+    static final short DEFAULT_DIG_IN_NUMBER = 12; // количество входов по умолчанию
     static final short DEFAULT_ANALOG_IN_NUMBER = 3; // количество входов по умолчанию
     static final short DEFAULT_OUT_NUMBER = 15; // количество выходов по умолчанию
     static final short SB_DIG_IN_ON = 1; // SeekBar для цифровых входов в среднем положении
     static final short SB_DIG_IN_OFF = 0; // SeekBar для цифровых входов в левом положении
     static final short SB_DIG_IN_TIME_OFF = 2; // SeekBar для цифровых входов в правом положении
-    static final int DRFAULT_DIG_IN_TIME_OFF = 0; // время выключения дискретного входа по умолчанию
+    static final int DEFAULT_DIG_IN_TIME_OFF = 0; // время выключения дискретного входа по умолчанию
+    static final int DEFAULT_HOUR = 0; // время выключения дискретного входа по умолчанию
+    static final int DEFAULT_MINUTE = 10; // время выключения дискретного входа по умолчанию
 
-    static final short CMD_INPUT_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
+    static final short CMD_INPUT_MAIN_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
     static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
     static final short CMD_INPUT_CUR_LATCH_FROM = 37; // начало флагов защелки статуса входов в команде INPUT
     static final short CMD_INPUT_RSSI_FROM = 62; // начало значения RSSI в команде INPUT
 
-    static final short CMD_ADC_STATUS_FROM = 5; // начало флагов статуса охраны в команде ADC
+    static final short CMD_ADC_MAIN_STATUS_FROM = 5; // начало флагов статуса охраны в команде ADC
     static final short CMD_ADC_LARGER_LATCH_FROM = 10; // начало флагов защелки статуса входов по превышшению в команде ADC
     static final short CMD_ADC_LESS_LATCH_FROM = 19; // начало флагов защелки статуса входов на уменьшение в команде ADC
     static final short CMD_ADC_SHOCK_LATCH_FROM = 28; // начало флагов защелки статуса входов в диапазоне в команде ADC
@@ -112,19 +123,23 @@ class Utils {
     static final short CMD_ADC_RSSI_FROM = 64; // начало значения RSSI в команде ADC
     static final short CMD_ADC_ON_OFF_STATUS_FROM = 12; // начало флагов сатуса входов в команде ADC_ON_OFF
 
+    static final short CMD_INPUT_A_MAIN_STATUS_FROM = 9; // начало флагов статуса охраны в команде INPUT
+    static final short CMD_INPUT_A_CUR_ON_FROM = 14; // начало флагов включенных датчиков в команде INPUT_A
+    static final short CMD_INPUT_A_STATUS_FROM = 39; // начало флагов сатуса входов в команде INPUT_А
 
-    static final short CMD_INPUT_A_CUR_ON_FROM = 9; // начало флагов включенных датчиков в команде INPUT_A
-    static final short CMD_INPUT_A_STATUS_FROM = 34; // начало флагов сатуса входов в команде INPUT_А
-    static final short CMD_ADC_A_STATUS_FROM = 25; // начало флагов стауса входов в команде ADC_A
-    static final short CMD_ADC_A_LARGER_FROM = 7; // начало флагов LARGER в команде ADC_A
-    static final short CMD_ADC_A_LESS_FROM = 16; // начало флагов LESS в команде ADC_A
-
+    static final short CMD_ADC_A_MAIN_STATUS_FROM = 7; // начало флагов стауса входов в команде ADC_A
+    static final short CMD_ADC_A_STATUS_FROM = 30; // начало флагов стауса входов в команде ADC_A
+    static final short CMD_ADC_A_LARGER_FROM = 12; // начало флагов LARGER в команде ADC_A
+    static final short CMD_ADC_A_LESS_FROM = 21; // начало флагов LESS в команде ADC_A
 
     static final short CMD_INPUT_ON_OFF_STATUS_FROM = 14; // начало флагов сатуса входов в команде INPUT_ON_OFF
     static final short LENGTH_INPUT_GROUP = 4; // длина данных для группы входов (по 16 входов)
     static final short NUMBER_DIGITAL_INPUTS = 96; // количество цифровых входов в посылке по BT
     static final short NUMBER_ANALOG_INPUTS = 32; // количество аналоговых входов в посылке по BT
     static final short ALL_OUT = 0;         // количество для выключения всех выходов
+
+    private static final short CMD_INPUT_TIME_OFF_TIME_NUMBER = 24; // количество времен в посылке
+    static final short INPUT_TIME_OFF_TIME_NUMBER = 2; // положение переключателя в списке настроек цифровых входов
 
     /**
      * установка в digInStatus актуальных значений
@@ -269,4 +284,44 @@ class Utils {
         return 0;
     }
 
+    static boolean parseRxInputTimeOff(String parseData, ArrayList<Integer> digInTimeOff ) {
+        int endIndex = 0, startIndex = 0;
+        int time, i = 0;
+        int digInTimeOffSize = digInTimeOff.size();
+        int groupNumber = 0;
+        try {
+            // находим символ "," - признак следующего символа
+            startIndex = parseData.indexOf(',', 0);
+            endIndex = parseData.indexOf(',', (startIndex + 1));
+            if (endIndex >= 0) {
+                // выделячем команду от startIndex до endIndex
+                groupNumber = Integer.parseInt(parseData.substring(startIndex + 1, endIndex), 10);
+                groupNumber--;
+                startIndex = endIndex;
+            }
+            else return false;   // данные не удалось распознать
+            // проверяем нужно ли обрабатывать данную посылку по количеству активных входов
+            if (groupNumber * CMD_INPUT_TIME_OFF_TIME_NUMBER < DEFAULT_DIG_IN_NUMBER ) {
+                do {
+                    endIndex = parseData.indexOf(',', (startIndex + 1));
+                    if (endIndex >= 0) {
+                        // выделячем команду от startIndex до endIndex
+                        time = Integer.parseInt(parseData.substring(startIndex + 1, endIndex), 16);
+                    } else {
+                        // выделячем команду от startIndex до endIndex
+                        time = Integer.parseInt(parseData.substring(startIndex + 1, parseData.length()), 16);
+                    }
+                    // обновляем значение времени в digInTimeOff
+                    digInTimeOff.set(i + (CMD_INPUT_TIME_OFF_TIME_NUMBER * groupNumber), time);
+                    startIndex = endIndex;
+                    i++;
+                } while (endIndex >= 0 & i < digInTimeOffSize);
+            }
+            return true;
+        }
+        catch (NumberFormatException e) {
+            e.printStackTrace();
+            return false;   // данные не удалось распознать
+        }
+    }
 }

@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.widget.SwitchCompat;
+import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
@@ -26,6 +27,8 @@ class DigInListViewAdapter extends SimpleAdapter
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
     private ArrayList<ViewHolder> viewHolderList;
     private ArrayList<String> oldDigInStatus;
+    private static int _minute;
+    private static int _hour;
 
     DigInListViewAdapter(Context context, List<? extends Map<String, ?>> data, int resource, String[] from, int[] to) {
         super(context, data, resource, from, to);
@@ -185,28 +188,32 @@ class DigInListViewAdapter extends SimpleAdapter
                     seekBar.setThumb(draw);
                 }
                 break;
-            case 1:
-                if ( !activity.mDigInState.get(swNumber) ||
+            case 1: {
+                if (!activity.mDigInState.get(swNumber) ||
                         activity.mDigInTimeOff.get(swNumber) != 0) {
                     activity.sendDataBT(String.format("%s%d\r", Utils.IN_ON, (swNumber + 1)), 0);
                     activity.mDigInTimeOff.set(swNumber, 0);
                     activity.mDigInState.set(swNumber, true);
-                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_green32, null);
-                    seekBar.setThumb(draw);
                 }
+                Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_green32, null);
+                seekBar.setThumb(draw);
                 break;
+            }
             case 2:
-                int time_off = 10;
                 if ( !activity.mDigInState.get(swNumber) ||
                         activity.mDigInTimeOff.get(swNumber) == 0) {
-                    activity.sendDataBT(String.format("%s%d,%d\r", Utils.IN_OFF_TIME, (swNumber + 1), time_off), 0);
-                    activity.mDigInTimeOff.set(swNumber, time_off);
-                    activity.mDigInState.set(swNumber, true);
+                    // запрашиваем установку времени выключения входа
+                    activity.showDialogIn(swNumber);
                     Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
                     seekBar.setThumb(draw);
                 }
                 break;
         }
+    }
+
+    static void setTime(int hour, int minute) {
+        _hour = hour;
+        _minute = minute;
     }
 
     private static class ViewHolder {
@@ -239,6 +246,13 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder.etDigInName.setOnFocusChangeListener(this);
             viewHolder.sbDigInState.setOnSeekBarChangeListener(this);
             viewHolderList.add(viewHolder);
+            // устанавливаем значение переключателя если подключения по BT нет
+            if (!activity.checkAbilityTxBT()) {
+                // подключения нет, все переключатели не активны
+                Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
+                viewHolder.sbDigInState.setThumb(draw);
+                viewHolder.sbDigInState.setEnabled(false);
+            }
         } else {
             // задаем Tag для EditText
             viewHolder = (ViewHolder) convertView.getTag();
@@ -253,24 +267,33 @@ class DigInListViewAdapter extends SimpleAdapter
             // устанавливаем значение картинки
             viewHolder.ivDigInStatus.setImageResource(Utils.getImageViewValue(activity.mDigInStatus, position));
             // устанавливаем значение переключателя
-            if (activity.mDigInState.get(position)) {
-                if (activity.mDigInTimeOff.get(position) > 0) {
-                    viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_TIME_OFF);
-                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
-                    viewHolder.sbDigInState.setThumb(draw);
+            if (activity.checkAbilityTxBT()){
+                // если подключение по BT есть
+                viewHolder.sbDigInState.setEnabled(true);
+                if (activity.mDigInState.get(position)) {
+                    if (activity.mDigInTimeOff.get(position) > 0) {
+                        viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_TIME_OFF);
+                        Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
+                        viewHolder.sbDigInState.setThumb(draw);
+                    }
+                    else {
+                        viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_ON);
+                        Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_green32, null);
+                        viewHolder.sbDigInState.setThumb(draw);
+                    }
                 }
                 else {
-                    viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_ON);
-                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_green32, null);
+                    viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_OFF);
+                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
                     viewHolder.sbDigInState.setThumb(draw);
                 }
             }
             else {
-                viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_OFF);
+                // подключения нет, все переключатели не активны
                 Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
                 viewHolder.sbDigInState.setThumb(draw);
+                viewHolder.sbDigInState.setEnabled(false);
             }
-
         }
         return convertView;
     }

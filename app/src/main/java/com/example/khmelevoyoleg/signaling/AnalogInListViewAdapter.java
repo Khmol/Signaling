@@ -97,6 +97,13 @@ class AnalogInListViewAdapter extends SimpleAdapter
             // устанавливаем значение картинки состояния входа
             viewHolder.ivAnalogInStatus.setImageResource(Utils.getImageViewValue(activity.mAnalogInStatus, position));
             viewHolderList.add(viewHolder);
+            // устанавливаем значение переключателя если подключения по BT нет
+            if (!activity.checkAbilityTxBT()) {
+                // устанавливаем значение картинки как не активный вход
+                viewHolder.ivAnalogInStatus.setImageResource(R.drawable.circle_grey48);
+                // подключения нет, все переключатели не активны
+                viewHolder.swAnalogInState.setEnabled(false);
+            }
         } else {
             // задаем Tag для EditText
             viewHolder = (AnalogInListViewAdapter.ViewHolder) convertView.getTag();
@@ -108,10 +115,21 @@ class AnalogInListViewAdapter extends SimpleAdapter
             // устанавливаем значение текстовых полей группы
             viewHolder.tvAnalogInNumber.setText(activity.mAnalogInNumber.get(position));
             viewHolder.etAnalogInName.setText(activity.mAnalogInName.get(position));
-            // устанавливаем значение картинки
-            viewHolder.ivAnalogInStatus.setImageResource(Utils.getImageViewValue(activity.mAnalogInStatus, position));
-            // устанавливаем значение переключателя
-            viewHolder.swAnalogInState.setChecked(activity.mAnalogInState.get(position));
+            // устанавливаем значение переключателя если подключения по BT нет
+            if (!activity.checkAbilityTxBT()) {
+                // устанавливаем значение картинки как не активный вход
+                viewHolder.ivAnalogInStatus.setImageResource(R.drawable.circle_grey48);
+                // подключения нет, все переключатели не активны
+                viewHolder.swAnalogInState.setEnabled(false);
+            }
+            else {
+                // устанавливаем значение картинки
+                viewHolder.ivAnalogInStatus.setImageResource(Utils.getImageViewValue(activity.mAnalogInStatus, position));
+                // включаем переключатель
+                viewHolder.swAnalogInState.setEnabled(true);
+                // устанавливаем значение переключателя
+                viewHolder.swAnalogInState.setChecked(activity.mAnalogInState.get(position));
+            }
         }
         return convertView;
     }
