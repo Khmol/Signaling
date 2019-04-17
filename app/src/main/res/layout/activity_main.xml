@@ -30,7 +30,7 @@
                 android:id="@+id/tvInVoltage"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/inVoltage"
+                android:text=""
                 android:textColor="@color/colorCarSame"
                 android:textSize="13sp"
                 app:layout_constraintBottom_toBottomOf="parent"

@@ -2,24 +2,19 @@ package com.example.khmelevoyoleg.signaling;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
-import android.support.v7.widget.SwitchCompat;
-import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.nio.channels.SeekableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 class DigInListViewAdapter extends SimpleAdapter
         implements View.OnFocusChangeListener, SeekBar.OnSeekBarChangeListener{
@@ -41,39 +36,6 @@ class DigInListViewAdapter extends SimpleAdapter
     void link(MainActivity act) {
         activity = act;
     }
-/*
-    @Override
-    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        // получаем SwitchCompat
-        SwitchCompat swActive = (SwitchCompat) buttonView;
-        // получаем номер данного SwitchCompat
-        int swNumber = (int) swActive.getTag(R.id.swDigInState);
-        // запоминаем новое значение переключателя (входа)
-        // проверяем изменилось ли состояние переключателя относительно сохраненного значения
-        if (activity.mDigInState.get(swNumber) != isChecked) {
-            // изменяем сохраненное значене
-            activity.mDigInState.set(swNumber, isChecked);
-            // передаем в BT команду на включение/ отключение входа
-            if (isChecked) {
-                if (activity.checkAbilityTxBT())
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_ON, (swNumber + 1)), 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(activity.getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
-            } else {
-                if (activity.checkAbilityTxBT())
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_OFF, (swNumber + 1)), 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(activity.getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-*/
 
     /**
      * изменение картинки для входов если это нужно
@@ -103,66 +65,6 @@ class DigInListViewAdapter extends SimpleAdapter
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        /*
-        // получаем SeekBar
-        // SeekBar sbActive = seekBar;
-        // получаем номер данного SwitchCompat
-        int swNumber = (int) seekBar.getTag(R.id.sbDigInState);
-        // запоминаем новое значение переключателя (входа)
-        // проверяем изменилось ли состояние переключателя относительно сохраненного значения
-        switch (progress) {
-            // выключено
-            case 0:
-                if ( activity.mDigInState.get(swNumber) ||
-                        activity.mDigInTimeOff.get(swNumber) != 0) {
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_OFF, (swNumber + 1)), 0);
-                    activity.mDigInTimeOff.set(swNumber, 0);
-                    activity.mDigInState.set(swNumber, false);
-                }
-                break;
-            case 1:
-                if ( !activity.mDigInState.get(swNumber) ||
-                        activity.mDigInTimeOff.get(swNumber) != 0) {
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_ON, (swNumber + 1)), 0);
-                    activity.mDigInTimeOff.set(swNumber, 0);
-                    activity.mDigInState.set(swNumber, true);
-                }
-                break;
-            case 2:
-                int time_off = 10;
-                if ( !activity.mDigInState.get(swNumber) ||
-                        activity.mDigInTimeOff.get(swNumber) == 0) {
-                    activity.sendDataBT(String.format("%s%d,%d\r", Utils.IN_OFF_TIME, (swNumber + 1), time_off), 0);
-                    activity.mDigInTimeOff.set(swNumber, time_off);
-                    activity.mDigInState.set(swNumber, true);
-                }
-                break;
-        }
-        */
-        /*
-        if (activity.mDigInState.get(swNumber) == progress) {
-            // изменяем сохраненное значене
-            activity.mDigInState.set(swNumber, isChecked);
-            // передаем в BT команду на включение/ отключение входа
-            if (isChecked) {
-                if (activity.checkAbilityTxBT())
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_ON, (swNumber + 1)), 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(activity.getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
-            } else {
-                if (activity.checkAbilityTxBT())
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_OFF, (swNumber + 1)), 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(activity.getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
-            }
-        }
-        */
     }
 
     @Override
@@ -203,7 +105,7 @@ class DigInListViewAdapter extends SimpleAdapter
                 if ( !activity.mDigInState.get(swNumber) ||
                         activity.mDigInTimeOff.get(swNumber) == 0) {
                     // запрашиваем установку времени выключения входа
-                    activity.showDialogIn(swNumber);
+                    activity.showDialogIn(swNumber, activity.setDigInOffTime, false);
                     Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
                     seekBar.setThumb(draw);
                 }
@@ -221,6 +123,8 @@ class DigInListViewAdapter extends SimpleAdapter
         EditText etDigInName; // имя входа в списке
         ImageView ivDigInStatus; // состояние входа в списке
         SeekBar sbDigInState; // состояние входа - вкл/выкл/
+        TextView tvDigInTimeOff; // время выключения входа
+        TextView tvDigInDelayTime; // время задерэки обработки при постановке на охрану
     }
 
     @Override
@@ -235,6 +139,9 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder.etDigInName = (EditText) convertView.findViewById(R.id.etDigInName);
             viewHolder.ivDigInStatus = (ImageView) convertView.findViewById(R.id.ivDigInStatus);
             viewHolder.sbDigInState = (SeekBar) convertView.findViewById(R.id.sbDigInState);
+            viewHolder.tvDigInTimeOff = (TextView) convertView.findViewById(R.id.tvDigInTimeOff);
+            viewHolder.tvDigInDelayTime = (TextView) convertView.findViewById(R.id.tvDigInDelayTime);
+
             // задаем Tag для группы View
             convertView.setTag(viewHolder);
             // задаем Tag для всех элементнов группы
@@ -242,17 +149,12 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder.etDigInName.setTag(R.id.etDigInName, position);
             viewHolder.ivDigInStatus.setTag(R.id.ivDigInStatus, position);
             viewHolder.sbDigInState.setTag(R.id.sbDigInState, position);
+            viewHolder.tvDigInTimeOff.setTag(R.id.tvDigInTimeOff, position);
+            viewHolder.tvDigInDelayTime.setTag(R.id.tvDigInDelayTime, position);
             // для EditText задаем обработчик изменения фокуса
             viewHolder.etDigInName.setOnFocusChangeListener(this);
             viewHolder.sbDigInState.setOnSeekBarChangeListener(this);
             viewHolderList.add(viewHolder);
-            // устанавливаем значение переключателя если подключения по BT нет
-            if (!activity.checkAbilityTxBT()) {
-                // подключения нет, все переключатели не активны
-                Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
-                viewHolder.sbDigInState.setThumb(draw);
-                viewHolder.sbDigInState.setEnabled(false);
-            }
         } else {
             // задаем Tag для EditText
             viewHolder = (ViewHolder) convertView.getTag();
@@ -261,39 +163,78 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder.etDigInName.setTag(R.id.etDigInName, position);
             viewHolder.ivDigInStatus.setTag(R.id.ivDigInStatus, position);
             viewHolder.sbDigInState.setTag(R.id.sbDigInState, position);
+            viewHolder.tvDigInTimeOff.setTag(R.id.tvDigInTimeOff, position);
+            viewHolder.tvDigInDelayTime.setTag(R.id.tvDigInDelayTime, position);
             // устанавливаем значение текстовых полей группы
             viewHolder.tvDigInNumber.setText(activity.mDigInNumber.get(position));
             viewHolder.etDigInName.setText(activity.mDigInName.get(position));
             // устанавливаем значение картинки
             viewHolder.ivDigInStatus.setImageResource(Utils.getImageViewValue(activity.mDigInStatus, position));
-            // устанавливаем значение переключателя
-            if (activity.checkAbilityTxBT()){
-                // если подключение по BT есть
-                viewHolder.sbDigInState.setEnabled(true);
-                if (activity.mDigInState.get(position)) {
-                    if (activity.mDigInTimeOff.get(position) > 0) {
-                        viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_TIME_OFF);
-                        Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
-                        viewHolder.sbDigInState.setThumb(draw);
-                    }
-                    else {
-                        viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_ON);
-                        Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_green32, null);
-                        viewHolder.sbDigInState.setThumb(draw);
-                    }
+        }
+
+        // устанавливаем значение переключателя и текстовых полей времени
+        if (activity.checkAbilityTxBT()){
+            // если подключение по BT есть
+            viewHolder.sbDigInState.setEnabled(true);
+            if (activity.mDigInState.get(position)) {
+                if (activity.mDigInTimeOff.get(position) > 0) {
+                    viewHolder.sbDigInState.setProgress(Utils.SB_IN_TIME_OFF);
+                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
+                    viewHolder.sbDigInState.setThumb(draw);
+                    // устанавливаем значение времени хх:хх
+                    int _time = activity.mDigInTimeOff.get(position);
+                    int _hour = _time / 60;
+                    int _minute = _time % 60;
+                    String _textHour;
+                    if (_hour <= 9 )
+                        _textHour = "0" + Integer.toString(_hour);
+                    else
+                        _textHour = Integer.toString(_hour);
+                    String _textMinute;
+                    if (_minute <= 9 )
+                        _textMinute = "0" + Integer.toString(_minute);
+                    else
+                        _textMinute = Integer.toString(_minute);
+                    viewHolder.tvDigInTimeOff.setText(String.format("%s:%s", _textHour, _textMinute));
                 }
                 else {
-                    viewHolder.sbDigInState.setProgress(Utils.SB_DIG_IN_OFF);
-                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
+                    viewHolder.sbDigInState.setProgress(Utils.SB_IN_ON);
+                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_green32, null);
                     viewHolder.sbDigInState.setThumb(draw);
+                    // значение текста для времени - пусто
+                    viewHolder.tvDigInTimeOff.setText("");
                 }
             }
             else {
-                // подключения нет, все переключатели не активны
+                viewHolder.sbDigInState.setProgress(Utils.SB_IN_OFF);
                 Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
                 viewHolder.sbDigInState.setThumb(draw);
-                viewHolder.sbDigInState.setEnabled(false);
+                // значение текста для времени - пусто
+                viewHolder.tvDigInTimeOff.setText("");
             }
+            // значение текста для времени - по значению в mDigInDelayTime
+            if (activity.mDigInDelayTime.get(position) > 0) {
+                String textTime;
+                int _time = activity.mDigInDelayTime.get(position);
+                if (_time <= 60) {
+                    textTime = String.format("%dc",_time);
+                }
+                else {
+                    textTime = String.format("%dм",(_time / 60));
+                }
+                viewHolder.tvDigInDelayTime.setText(textTime);
+            }
+            else
+                viewHolder.tvDigInDelayTime.setText(""); // или пусто если значение 0
+        }
+        else {
+            // подключения нет, все переключатели не активны
+            Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
+            viewHolder.sbDigInState.setThumb(draw);
+            viewHolder.sbDigInState.setEnabled(false);
+            // значение текста для времени - пусто
+            viewHolder.tvDigInTimeOff.setText("");
+            viewHolder.tvDigInDelayTime.setText("");
         }
         return convertView;
     }

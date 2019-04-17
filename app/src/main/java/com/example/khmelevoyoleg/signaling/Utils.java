@@ -9,11 +9,8 @@ class Utils {
 
     // определяем строковые константы
     static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
-    static final String ADC_IN_OFF = "ADC IN OFF,";   // команда выключиь аналоговый вход
-    static final String ADC_IN_ON = "ADC IN ON,";   // команда включиь аналоговый вход
     static final String RX_ERROR = "RX_ERROR" ;
     static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
-    static final String PENDING = "PENDING";        // задача ожидает запуска
     static final String FINISHED = "FINISHED";      // задача завершена
     static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
     static final String IN_NAME = "IN_NAME_"; // название ключа для имени входа в настройках
@@ -22,15 +19,14 @@ class Utils {
     static final String IN_STATE = "IN_STATE_"; // название ключа для состояния входа в настройках
     static final String ANALOG_IN_STATE = "ANALOG_IN_STATE_"; // название ключа для состояния входа в настройках
     static final String OUT_STATE = "OUT_STATE_"; // название ключа для состояния входа в настройках
-    static final String DEFAULT_IN_NAME = "Вход замыкания"; // имя входа по умолчанию
-    static final String DEFAULT_AN_IN_NAME = "Вход сигнала"; // имя входа по умолчанию
+    static final String DEFAULT_IN_NAME = "Вход замыкания "; // имя входа по умолчанию
+    static final String DEFAULT_AN_IN_NAME = "Вход сигнала "; // имя входа по умолчанию
     static final String DEFAULT_OUT_NAME = "Выход "; // имя выхода по умолчанию
     static final String DEFAULT_IN_OUT_STATUS = "STATUS_INPUT_OFF"; // статус входа по умолчанию - выкл
     static final String DEFAULT_IN_OUT_STATE = "STATE_ON"; // состояние входа по умолчанию - выкл
     static final String DEFAULT_OUT_STATE = "STATE_OFF"; // состояние выхода по умолчанию - выкл
     static final String STATE_ON = "STATE_ON"; // состояние входа - включен
     static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
-    static final String STATE_OFF_TIME = "STATE_OFF_TIME"; // состояние входа - выключен по времени
     // команды по BT
     static final String BT_INIT_MESSAGE = "SIMCOMSPPFORAPP\r"; //SIMCOMSPPFORAPP посылка для инициализации SIM
     static final String SET_ALARM = "SET ALARM,1\r"; // посылка для установки на охрану
@@ -40,24 +36,38 @@ class Utils {
     static final String CLEAR_ALARM_TRIGGERED = "CLEAR ALARM TRIGGERED,1\r"; // посылка для снятия аварии с SIM
     static final String OUT_1_ON_TIME = "OUT ON TIME,1\r"; // посылка для открытия 1-го выхода по времени
     static final String RX_INIT_OK = "SPP APP OK\r"; // ответ на BT_INIT_MESSAGE
+
     static final String TYPE_INPUT = "INPUT,"; // тип команды в ответе от SIM
     static final String TYPE_INPUT_A = "INPUT A,"; // тип команды в ответе от SIM
     static final String TYPE_INPUT_ON_OFF = "INPUT ON OFF,"; // тип команды в ответе на IN GET ON от SIM
+    static final String TYPE_INPUT_TIME_OFF = "INPUT TIME OFF,"; // тип команды "INPUT TIME OFF" в ответе от SIM
+    static final String TYPE_INPUT_DELAY_START = "INPUT DELAY START,"; // тип команды "INPUT DELAY START" в ответе от SIM
+
     static final String TYPE_ADC = "ADC,"; // тип команды ADC в ответе от SIM
     static final String TYPE_ADC_A = "ADC A,"; // тип команды "ADC A" в ответе от SIM
-    static final String TYPE_ADC_VAL = "ADC VAL int,"; // тип команды "ADC A" в ответе от SIM
+    static final String TYPE_ADC_VAL = "ADC VAL int,"; // тип команды "ADC VAL int" в ответе от SIM
     static final String TYPE_ADC_ON_OFF = "ADC ON OFF,"; // тип команды "ADC ON OFF" в ответе от SIM
-    static final String TYPE_INPUT_TIME_OFF = "INPUT TIME OFF,"; // тип команды "INPUT TIME OFF" в ответе от SIM
+    static final String TYPE_ADC_TIME_OFF = "ADC TIME OFF,"; // тип команды "ADC TIME OFF" в ответе от SIM
+    static final String TYPE_ADC_DELAY_START = "ADC DELAY START,"; // тип команды "ADC DELAY START" в ответе от SIM
 
+    static final String ADC_IN_OFF = "ADC IN OFF,";   // команда выключиь аналоговый вход
+    static final String ADC_IN_ON = "ADC IN ON,";   // команда включиь аналоговый вход
     static final String ADC_IN_GET_ON = "ADC IN GET ON,01\r"; // команда Запросить статус включенных входов
+    static final String ADC_IN_OFF_TIME = "ADC IN OFF TIME,"; // команда выключить вход на время
+    static final String ADC_IN_GET_TIME_OFF = "ADC IN GET TIME OFF,01\r"; // команда запросить время выключения входа
+    static final String ADC_IN_GET_DELAY_START = "ADC IN GET DELAY START,01\r"; // запросить время задержки опроса входа при постановке на охрану
+
     static final String OUT_OFF = "OUT OFF,"; // команда выключить реле по времени
     static final String OUT_ON_TIME = "OUT ON TIME,"; // команда включить реле по времени
     static final String OUT_ON = "OUT ON,"; // команда включить реле
+
     static final String IN_GET_ON = "IN GET ON,01\r"; // команда Запросить статус включенных входов
     static final String IN_ON = "IN ON,"; // команда включить вход для обработки
     static final String IN_OFF = "IN OFF,"; // команда выключить вход для обработки
     static final String IN_OFF_TIME = "IN OFF TIME,"; // команда выключить вход для обработки на время
     static final String IN_GET_TIME_OFF = "IN GET TIME OFF,01\r"; // запросить время выключения входов
+    static final String IN_GET_DELAY_START = "IN GET DELAY START,01\r"; // запросить время задержки опроса входа при постановке на охрану
+
     static final String STATUS_GENERAL_ALARM = "STATUS_GENERAL_ALARM"; // состояние модуля - АВАРИЯ
     static final String STATUS_ALARM_TRIGGERED = "STATUS_ALARM_TRIGGERED"; // состояние модуля - предварительная АВАРИЯ
     static final String STATUS_GUARD_ON = "STATUS_GUARD_ON"; // состояние модуля - на охране
@@ -101,10 +111,10 @@ class Utils {
     static final short DEFAULT_DIG_IN_NUMBER = 12; // количество входов по умолчанию
     static final short DEFAULT_ANALOG_IN_NUMBER = 3; // количество входов по умолчанию
     static final short DEFAULT_OUT_NUMBER = 15; // количество выходов по умолчанию
-    static final short SB_DIG_IN_ON = 1; // SeekBar для цифровых входов в среднем положении
-    static final short SB_DIG_IN_OFF = 0; // SeekBar для цифровых входов в левом положении
-    static final short SB_DIG_IN_TIME_OFF = 2; // SeekBar для цифровых входов в правом положении
-    static final int DEFAULT_DIG_IN_TIME_OFF = 0; // время выключения дискретного входа по умолчанию
+    static final short SB_IN_ON = 1; // SeekBar для цифровых входов в среднем положении
+    static final short SB_IN_OFF = 0; // SeekBar для цифровых входов в левом положении
+    static final short SB_IN_TIME_OFF = 2; // SeekBar для цифровых входов в правом положении
+    static final int DEFAULT_IN_TIME_OFF_DELAY_TIME = 0; // время выключения дискретного входа по умолчанию
     static final int DEFAULT_HOUR = 0; // время выключения дискретного входа по умолчанию
     static final int DEFAULT_MINUTE = 10; // время выключения дискретного входа по умолчанию
 
@@ -122,6 +132,11 @@ class Utils {
     static final short CMD_ADC_SHOCK_CUR_FROM = 55; // начало текущих флагов статуса входов в диапазоне в команде ADC
     static final short CMD_ADC_RSSI_FROM = 64; // начало значения RSSI в команде ADC
     static final short CMD_ADC_ON_OFF_STATUS_FROM = 12; // начало флагов сатуса входов в команде ADC_ON_OFF
+    static final short IN_1 = 0; // напряжение на входе 1
+    static final short IN_2 = 1; // напряжение на входе 2
+    static final short IN_VOLTAGE_POSITION = 2; // позиция напряжения питания в посылке ADC Val
+    static final short RTC_BATTERY = 3; // напряжение батарейки RTC
+    static final short TEMPERATURE = 4; // температура
 
     static final short CMD_INPUT_A_MAIN_STATUS_FROM = 9; // начало флагов статуса охраны в команде INPUT
     static final short CMD_INPUT_A_CUR_ON_FROM = 14; // начало флагов включенных датчиков в команде INPUT_A
@@ -139,7 +154,7 @@ class Utils {
     static final short ALL_OUT = 0;         // количество для выключения всех выходов
 
     private static final short CMD_INPUT_TIME_OFF_TIME_NUMBER = 24; // количество времен в посылке
-    static final short INPUT_TIME_OFF_TIME_NUMBER = 2; // положение переключателя в списке настроек цифровых входов
+    static final short INPUT_OFF_TIME_NUMBER = 2; // положение переключателя в списке настроек цифровых входов
 
     /**
      * установка в digInStatus актуальных значений
@@ -284,7 +299,7 @@ class Utils {
         return 0;
     }
 
-    static boolean parseRxInputTimeOff(String parseData, ArrayList<Integer> digInTimeOff ) {
+    static boolean parseRxInputTimeOffDelayStart(String parseData, ArrayList<Integer> digInTimeOff, int inNumber ) {
         int endIndex = 0, startIndex = 0;
         int time, i = 0;
         int digInTimeOffSize = digInTimeOff.size();
@@ -301,7 +316,7 @@ class Utils {
             }
             else return false;   // данные не удалось распознать
             // проверяем нужно ли обрабатывать данную посылку по количеству активных входов
-            if (groupNumber * CMD_INPUT_TIME_OFF_TIME_NUMBER < DEFAULT_DIG_IN_NUMBER ) {
+            if (groupNumber * CMD_INPUT_TIME_OFF_TIME_NUMBER < inNumber ) {
                 do {
                     endIndex = parseData.indexOf(',', (startIndex + 1));
                     if (endIndex >= 0) {
@@ -317,6 +332,36 @@ class Utils {
                     i++;
                 } while (endIndex >= 0 & i < digInTimeOffSize);
             }
+            return true;
+        }
+        catch (NumberFormatException e) {
+            e.printStackTrace();
+            return false;   // данные не удалось распознать
+        }
+    }
+
+    static boolean parseRxAdcVal(String parseData, ArrayList<Float> analogVal ) {
+        int endIndex = 0, startIndex = 0, i = 0;
+        float value;
+        int analogValSize = analogVal.size();
+        try {
+            // находим символ "," - признак следующего символа
+            startIndex = parseData.indexOf(',', 0);
+            // проверяем нужно ли обрабатывать данную посылку по количеству активных входов
+            do {
+                endIndex = parseData.indexOf(',', (startIndex + 1));
+                if (endIndex >= 0) {
+                    // выделячем команду от startIndex до endIndex
+                    value = Float.parseFloat(parseData.substring(startIndex + 1, endIndex));
+                } else {
+                    // выделячем команду от startIndex до endIndex
+                    value = Float.parseFloat(parseData.substring(startIndex + 1, parseData.length()));
+                }
+                // обновляем значение времени в digInTimeOff
+                analogVal.set(i, value);
+                startIndex = endIndex;
+                i++;
+            } while (endIndex >= 0 & i < analogValSize);
             return true;
         }
         catch (NumberFormatException e) {

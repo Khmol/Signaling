@@ -6,18 +6,19 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-        <TextView
-            android:id="@+id/tvDigInNumber"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textSize="18sp"
-            android:ems="1"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            android:text="">
-        </TextView>
+    <TextView
+        android:id="@+id/tvDigInNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginStart="8dp"
+        android:textSize="18sp"
+        android:ems="1"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        android:text="">
+    </TextView>
 
     <EditText
         android:id="@+id/etDigInName"
@@ -45,6 +46,34 @@
         app:layout_constraintLeft_toRightOf="@+id/etDigInName"
         android:contentDescription="@string/ivinoutitem">
     </ImageView>
+
+    <TextView
+        android:id="@+id/tvDigInDelayTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="18sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintRight_toRightOf="@+id/ivDigInStatus"
+        app:layout_constraintLeft_toLeftOf="@+id/ivDigInStatus"
+        android:text="">
+    </TextView>
+
+    <TextView
+        android:id="@+id/tvDigInTimeOff"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginStart="0dp"
+        android:textSize="18sp"
+        android:ems="3"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintLeft_toRightOf="@+id/guideline"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:text="">
+    </TextView>
 
     <SeekBar
         android:id="@+id/sbDigInState"
