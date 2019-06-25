@@ -89,7 +89,8 @@ class Utils {
     final static String ATTRIBUTE_TIME = "time";
     final static String ATTRIBUTE_STATE = "swith";
     // определяем числовые константы
-    static final int FIRST_START = -1; // состояние модуля - не на охране
+    static final int FIRST_START = -1; // состояние модуля - пкерый запуск
+    static final int IDLE = 0; // состояние модуля - не на охране
     static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
     static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
     static final int SET_SETTINGS = 2;          // редактирование настроек
@@ -104,6 +105,7 @@ class Utils {
     static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
     static final int TIMER_INIT_MESSAGE = 10000;  // периодичность вызова runCheckStatus
     static final int TIMER_LISTEN_BT = 500;  // периодичность вызова runListenMessageBT
+    static final int TIMER_TOAST = 3000;  // периодичность вызова runToast
     static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
     static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
     static final int AUTO_CONNECT_TIMEOUT = 300;  // время между запуском поиска SIM 2 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
@@ -170,11 +172,10 @@ class Utils {
             if (digitalInputCurrent[i] != oldDigitalInputCurrent[i]) {
                 if (digitalInputCurrent[i]) {
                     digInStatus.set(i, STATUS_INPUT_ON);
-                } else {
+                }
+                else {
                     digInStatus.set(i, STATUS_INPUT_OFF);
                 }
-                oldDigitalInputCurrent[i] = digitalInputCurrent[i];
-                continue;
             }
             // если вход не обрабатывается, нужно изменить его состояние
             if (!digitalInputACurOn[i]){
@@ -233,9 +234,19 @@ class Utils {
                 //вход не обрабатывается по превышению
                 analogInStatus.set(i, STATUS_INPUT_FAULT_LARGER);
             }
+            else {
+                // если входы уже обрабатываются, нужно их выключить
+                if (analogInStatus.get(i).equals(STATUS_INPUT_FAULT_LARGER))
+                    analogInStatus.set(i, STATUS_INPUT_OFF);
+            }
             if (!analogACurLess[i]){
                 //вход не обрабатывается по уменьшению
                 analogInStatus.set(i, STATUS_INPUT_FAULT_LESS);
+            }
+            else {
+                // если входы уже обрабатываются, нужно их выключить
+                if (analogInStatus.get(i).equals(STATUS_INPUT_FAULT_LESS))
+                    analogInStatus.set(i, STATUS_INPUT_OFF);
             }
         }
     }
@@ -368,5 +379,19 @@ class Utils {
             e.printStackTrace();
             return false;   // данные не удалось распознать
         }
+    }
+
+    /**
+     * проверка всех элементов списка на False
+     * @param outState - номера битов для проверки
+     * @return [true] - все элементы списка false, [false] - есть эленент true
+     */
+    static boolean checkAllFalse (ArrayList<Boolean> outState) {
+        // перебираем все элементы списка и выходим с нужным результатом
+        for (boolean item : outState) {
+            if (item)
+                return false;
+        }
+        return true;
     }
 }

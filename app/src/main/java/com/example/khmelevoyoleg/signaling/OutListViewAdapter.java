@@ -25,6 +25,8 @@ class OutListViewAdapter extends SimpleAdapter
     private ImageView[] pressedButton;  // список нажатых кнопок
     private boolean[] scOutState;     // список состояния переключателей включения выходов
     private final short BUTTON_COUNT = 10; // количество одновременно нажатых кнопок за 1 с.
+    private String toastText;   // текст который будет выводиться в Toast
+    private short toastActive;
 
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
@@ -73,7 +75,7 @@ class OutListViewAdapter extends SimpleAdapter
         View parent = (View) ivActive.getParent();
         ViewHolder vh = (ViewHolder) parent.getTag();
         // обрабатываем нажатие только в случае выключенного swOutState
-        if ( ! vh.swOutState.isChecked()) {
+        if (!vh.swOutState.isChecked()) {
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
                 // activity.sendDataBT(activity.OUT_ON + Integer.toString(swNumber + 1), 0);
@@ -84,7 +86,7 @@ class OutListViewAdapter extends SimpleAdapter
                 ivActive.setImageResource(R.drawable.circle_grey32_dark);
                 int i = 0;
                 do {
-                    if (pressedButton[i] == null){
+                    if (pressedButton[i] == null) {
                         pressedButton[i] = ivActive;
                         break;
                     }
@@ -95,10 +97,9 @@ class OutListViewAdapter extends SimpleAdapter
                         activity.getString(R.string.outOnTimeEnd);
                 // выдаем текстовое оповещение с номером вкюченного выхода
                 Toast toast = Toast.makeText(activity.getApplicationContext(), text, Toast.LENGTH_SHORT);
-                toast.setGravity(Gravity.TOP,0,20);
+                toast.setGravity(Gravity.TOP, 0, 20);
                 toast.show();
-            }
-            else {
+            } else {
                 // выдаем текстовое оповещение что соединение отсутствует
                 Toast.makeText(activity.getApplicationContext(),
                         R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
@@ -142,13 +143,21 @@ class OutListViewAdapter extends SimpleAdapter
             // устанавливаем значение текстовых полей группы
             viewHolder.tvOutNumber.setText(activity.mOutNumber.get(position));
             viewHolder.etOutName.setText(activity.mOutName.get(position));
+        }
+        // устанавливаем значение переключателя и текстовых полей времени
+        if (activity.checkAbilityTxBT()) {
+            // если подключение по BT есть
+            viewHolder.swOutState.setEnabled(true);
             // устанавливаем значение переключателя
             viewHolder.swOutState.setChecked(activity.mOutState.get(position));
+        } else {
+            // если подключения по BT нет
+            viewHolder.swOutState.setEnabled(false);
         }
         return convertView;
     }
 
-    private void setTagToItem (ViewHolder viewHolder, int position) {
+    private void setTagToItem(ViewHolder viewHolder, int position) {
         viewHolder.tvOutNumber.setTag(R.id.tvOutNumber, position);
         viewHolder.etOutName.setTag(R.id.etOutName, position);
         viewHolder.swOutState.setTag(R.id.swOutState, position);
@@ -159,7 +168,7 @@ class OutListViewAdapter extends SimpleAdapter
     public void onFocusChange(View v, boolean hasFocus) {
         // получаем EditText
         EditText etActive = (EditText) v;
-        if (hasFocus){
+        if (hasFocus) {
             // фокус появился нужно вернуть фокус на данный EditText при обновлении окна
             etActive.requestFocusFromTouch();
         } else {
@@ -184,20 +193,22 @@ class OutListViewAdapter extends SimpleAdapter
         if (isChecked) {
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
+                // устанавливаем переключатель
                 scOutState[swNumber] = true;
+                // изменяем статус для данного входа
+                activity.mOutState.set(swNumber, true);
                 activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON, (swNumber + 1)), 0);
                 View parent = (View) swActive.getParent();
                 ViewHolder vh = (ViewHolder) parent.getTag();
                 vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_off);
-                // выдаем текстовое оповещение с номером вкюченного выхода
-                String text = activity.getString(R.string.outOnTimeBegin) +
-                        Integer.toString(swNumber + 1);
-                Toast toast = Toast.makeText(activity.getApplicationContext(), text, Toast.LENGTH_SHORT);
-                toast.setGravity(Gravity.TOP,0,20);
-                toast.show();
+                // выдаем текстовое оповещение о включении с номером вкюченного выхода
+                addToast(swNumber, activity.getString(R.string.outOnTimeBegin));
             }
             else {
+                // устанавливаем переключатель
                 scOutState[swNumber] = false;
+                // изменяем статус для данного входа
+                activity.mOutState.set(swNumber, false);
                 // выдаем текстовое оповещение что соединение отсутствует
                 Toast.makeText(activity.getApplicationContext(),
                         R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
@@ -207,17 +218,17 @@ class OutListViewAdapter extends SimpleAdapter
         else {
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
-                //activity.sendDataBT(activity.OUT_OFF + Integer.toString(swNumber + 1), 0);
+                // устанавливаем переключатель
+                scOutState[swNumber] = false;
+                // изменяем статус для данного входа
+                activity.mOutState.set(swNumber, false);
                 activity.sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, (swNumber + 1)), 0);
                 View parent = (View) swActive.getParent();
                 ViewHolder vh = (ViewHolder) parent.getTag();
                 vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32);
                 // выдаем текстовое оповещение с номером вкюченного выхода
-                String text = activity.getString(R.string.outOff) +
-                        Integer.toString(swNumber + 1);
-                Toast toast = Toast.makeText(activity.getApplicationContext(), text, Toast.LENGTH_SHORT);
-                toast.setGravity(Gravity.TOP,0,20);
-                toast.show();
+                // выдаем текстовое оповещение с номером вкюченного выхода
+                addToast(swNumber, activity.getString(R.string.outOff));
             }
             else {
                 // выдаем текстовое оповещение что соединение отсутствует
@@ -228,16 +239,61 @@ class OutListViewAdapter extends SimpleAdapter
         }
     }
 
-    public boolean[] getSwithCompactOutState () {
+
+    public boolean[] getSwithCompactOutState() {
         return scOutState;
     }
 
     private void setButtonImage() {
-        for(short i = 0; i < BUTTON_COUNT; i++){
+        for (short i = 0; i < BUTTON_COUNT; i++) {
             if (pressedButton[i] != null) {
                 pressedButton[i].setImageResource(R.drawable.circle_grey32);
                 pressedButton[i] = null;
             }
         }
     }
+
+
+    /**
+     * запуск отображения Toast
+     */
+    private void runToast() {
+        if (toastActive > 1) {
+            Toast toast = Toast.makeText(activity.getApplicationContext(), toastText, Toast.LENGTH_SHORT);
+            toast.setGravity(Gravity.TOP, 0, 20);
+            toast.show();
+        }
+        toastText = null;
+        toastActive = 0;
+    }
+
+    /**
+     * формирование текста для Toast
+     */
+    private void addToast(int number, String startText) {
+        if (toastText != null)
+            toastText = toastText + '\n' + startText + Integer.toString(number + 1);
+        else
+            toastText = startText + Integer.toString(number + 1);
+        if (toastActive == 0) {
+            Toast toast = Toast.makeText(activity.getApplicationContext(), toastText, Toast.LENGTH_SHORT);
+            toast.setGravity(Gravity.TOP,0,20);
+            toast.show();
+            timerHandler.postDelayed(runToast, Utils.TIMER_TOAST);
+            toastActive ++;
+            toastText = null;
+        }
+        else {
+            toastActive ++;
+        }
+    }
+    /**
+     * запуск отображения Toast
+     */
+    Runnable runToast = new Runnable() {
+        @Override
+        public void run() {
+            runToast();
+        }
+    };
 }

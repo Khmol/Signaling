@@ -109,7 +109,7 @@ class AnalogInListViewAdapter extends SimpleAdapter
                 if ( !activity.mAnalogInState.get(swNumber) ||
                         activity.mAnalogInTimeOff.get(swNumber) == 0) {
                     // запрашиваем установку времени выключения входа
-                    activity.showDialogIn(swNumber, activity.setAnalogInOffTime, false);
+                    activity.showDialogIn(swNumber, activity.setAnalogInOffTime, true);
                     Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
                     seekBar.setThumb(draw);
                 }

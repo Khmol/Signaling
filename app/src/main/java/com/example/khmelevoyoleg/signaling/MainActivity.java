@@ -396,7 +396,7 @@ public class MainActivity extends AppCompatActivity
         mAnalogInputActive = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // прошлое при постановке на охр.
 
         // TODO - удалить
-        tvBtRxData.setOnClickListener(this);
+        //tvBtRxData.setOnClickListener(this);
 
         // определяем адаптер
         //region BluetoothAdapter
@@ -455,7 +455,6 @@ public class MainActivity extends AppCompatActivity
         return adapter;
     }
     // TODO - пропадает звук
-    // TODO - повторное срабатывание аварии (обеих) не показывает вход который сработал
 
     /**
      * изменяем адаптер adapterDigIn
@@ -491,7 +490,6 @@ public class MainActivity extends AppCompatActivity
             m.put(Utils.ATTRIBUTE_STATE, mAnalogInState.get(i));
             m.put(Utils.ATTRIBUTE_STATUS_IMAGE, Utils.getImageViewValue(mAnalogInStatus, i));
             mAlAnalogInStatus.set(i, m);
-            // TODO - при установке на охрану в настройках аналог. входов должны быть красные иконки
         }
         // подтверждаем изменения
         adapterAnalogIn.notifyDataSetChanged();
@@ -573,7 +571,7 @@ public class MainActivity extends AppCompatActivity
             mAlOutStatus.add(m);
         }
         // обновляем адаптер
-        //adapterOut.notifyDataSetChanged();
+        //adapter.notifyDataSetChanged();
         OutListViewAdapter adapter;
         // массив имен атрибутов, из которых будут читаться данные
         String[] from = {Utils.ATRIBUTE_NUMBER, Utils.ATTRIBUTE_NAME, Utils.ATTRIBUTE_STATE, Utils.ATTRIBUTE_STATUS_IMAGE};
@@ -799,6 +797,7 @@ public class MainActivity extends AppCompatActivity
             case R.id.pbAnalogNext:
                 // фиксируем изменения в адаптере
                 modifyAnalogInAdapter();
+                adapterOut.notifyDataSetChanged();
                 // закрываем экранную клавиатуру
                 if (view != null) {
                     imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
@@ -1301,7 +1300,7 @@ public class MainActivity extends AppCompatActivity
         if (checkAbilityTxBT()) {
             // добавляем данные для передачи, если они есть
             if (data != null)
-                mBTDataTx.add(data);
+                mBTDataTx.add('>'+data);
             // проверка завершилась ли прошлая задача передачи
             if (mBTDataTx.size() > 0) {
                 if (checkAbilityTxBT()) {
@@ -1403,6 +1402,11 @@ public class MainActivity extends AppCompatActivity
                     if (Utils.getValueOnMask(statusSIM, Utils.MASK_GUARD) > 0) {
                         checkEventChangeDigitalInput();
                     }
+                    // обновляем прошлые значения mOldDigitalInputLatch и mOldDigitalInputCurrent
+                    for (int i = 0; i < Utils.DEFAULT_DIG_IN_NUMBER; i++) {
+                        mOldDigitalInputLatch[i] = mDigitalInputLatch[i];
+                        mOldDigitalInputCurrent[i] = mDigitalInputCurrent[i];
+                    }
                 }
                 // endregion
                 // проверка на команду INPUT_А
@@ -1441,6 +1445,11 @@ public class MainActivity extends AppCompatActivity
                         }
                         // перезаписываем старое значение флагов
                         mOldDigitalInputACurOn[i] = mDigitalInputACurOn[i];
+                        // обновляем значение списка mDigInStatus
+                        Utils.modifyDigInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
+                                mDigitalInputACurOn, mDigInStatus);
+                        // обновляем графическое отображение входов на вкладке их настроек
+                        adapterDigIn.checkStatusPictureDigIn(mDigInStatus);
                     }
                 }
                 // endregion
@@ -1547,7 +1556,6 @@ public class MainActivity extends AppCompatActivity
                                     // вход не обрабатывается
                                     // добавляем событие "Вход выключен по превышению" в главный списо
                                     addEventStatusList(Utils.STATUS_INPUT_FAULT_LARGER, mAnalogInName.get(i));
-                                    // TODO - аналоговый вход продолжает обрабатываться при установке сразу с превышением (в сигналке)
                                 }
                             }
                             // перезаписываем старое значение флагов
@@ -1566,6 +1574,14 @@ public class MainActivity extends AppCompatActivity
                             // перезаписываем старое значение флагов
                             mOldAnalogACurLess[i] = mAnalogACurLess[i];
                         }
+                        // обновляем значение списка mAnalogInStatus
+                        Utils.modifyAnalogInStatus(mAnalogLargerCur, mOldAnalogLargerCur,
+                                mAnalogLessCur, mOldAnalogLessCur,
+                                mAnalogShockCur, mOldAnalogShockCur,
+                                mAnalogACurLarger, mAnalogACurLess,
+                                mAnalogInStatus);
+                        // обновляем графическое отображение входов на вкладке их настроек
+                        adapterAnalogIn.checkStatusPictureAnalogIn(mAnalogInStatus);
                     }
                 }
                 // endregion
@@ -1639,6 +1655,37 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
+    /**
+     * очистка списков для цифровых и аналоговых входов
+     */
+    private void clearDigAnalogLists() {
+        // очищаем списки обрабатываемых входов
+        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mDigitalInputACurOn);
+        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mOldDigitalInputACurOn);
+        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mOldDigitalInputCurrent);
+        Utils.setFalseArray(Utils.NUMBER_DIGITAL_INPUTS, mDigitalInputCurrent);
+        // обновляем значение списка mDigInStatus
+        Utils.modifyDigInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
+                mDigitalInputACurOn, mDigInStatus);
+        // очищаем списки обрабатываемых аналоговых входов
+        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLarger);
+        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLarger);
+        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLess);
+        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLess);
+        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogLargerCur);
+        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogLessCur);
+        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogShockCur);
+        Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogLargerCur);
+        Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogLessCur);
+        Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogShockCur);
+        // обновляем значение списка mAnalogInStatus
+        Utils.modifyAnalogInStatus(mAnalogLargerCur, mOldAnalogLargerCur,
+                mAnalogLessCur, mOldAnalogLessCur,
+                mAnalogShockCur, mOldAnalogShockCur,
+                mAnalogACurLarger, mAnalogACurLess,
+                mAnalogInStatus);
+    }
+
     private void setAndClearAlarm() {
         // устанавливаем нужный рисунок на крыше машины
         if (Utils.getValueOnMask(statusSIM, Utils.MASK_GUARD) > 0) {
@@ -1659,31 +1706,8 @@ public class MainActivity extends AppCompatActivity
                 ivSigState.setImageResource(R.drawable.open_small);
                 // добавляем событие "Снятие с охраны" в главный список
                 addEventStatusList(Utils.STATUS_GUARD_OFF, null);
-                // очищаем списки обрабатываемых входов
-                Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mDigitalInputACurOn);
-                Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mOldDigitalInputACurOn);
-                Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mOldDigitalInputCurrent);
-                Utils.setFalseArray(Utils.NUMBER_DIGITAL_INPUTS, mDigitalInputCurrent);
-                // обновляем значение списка mDigInStatus
-                Utils.modifyDigInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
-                        mDigitalInputACurOn, mDigInStatus);
-                // очищаем списки обрабатываемых аналоговых входов
-                Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLarger);
-                Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLarger);
-                Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLess);
-                Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLess);
-                Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogLargerCur);
-                Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogLessCur);
-                Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogShockCur);
-                Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogLargerCur);
-                Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogLessCur);
-                Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogShockCur);
-                // обновляем значение списка mAnalogInStatus
-                Utils.modifyAnalogInStatus(mAnalogLargerCur, mOldAnalogLargerCur,
-                        mAnalogLessCur, mOldAnalogLessCur,
-                        mAnalogShockCur, mOldAnalogShockCur,
-                        mAnalogACurLarger, mAnalogACurLess,
-                        mAnalogInStatus);
+                // очищаем списки для цифровых и аналоговых воходов
+                clearDigAnalogLists();
             }
         }
         // включаем/ выключаем звук аварии
@@ -1839,8 +1863,6 @@ public class MainActivity extends AppCompatActivity
                         }
                     }
                 }
-            mOldDigitalInputLatch[i] = mDigitalInputLatch[i];
-            mOldDigitalInputCurrent[i] = mDigitalInputCurrent[i];
         }
     }
 
@@ -2123,9 +2145,17 @@ public class MainActivity extends AppCompatActivity
         ivSigState.setImageResource(R.drawable.no_connect_small);
         // возвращаем в исходное состояние oldStatusSIM
         oldStatusSIM = Utils.FIRST_START;
+        //statusSIM = Utils.FIRST_START;
+        // очищаем списки для цифровых и аналоговых воходов
+        clearDigAnalogLists();
+        // обновляем графическое отображение входов на вкладке их настроек
+        adapterDigIn.checkStatusPictureDigIn(mDigInStatus);
+        // обновляем графическое отображение входов на вкладке их настроек
+        adapterAnalogIn.checkStatusPictureAnalogIn(mAnalogInStatus);
         // обновляем страницы настроек входов
         modifyDigInAdapter();
         modifyAnalogInAdapter();
+        adapterOut.notifyDataSetChanged();
         // выключаем звук аварии
         stopMediaPlayer();
     }
@@ -2179,6 +2209,10 @@ public class MainActivity extends AppCompatActivity
                     btRxCnt = 0;
                     // установка зеленого цвета для кнопки FabConnect
                     setMenuConnectColorGreen();
+                    // обновляем страницы настроек входов
+                    modifyDigInAdapter();
+                    modifyAnalogInAdapter();
+                    adapterOut.notifyDataSetChanged();
                 }
             }
 
@@ -2187,9 +2221,9 @@ public class MainActivity extends AppCompatActivity
                 // производим анализ полученных данных
                 analiseRxData(rxData);
                 // выводим данные для отладки
-                String text = String.valueOf(btRxCnt) + " " + rxData;
-                tvBtRxData.setText(text);
-                btRxCnt++;
+                //String text = String.valueOf(btRxCnt) + " " + rxData;
+                //tvBtRxData.setText(text);
+                //btRxCnt++;
                 Log.d(LOG_TAG, "Recieve:" + rxData);
             }
             else {
@@ -2309,30 +2343,35 @@ public class MainActivity extends AppCompatActivity
      * диалог при закрытии окна Out
      */
     private void showDialogOut () {
-        AlertDialog.Builder alertDialog;
-        // настраиваем alertDialog
-        alertDialog = new AlertDialog.Builder(this);
-        alertDialog.setTitle(R.string.daOutState);  // заголовок
-        alertDialog.setMessage(R.string.daOutQuestion); // сообщение
-        alertDialog.setPositiveButton(R.string.daOutAnswerOn, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                // оставляем адаптер Out без изменений (т.е. все остается включенным)
-                showPreviousActivity();
-                dialog.cancel();
-            }
-        });
-        alertDialog.setNegativeButton(R.string.daOutAnswerOff, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                // обновляем адаптер Out, чтобы вернуть переключатели в выключенное состояние
-                adapterOut.notifyDataSetChanged();
-                // передаем OUT_OFF
-                sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, Utils.ALL_OUT), 0);
-                showPreviousActivity();
-                dialog.cancel();
-            }
-        });
-        alertDialog.setCancelable(false);
-        alertDialog.show();
+        if ( !Utils.checkAllFalse(mOutState)) {
+            AlertDialog.Builder alertDialog;
+            // настраиваем alertDialog
+            alertDialog = new AlertDialog.Builder(this);
+            alertDialog.setTitle(R.string.daOutState);  // заголовок
+            alertDialog.setMessage(R.string.daOutQuestion); // сообщение
+            alertDialog.setPositiveButton(R.string.daOutAnswerOn, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    // оставляем адаптер Out без изменений (т.е. все остается включенным)
+                    showPreviousActivity();
+                    dialog.cancel();
+                }
+            });
+            alertDialog.setNegativeButton(R.string.daOutAnswerOff, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    // обновляем адаптер Out, чтобы вернуть переключатели в выключенное состояние
+                    adapterOut.notifyDataSetChanged();
+                    // передаем OUT_OFF
+                    sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, Utils.ALL_OUT), 0);
+                    showPreviousActivity();
+                    dialog.cancel();
+                }
+            });
+            alertDialog.setCancelable(true);
+            alertDialog.show();
+        }
+        else {
+            showPreviousActivity();
+        }
     }
 
     private int _swNumber; // номер переключателя дискретных входов

@@ -155,7 +155,8 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder.etDigInName.setOnFocusChangeListener(this);
             viewHolder.sbDigInState.setOnSeekBarChangeListener(this);
             viewHolderList.add(viewHolder);
-        } else {
+        }
+        else {
             // задаем Tag для EditText
             viewHolder = (ViewHolder) convertView.getTag();
             // задаем Tag для всех элементнов группы
