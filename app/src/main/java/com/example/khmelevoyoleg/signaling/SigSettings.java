@@ -29,9 +29,7 @@ public class SigSettings extends Activity implements View.OnClickListener{
         setContentView(R.layout.activity_settings);
 
         Button pbSave = (Button) findViewById(R.id.pbSave);
-        Button pbAdd = (Button) findViewById(R.id.pbAdd);
         pbSave.setOnClickListener(this);
-        pbAdd.setOnClickListener(this);
         cbAutoConnect = (CheckBox) findViewById(R.id.cbAutoConnect);
 
         // определяем объект для работы с настройками
@@ -78,16 +76,6 @@ public class SigSettings extends Activity implements View.OnClickListener{
     }
 
     /**
-     * Обработчик нажатия кнопки Add
-     */
-    public void pbAddHeader() {
-        names.add("Hello " + names.size());
-        adapter.notifyDataSetChanged();
-        lvPairedDevices.setSelection(names.size());
-    }
-
-
-    /**
      * Сохранение адреса связанного устройства
      */
     void saveSettings(String address, boolean autoConnect) {
@@ -124,8 +112,6 @@ public class SigSettings extends Activity implements View.OnClickListener{
         switch (v.getId()){
             case R.id.pbSave:
                 pbSaveHeader();
-            case R.id.pbAdd:
-                pbAddHeader();
         }
     }
 }

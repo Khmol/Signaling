@@ -23,6 +23,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -51,6 +52,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+// TODO - удалять запись из списка на главном окне, когда он более 200 строк при добавлении новой
 
 public class MainActivity extends AppCompatActivity
         implements View.OnTouchListener, View.OnClickListener,
@@ -101,6 +104,8 @@ public class MainActivity extends AppCompatActivity
     BTTx bluetooth_Tx;        // поток передачи
     ArrayList<String> mBTDataTx = new ArrayList<>();
 
+    private int _swNumber; // номер переключателя дискретных входов
+    int _TimeOff;   // время на которое выключен вход
     int mConnectionAttemptsCnt = 0;         // счетчик попыток подключения по Bluetooth
     MainStatus mMainStatus; // состояние подключения по Bluetooth
     SoundStatus mSoundStatus; // состояние звукового оповещения
@@ -111,7 +116,6 @@ public class MainActivity extends AppCompatActivity
     private Menu mainMenu;                          // гдавное меню
     private ViewFlipper flipper;                    // определяем flipper для перелистываний экрана
     private float fromPosition;                     // позиция касания при перелистывании экранов
-    private TextView tvBtRxData;                    // текст с принятыми данными
     private TextView tvInVoltage;                   // напряжениа АКБ
     private TextView tvBatteryValue;                // напряжениа батарейки
     private TextView tvTemperatureValue;            // температура
@@ -119,6 +123,7 @@ public class MainActivity extends AppCompatActivity
     private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
     private SharedPreferences sPref;                // настройки приложения
     int btRxCnt;                                    // счетчик принятых пакетов
+    int numberPass;                         // количество пропусков при вызапросе состояний выходов
     ImageButton ibOpen;                     // кнопка снятия с охраны
     boolean ibOpenPress;
     ImageButton ibClose;                    // кнопка установки на охрану
@@ -163,6 +168,7 @@ public class MainActivity extends AppCompatActivity
     ArrayList<String> mOutName = new ArrayList<>();
     ArrayList<String> mOutNumber = new ArrayList<>();
     ArrayList<Boolean> mOutState = new ArrayList<>();
+    ArrayList<Boolean> mOutTimeOnState = new ArrayList<>();
 
     ArrayList<String> mMainStatusNumber = new ArrayList<>();
     ArrayList<String> mMainStatusName = new ArrayList<>();
@@ -173,7 +179,6 @@ public class MainActivity extends AppCompatActivity
     ArrayList<Map<String, Object>> mAlAnalogInStatus;
     ArrayList<Map<String, Object>> mAlOutStatus;
     ArrayList<Map<String, Object>> mAlMainInStatus;
-    //endregion
 
     int statusSIM;     // флаги статусов охраны
     int oldStatusSIM = Utils.FIRST_START;  // флаги статусов охраны - прошлое сосояние
@@ -184,6 +189,8 @@ public class MainActivity extends AppCompatActivity
     boolean[] mDigitalInputActive;      // фдаги статусов включенных входов
     boolean[] mDigitalInputACurOn;      // фдаги текущих статусов сработавших входов
     boolean[] mOldDigitalInputACurOn;   // прошлые фдаги текущих статусов сработавших входов
+
+    boolean[] mOutActive;      // фдаги статусов включенных выходов
 
     boolean[] mAnalogLargerLatch;       // фдаги статусов аналоговых входов по превышению защелкнутые
     boolean[] mOldAnalogLargerLatch;    // прошлые фдаги статусов аналоговых входов по превышению защелкнутые
@@ -206,6 +213,7 @@ public class MainActivity extends AppCompatActivity
     boolean[] mOldAnalogACurLess;   // прошлые фдаги сработавших входов по превышению
 
     boolean mOpenCloseCommandSoundMode = true;      //режим работы при постановке и снятию с охраны
+    //endregion
 
     // приемник широковещательных событий
     // region BroadcastReceiver
@@ -287,6 +295,8 @@ public class MainActivity extends AppCompatActivity
         // читаем значения настроек выходов, результат в mOutName, mOutNumber, mOutState
         loadInOutPreferences(Utils.DEFAULT_OUT_NUMBER, Utils.OUT_NAME, Utils.DEFAULT_OUT_NAME, mOutName,
                 mOutNumber, null, null, Utils.OUT_STATE, Utils.DEFAULT_OUT_STATE, mOutState, null, null, null);
+        // заполняем исходными значениями список mOutTimeOnState
+        Utils.addFalseArrayList(Utils.DEFAULT_OUT_NUMBER, mOutTimeOnState);
         // заполняем значениями список InOutListView и создаем адапер
         adapterDigIn = createDigInAdapter(mDigInName, mDigInNumber, mDigInTimeOff);
         adapterAnalogIn = createAnalogInAdapter(mAnalogInName, mAnalogInNumber, mAnalogInState);
@@ -331,6 +341,7 @@ public class MainActivity extends AppCompatActivity
         // определяем toolbar
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        toolbar.setOnClickListener(this);
         // инициализация переменных
         mConnectionStatusBT = ConnectionStatusBT.NO_CONNECT;    // вначале состояние NO_CONNECT
         mMainStatus = MainStatus.IDLE;  // вначале состояние IDLE
@@ -344,7 +355,6 @@ public class MainActivity extends AppCompatActivity
         ibBagage = (ImageButton) findViewById(R.id.ibBagage);
         ibBagage.setOnTouchListener(this);
         ivSigState = (ImageView) findViewById(R.id.ivSigState);
-        tvBtRxData = (TextView) findViewById(R.id.tvBtRxData);
         tvInVoltage = (TextView) findViewById(R.id.tvInVoltage);
         tvBatteryValue = (TextView) findViewById(R.id.tvBatteryValue);
         tvTemperatureValue = (TextView) findViewById(R.id.tvTemperatureValue);
@@ -363,40 +373,38 @@ public class MainActivity extends AppCompatActivity
         // определяем AudioManager
         am = (AudioManager) getSystemService(AUDIO_SERVICE);
         // массивы для состояний дискретных входов
-        mDigitalInputLatch = new boolean[Utils.NUMBER_DIGITAL_INPUTS]; // защелкнутые
-        mOldDigitalInputLatch = new boolean[Utils.NUMBER_DIGITAL_INPUTS]; // защелкнутые
-        mDigitalInputCurrent = new boolean[Utils.NUMBER_DIGITAL_INPUTS]; // текущие
-        mOldDigitalInputCurrent = new boolean[Utils.NUMBER_DIGITAL_INPUTS]; // текущие
-        mDigitalInputActive = new boolean[Utils.NUMBER_DIGITAL_INPUTS]; // активные
-        mDigitalInputACurOn = new boolean[Utils.NUMBER_DIGITAL_INPUTS]; // текущие при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mDigitalInputACurOn);
-        mOldDigitalInputACurOn = new boolean[Utils.NUMBER_DIGITAL_INPUTS]; // прошлое при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mOldDigitalInputACurOn);
+        mDigitalInputLatch = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // защелкнутые
+        mOldDigitalInputLatch = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // защелкнутые
+        mDigitalInputCurrent = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // текущие
+        mOldDigitalInputCurrent = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // текущие
+        mDigitalInputActive = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // активные
+        mDigitalInputACurOn = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // текущие при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mDigitalInputACurOn);
+        mOldDigitalInputACurOn = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // прошлое при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mOldDigitalInputACurOn);
         // массивы для состояний аналоговых входов
-        mAnalogLargerLatch = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mOldAnalogLargerLatch = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mAnalogLessLatch = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mOldAnalogLessLatch = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mAnalogShockLatch = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mOldAnalogShockLatch = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mAnalogLargerCur = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mOldAnalogLargerCur = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mAnalogLessCur = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mOldAnalogLessCur = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mAnalogShockCur = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mOldAnalogShockCur = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // защелкнутые
-        mAnalogACurLarger = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // текущие при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLarger);
-        mOldAnalogACurLarger = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // прошлое при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLarger);
-        mAnalogACurLess = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // текущие при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLess);
-        mOldAnalogACurLess = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // прошлое при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLess);
-        mAnalogInputActive = new boolean[Utils.NUMBER_ANALOG_INPUTS]; // прошлое при постановке на охр.
-
-        // TODO - удалить
-        //tvBtRxData.setOnClickListener(this);
+        mAnalogLargerLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mOldAnalogLargerLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mAnalogLessLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mOldAnalogLessLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mAnalogShockLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mOldAnalogShockLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mAnalogLargerCur = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mOldAnalogLargerCur = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mAnalogLessCur = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mOldAnalogLessCur = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mAnalogShockCur = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mOldAnalogShockCur = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
+        mAnalogACurLarger = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // текущие при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogACurLarger);
+        mOldAnalogACurLarger = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // прошлое при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogACurLarger);
+        mAnalogACurLess = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // текущие при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogACurLess);
+        mOldAnalogACurLess = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // прошлое при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogACurLess);
+        mAnalogInputActive = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // прошлое при постановке на охр.
+        mOutActive = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS];
 
         // определяем адаптер
         //region BluetoothAdapter
@@ -454,7 +462,6 @@ public class MainActivity extends AppCompatActivity
         adapter.link(this);
         return adapter;
     }
-    // TODO - пропадает звук
 
     /**
      * изменяем адаптер adapterDigIn
@@ -794,10 +801,7 @@ public class MainActivity extends AppCompatActivity
                 sendDataBT(Utils.ADC_IN_GET_ON, 0);
                 // запрашиваем текущее значение задержки обработки входа при постановке на охрану
                 sendDataBT(Utils.ADC_IN_GET_DELAY_START, 0);
-            case R.id.pbAnalogNext:
-                // фиксируем изменения в адаптере
-                modifyAnalogInAdapter();
-                adapterOut.notifyDataSetChanged();
+
                 // закрываем экранную клавиатуру
                 if (view != null) {
                     imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
@@ -807,26 +811,45 @@ public class MainActivity extends AppCompatActivity
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                 flipper.showNext();
                 break;
-            case R.id.tvBtRxData:
-                // запрашиваем новое значения входов (включенные или выключенные)
-                //showDialogIn(1);
+            case R.id.pbAnalogNext:
+                // фиксируем изменения в адаптере
+                modifyAnalogInAdapter();
+                // закрываем экранную клавиатуру
+                if (view != null) {
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+                // включаем запрос текущих состояний выходов
+                sendDataBT(Utils.OUT_GET_ON, 0);
+                // переходим на следующую страницу
+                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
+                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
+                flipper.showNext();
                 break;
             case R.id.pbOutSave:
                 // сохраняем настройки
                 saveInOutPreferences(Utils.OUT_NAME, mOutName, null, null);
             case R.id.pbOutPrevious:
+                adapterOut.notifyDataSetChanged();
                 // закрываем экранную клавиатуру
                 if (view != null) {
                     imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
                 }
                 // задаем вопрос нужно ли выключить все реле при выходе из окна
                 showDialogOut();
+                // включаем запрос текущих состояний выходов
+                sendDataBT(Utils.OUT_GET_OFF, 0);
                 // запрашиваем текущее значения времени выключения входов
                 sendDataBT(Utils.ADC_IN_GET_TIME_OFF, 0);
                 // запрашиваем текущее значение входов
                 sendDataBT(Utils.ADC_IN_GET_ON, 0);
                 // запрашиваем текущее значение задержки обработки входа при постановке на охрану
                 sendDataBT(Utils.ADC_IN_GET_DELAY_START, 0);
+                break;
+            case R.id.toolbar:
+                // выводим сообщение "Запущен поиск сигнализации"
+                Toast toast = Toast.makeText(getApplicationContext(), R.string.version, Toast.LENGTH_SHORT);
+                toast.setGravity(Gravity.TOP,0,20);
+                toast.show();
                 break;
         }
     }
@@ -1098,12 +1121,6 @@ public class MainActivity extends AppCompatActivity
                                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                                 flipper.showNext();
                             }
-                        } else if (fromPosition < toPosition) {
-                            if ((toPosition - fromPosition) > 100) {
-                                flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
-                                flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
-                                flipper.showPrevious();
-                            }
                         }
                     default:
                         break;
@@ -1122,6 +1139,7 @@ public class MainActivity extends AppCompatActivity
             checkStatus();
             // передаем данные в очереди Bluetooth
             sendDataBT(null, 0);
+
         }
     };
 
@@ -1380,11 +1398,11 @@ public class MainActivity extends AppCompatActivity
                     parseRxInputFlags(parseData, Utils.CMD_INPUT_LATCH_FROM, Utils.CMD_INPUT_CUR_LATCH_FROM,
                             Utils.LENGTH_INPUT_GROUP, mDigitalInputLatch);
                     // обновляем текущие значения флагов входов
-                    parseRxInputFlags(parseData, Utils.CMD_INPUT_CUR_LATCH_FROM, Utils.CMD_INPUT_RSSI_FROM,
+                    parseRxInputFlags(parseData, Utils.CMD_INPUT_CUR_LATCH_FROM, Utils.CMD_INPUT_LATCH_TO,
                             Utils.LENGTH_INPUT_GROUP, mDigitalInputCurrent);
                     // обновляем значение RSSI в главном меню
-                    String rssi = "-" + Integer.toString(parseRxRSSI(parseData, Utils.CMD_INPUT_RSSI_FROM)) + "dB";
-                    mainMenu.findItem(R.id.RSSI).setTitle(rssi);
+                    // String rssi = "-" + Integer.toString(parseRxRSSI(parseData, Utils.CMD_INPUT_LATCH_TO)) + "dB";
+                    // mainMenu.findItem(R.id.RSSI).setTitle(rssi);
                     // обновляем рисунок показывая что связь установлена и есть прием данных
                     changePictureMenuConnect();
                     // обновляем значение списка mDigInStatus
@@ -1429,7 +1447,7 @@ public class MainActivity extends AppCompatActivity
                     parseRxInputFlags(parseData, Utils.CMD_INPUT_A_STATUS_FROM, parseData.length(),
                             Utils.LENGTH_INPUT_GROUP, mDigitalInputActive);
                     // проверка были ли изменения в состоянии датчиков
-                    for (int i = 0; i < Utils.NUMBER_DIGITAL_INPUTS; i++) {
+                    for (int i = 0; i < Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS; i++) {
                         if (mDigitalInputACurOn[i] != mOldDigitalInputACurOn[i]) {
                             // проверка включен ли вход
                             if (mDigitalInputActive[i]) {
@@ -1505,8 +1523,8 @@ public class MainActivity extends AppCompatActivity
                             Utils.CMD_ADC_RSSI_FROM,
                             Utils.LENGTH_INPUT_GROUP, mAnalogShockCur);
                     // обновляем значение RSSI в главном меню
-                    String rssi = "-" + Integer.toString(parseRxRSSI(parseData, Utils.CMD_ADC_RSSI_FROM)) + "dB";
-                    mainMenu.findItem(R.id.RSSI).setTitle(rssi);
+                    // String rssi = "-" + Integer.toString(parseRxRSSI(parseData, Utils.CMD_ADC_RSSI_FROM)) + "dB";
+                    // mainMenu.findItem(R.id.RSSI).setTitle(rssi);
                     // обновляем рисунок показывая что связь установлена и есть прием данных
                     changePictureMenuConnect();
                     // обновляем значение списка mAnalogInStatus
@@ -1648,6 +1666,30 @@ public class MainActivity extends AppCompatActivity
                     tvBatteryValue.setText(mAnalogVal.get(Utils.RTC_BATTERY).toString());
                 }
                 // endregion
+                // проверка на команду TYPE_OUT_ON_OFF
+                if (parseData.indexOf(Utils.TYPE_OUT_ON_OFF) > 0) {
+                    // получаем значения состояний входов
+                    parseRxInputFlags(parseData, Utils.CMD_OUT_ON_OFF_STATUS_FROM, parseData.length(),
+                            Utils.LENGTH_INPUT_GROUP, mOutActive);
+                    // обновляем значения состояний выходов, которые отображаются
+                    int j = 0;
+                    for(int i = 0; i < Utils.DEFAULT_OUT_NUMBER; i++) {
+                        if (mOutActive[j])
+                            mOutState.set(i, true);
+                        else
+                            mOutState.set(i, false);
+                        j++;
+                        if (mOutActive[j])
+                            mOutTimeOnState.set(i, true);
+                        else
+                            mOutTimeOnState.set(i, false);
+                        j++;
+                    }
+                    // обновляем список для настроек цифровых входов
+                    adapterOut.notifyDataSetChanged();
+                }
+                // region TYPE_OUT_ON_OFF
+                // endregion
             }
         }
         // выводим сообщение, "Соединение отсутствует"
@@ -1660,24 +1702,24 @@ public class MainActivity extends AppCompatActivity
      */
     private void clearDigAnalogLists() {
         // очищаем списки обрабатываемых входов
-        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mDigitalInputACurOn);
-        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mOldDigitalInputACurOn);
-        Utils.setTrueArray(Utils.NUMBER_DIGITAL_INPUTS, mOldDigitalInputCurrent);
-        Utils.setFalseArray(Utils.NUMBER_DIGITAL_INPUTS, mDigitalInputCurrent);
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mDigitalInputACurOn);
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mOldDigitalInputACurOn);
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mOldDigitalInputCurrent);
+        Utils.setFalseArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mDigitalInputCurrent);
         // обновляем значение списка mDigInStatus
         Utils.modifyDigInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
                 mDigitalInputACurOn, mDigInStatus);
         // очищаем списки обрабатываемых аналоговых входов
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLarger);
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLarger);
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogACurLess);
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogACurLess);
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogLargerCur);
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogLessCur);
-        Utils.setTrueArray(Utils.NUMBER_ANALOG_INPUTS, mOldAnalogShockCur);
-        Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogLargerCur);
-        Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogLessCur);
-        Utils.setFalseArray(Utils.NUMBER_ANALOG_INPUTS, mAnalogShockCur);
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogACurLarger);
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogACurLarger);
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogACurLess);
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogACurLess);
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogLargerCur);
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogLessCur);
+        Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogShockCur);
+        Utils.setFalseArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogLargerCur);
+        Utils.setFalseArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogLessCur);
+        Utils.setFalseArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogShockCur);
         // обновляем значение списка mAnalogInStatus
         Utils.modifyAnalogInStatus(mAnalogLargerCur, mOldAnalogLargerCur,
                 mAnalogLessCur, mOldAnalogLessCur,
@@ -1698,11 +1740,12 @@ public class MainActivity extends AppCompatActivity
                 // добавляем событие "Установка на охрану" в главный список
                 addEventStatusList(Utils.STATUS_GUARD_ON, null);
             }
-        } else {
+        }
+        else {
             if (Utils.getValueOnMask(statusSIM, Utils.MASK_GUARD) !=
                     Utils.getValueOnMask(oldStatusSIM, Utils.MASK_GUARD) |
                     oldStatusSIM == Utils.FIRST_START) {
-                // устанавливаем рисунок - close_small "открыто"
+                // устанавливаем рисунок - open_small "открыто"
                 ivSigState.setImageResource(R.drawable.open_small);
                 // добавляем событие "Снятие с охраны" в главный список
                 addEventStatusList(Utils.STATUS_GUARD_OFF, null);
@@ -1711,21 +1754,24 @@ public class MainActivity extends AppCompatActivity
             }
         }
         // включаем/ выключаем звук аварии
+        // проверяем счетчик сработавших аварий
+        int preAlarmCounter = (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED_START,
+                Utils.MASK_ALARM_TRIGERED_START + 1,
+                Utils.MASK_ALARM_TRIGERED_START + 2)) >> Utils.MASK_ALARM_TRIGERED_START;
+        int alarmCounter = (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_START,
+                Utils.MASK_ALARM_START + 1, Utils.MASK_ALARM_START + 2)) >> Utils.MASK_ALARM_START;
+
         if (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM) > 0) {
-            // сработала авария, включаем звук
-            if ( Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM) != Utils.getValueOnMask(oldStatusSIM, Utils.MASK_ALARM) |
-                    oldStatusSIM == Utils.FIRST_START ) {
+            if (alarmCounter > 0){
                 // запуск аварии
                 startAlarm();
-            } else
-            if (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_CUR) > 0) {
-                // запуск аварии
-                startAlarm();
-            } else {
-                // выключаем звук аварии
-                stopMediaPlayer();
             }
-        } else  if ( Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM) !=
+            else {
+                if ( mSoundStatus == SoundStatus.ALARM_ACTIVE )
+                    stopMediaPlayer();
+            }
+        }
+        else if ( Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM) !=
                 Utils.getValueOnMask(oldStatusSIM, Utils.MASK_ALARM) &
                 oldStatusSIM != Utils.FIRST_START ) {
             // авария не сработала либо была выключена, выключаем звук
@@ -1735,41 +1781,28 @@ public class MainActivity extends AppCompatActivity
         }
         // включаем/ выключаем звук предварительной аварии если при этом нет аварии
         if (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED) > 0 ) {
-            if ( Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_CUR) == 0 ) {
-                // сработала предварительная авария, включаем звук
-                if (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED_CUR) > 0 |
-                        Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED) !=
-                                Utils.getValueOnMask(oldStatusSIM, Utils.MASK_ALARM_TRIGERED) |
-                        oldStatusSIM == Utils.FIRST_START) {
-                    Log.d(LOG_TAG, "start pre_alarm");
-                    if (mediaPlayer == null) {
-                        // не включаем звук предварительной аварии когда звучит "Авария"
-                        mSoundStatus = SoundStatus.PREALARM_ACTIVE;
-                        mediaPlayer = MediaPlayer.create(this, R.raw.prealarm);
-                        mediaPlayer.setOnCompletionListener(this);
-                        mediaPlayer.start();
-                        // добавляем событие "Предварительная авария" в главный список
-                        addEventStatusList(Utils.STATUS_ALARM_TRIGGERED, null);
-                    }
+            if (preAlarmCounter > 0){
+                Log.d(LOG_TAG, "start pre_alarm");
+                if (mediaPlayer == null & mSoundStatus != SoundStatus.ALARM_ACTIVE) {
+                    // не включаем звук предварительной аварии когда звучит "Авария"
+                    mSoundStatus = SoundStatus.PREALARM_ACTIVE;
+                    mediaPlayer = MediaPlayer.create(this, R.raw.prealarm);
+                    mediaPlayer.setOnCompletionListener(this);
+                    mediaPlayer.start();
+                    // добавляем событие "Предварительная авария" в главный список
+                    addEventStatusList(Utils.STATUS_ALARM_TRIGGERED, null);
                 }
             }
         } else if (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED) !=
                 Utils.getValueOnMask(oldStatusSIM, Utils.MASK_ALARM_TRIGERED) &
                 oldStatusSIM != Utils.FIRST_START ) {
-            // авария не сработала либо была выключена, выключаем звук
-            stopMediaPlayer();
+            if (mSoundStatus == SoundStatus.PREALARM_ACTIVE) {
+                // авария не сработала либо была выключена, выключаем звук
+                stopMediaPlayer();
+            }
         }
         // обновляем значение статуса
         oldStatusSIM = statusSIM;
-    }
-
-    /**
-     * выделение значения RSSI из принятых данных
-     */
-    private int parseRxRSSI(String parse_data, int start_index) {
-        String strInput = parse_data.substring(start_index, start_index + 2);
-        int val = Integer.parseInt(strInput, 16);
-        return ((byte) ~val);
     }
 
     /**
@@ -2220,10 +2253,6 @@ public class MainActivity extends AppCompatActivity
             if (!rxData.contains(Utils.RX_ERROR)){
                 // производим анализ полученных данных
                 analiseRxData(rxData);
-                // выводим данные для отладки
-                //String text = String.valueOf(btRxCnt) + " " + rxData;
-                //tvBtRxData.setText(text);
-                //btRxCnt++;
                 Log.d(LOG_TAG, "Recieve:" + rxData);
             }
             else {
@@ -2263,8 +2292,10 @@ public class MainActivity extends AppCompatActivity
     public void onCompletion(MediaPlayer mp) {
         Log.d(LOG_TAG, "onCompletion");
         // выключаем предварительную аварию если она есть
-        if ( mSoundStatus == SoundStatus.PREALARM_ACTIVE )
+        if ( mSoundStatus == SoundStatus.PREALARM_ACTIVE ) {
             stopMediaPlayer();
+            mSoundStatus = SoundStatus.IDLE;
+        }
         else
             mediaPlayer.start();
         //stopMediaPlayer();
@@ -2374,8 +2405,6 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private int _swNumber; // номер переключателя дискретных входов
-    int _TimeOff;   // время на которое выключен вход
     /**
      * диалог при установке времени выключения входа (выключение по времени)
      * @param swNumber - номер входа (сработавшего переключателя)

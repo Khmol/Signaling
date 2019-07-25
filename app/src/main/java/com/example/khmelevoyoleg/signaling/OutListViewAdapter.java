@@ -68,6 +68,8 @@ class OutListViewAdapter extends SimpleAdapter
 
     @Override
     public void onClick(View v) {
+        // увеличиваем время между запросами, чтобы исключить ложные срабатывания
+        activity.numberPass = 0;
         // получаем SwitchCompat
         ImageView ivActive = (ImageView) v;
         // получаем номер данного SwitchCompat
@@ -150,9 +152,25 @@ class OutListViewAdapter extends SimpleAdapter
             viewHolder.swOutState.setEnabled(true);
             // устанавливаем значение переключателя
             viewHolder.swOutState.setChecked(activity.mOutState.get(position));
+            // проверяем находится ли выход в режиме сработал по времени
+            if (activity.mOutTimeOnState.get(position)) {
+                // сработал, нужно отобразить его темным цветом
+                viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_dark);
+            }
+            else {
+                if (activity.mOutState.get(position)) {
+                    // не сработал, нужно отобразить его светлым цветом
+                    viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_off);
+                }
+                else {
+                    // не сработал, нужно отобразить его светлым цветом
+                    viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32);
+                }
+            }
         } else {
             // если подключения по BT нет
             viewHolder.swOutState.setEnabled(false);
+            viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32);
         }
         return convertView;
     }
@@ -193,6 +211,10 @@ class OutListViewAdapter extends SimpleAdapter
         if (isChecked) {
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
+                // выдаем текстовое оповещение о включении с номером вкюченного выхода
+                // только в том случае когда изменения были сделаны руками путем переключения
+                if (scOutState[swNumber] == activity.mOutState.get(swNumber))
+                    addToast(swNumber, activity.getString(R.string.outOnTimeBegin));
                 // устанавливаем переключатель
                 scOutState[swNumber] = true;
                 // изменяем статус для данного входа
@@ -201,8 +223,6 @@ class OutListViewAdapter extends SimpleAdapter
                 View parent = (View) swActive.getParent();
                 ViewHolder vh = (ViewHolder) parent.getTag();
                 vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_off);
-                // выдаем текстовое оповещение о включении с номером вкюченного выхода
-                addToast(swNumber, activity.getString(R.string.outOnTimeBegin));
             }
             else {
                 // устанавливаем переключатель
@@ -218,6 +238,10 @@ class OutListViewAdapter extends SimpleAdapter
         else {
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
+                // выдаем текстовое оповещение с номером вкюченного выхода
+                // только в том случае когда изменения были сделаны руками путем переключения
+                if (scOutState[swNumber] == activity.mOutState.get(swNumber))
+                    addToast(swNumber, activity.getString(R.string.outOff));
                 // устанавливаем переключатель
                 scOutState[swNumber] = false;
                 // изменяем статус для данного входа
@@ -226,9 +250,7 @@ class OutListViewAdapter extends SimpleAdapter
                 View parent = (View) swActive.getParent();
                 ViewHolder vh = (ViewHolder) parent.getTag();
                 vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32);
-                // выдаем текстовое оповещение с номером вкюченного выхода
-                // выдаем текстовое оповещение с номером вкюченного выхода
-                addToast(swNumber, activity.getString(R.string.outOff));
+
             }
             else {
                 // выдаем текстовое оповещение что соединение отсутствует

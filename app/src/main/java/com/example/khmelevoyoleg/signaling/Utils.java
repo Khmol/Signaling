@@ -43,6 +43,8 @@ class Utils {
     static final String TYPE_INPUT_TIME_OFF = "INPUT TIME OFF,"; // тип команды "INPUT TIME OFF" в ответе от SIM
     static final String TYPE_INPUT_DELAY_START = "INPUT DELAY START,"; // тип команды "INPUT DELAY START" в ответе от SIM
 
+    static final String TYPE_OUT_ON_OFF = "OUTPUT ON OFF,"; // тип команды в ответе на OUT ON OFF от SIM
+
     static final String TYPE_ADC = "ADC,"; // тип команды ADC в ответе от SIM
     static final String TYPE_ADC_A = "ADC A,"; // тип команды "ADC A" в ответе от SIM
     static final String TYPE_ADC_VAL = "ADC VAL int,"; // тип команды "ADC VAL int" в ответе от SIM
@@ -60,6 +62,8 @@ class Utils {
     static final String OUT_OFF = "OUT OFF,"; // команда выключить реле по времени
     static final String OUT_ON_TIME = "OUT ON TIME,"; // команда включить реле по времени
     static final String OUT_ON = "OUT ON,"; // команда включить реле
+    static final String OUT_GET_ON = "OUT GET ON,01\r"; // команда включить запрос статуса включенных выходов
+    static final String OUT_GET_OFF = "OUT GET ON,00\r"; // команда выкобчить запрос статуса включенных выходов
 
     static final String IN_GET_ON = "IN GET ON,01\r"; // команда Запросить статус включенных входов
     static final String IN_ON = "IN ON,"; // команда включить вход для обработки
@@ -98,10 +102,10 @@ class Utils {
     static final long UUID_MASK = 0xFFFFFFFF00000000L;  // маска для извлечения нужных битов UUID
     static final short MASK_GUARD = 0;  // 0-й бит в маске - для извлечения флага нахождения на охране
     static final short MASK_ALARM = 9;  // 9-й бит в маске - для извлечения флага сработала авария
-    static final short MASK_ALARM_CUR = 13;  // 13-й бит в маске - текущее значение флага сработала авария
     static final short MASK_ALARM_TRIGERED = 8;  // 8-й бит в маске - для извлечения флага сработала предварительная авария
-    static final short MASK_ALARM_TRIGERED_CUR = 12;  // 12-й бит в маске - текущее значение флага предварительной аварии
-    static final int DELAY_TX_INIT_MESSAGE = 3; // задержка перед повторной передачей  INIT_MESSAGE
+    static final short MASK_ALARM_TRIGERED_START = 10;  // начало счетчика предварительной аварии
+    static final short MASK_ALARM_START = 13;  // начало счетчика аварии
+
     static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
     static final int TIMER_INIT_MESSAGE = 10000;  // периодичность вызова runCheckStatus
     static final int TIMER_LISTEN_BT = 500;  // периодичность вызова runListenMessageBT
@@ -123,7 +127,7 @@ class Utils {
     static final short CMD_INPUT_MAIN_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
     static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
     static final short CMD_INPUT_CUR_LATCH_FROM = 37; // начало флагов защелки статуса входов в команде INPUT
-    static final short CMD_INPUT_RSSI_FROM = 62; // начало значения RSSI в команде INPUT
+    static final short CMD_INPUT_LATCH_TO = 62; // начало значения RSSI в команде INPUT
 
     static final short CMD_ADC_MAIN_STATUS_FROM = 5; // начало флагов статуса охраны в команде ADC
     static final short CMD_ADC_LARGER_LATCH_FROM = 10; // начало флагов защелки статуса входов по превышшению в команде ADC
@@ -134,8 +138,6 @@ class Utils {
     static final short CMD_ADC_SHOCK_CUR_FROM = 55; // начало текущих флагов статуса входов в диапазоне в команде ADC
     static final short CMD_ADC_RSSI_FROM = 64; // начало значения RSSI в команде ADC
     static final short CMD_ADC_ON_OFF_STATUS_FROM = 12; // начало флагов сатуса входов в команде ADC_ON_OFF
-    static final short IN_1 = 0; // напряжение на входе 1
-    static final short IN_2 = 1; // напряжение на входе 2
     static final short IN_VOLTAGE_POSITION = 2; // позиция напряжения питания в посылке ADC Val
     static final short RTC_BATTERY = 3; // напряжение батарейки RTC
     static final short TEMPERATURE = 4; // температура
@@ -151,9 +153,11 @@ class Utils {
 
     static final short CMD_INPUT_ON_OFF_STATUS_FROM = 14; // начало флагов сатуса входов в команде INPUT_ON_OFF
     static final short LENGTH_INPUT_GROUP = 4; // длина данных для группы входов (по 16 входов)
-    static final short NUMBER_DIGITAL_INPUTS = 96; // количество цифровых входов в посылке по BT
-    static final short NUMBER_ANALOG_INPUTS = 32; // количество аналоговых входов в посылке по BT
+    static final short NUMBER_BT_DIGITAL_INPUTS_OUTPUTS = 96; // количество цифровых входов в посылке по BT
+    static final short NUMBER_BT_ANALOG_INPUTS = 32; // количество аналоговых входов в посылке по BT
+
     static final short ALL_OUT = 0;         // количество для выключения всех выходов
+    static final short CMD_OUT_ON_OFF_STATUS_FROM = 15; // начало флагов сатуса входов в команде INPUT_ON_OFF
 
     private static final short CMD_INPUT_TIME_OFF_TIME_NUMBER = 24; // количество времен в посылке
     static final short INPUT_OFF_TIME_NUMBER = 2; // положение переключателя в списке настроек цифровых входов
@@ -252,13 +256,14 @@ class Utils {
     }
 
     /**
-     * установка всех элементов массива boolean[] в true
-     * @param length - длина массива
-     * @param list - массив для обработки
+     * добавление false элементов в ArrayList
+     * @param length - длина списка
+     * @param list - список для обработки
      */
-    static void setTrueArray(int length, boolean[] list) {
-        for (int i = 0; i < length; i++)
-            list[i] = true;
+    static void addFalseArrayList(int length, ArrayList<Boolean> list) {
+        for (int i = 0; i < length; i++) {
+            list.add(i, false);
+        }
     }
 
     /**
@@ -270,6 +275,17 @@ class Utils {
         for (int i = 0; i < length; i++)
             list[i] = false;
     }
+
+    /**
+     * установка всех элементов массива boolean[] в true
+     * @param length - длина массива
+     * @param list - массив для обработки
+     */
+    static void setTrueArray(int length, boolean[] list) {
+        for (int i = 0; i < length; i++)
+            list[i] = true;
+    }
+
 
     /**
      * занесение информации для вывода в lvMainInStatus
@@ -394,4 +410,14 @@ class Utils {
         }
         return true;
     }
+
+    /**
+     * выделение значения RSSI из принятых данных
+     */
+    private int parseRxRSSI(String parse_data, int start_index) {
+        String strInput = parse_data.substring(start_index, start_index + 2);
+        int val = Integer.parseInt(strInput, 16);
+        return ((byte) ~val);
+    }
+
 }
