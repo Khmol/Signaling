@@ -34,40 +34,6 @@ class AnalogInListViewAdapter extends SimpleAdapter
         activity = act;
     }
 
-    /*
-    @Override
-    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        // получаем SwitchCompat
-        SwitchCompat swActive = (SwitchCompat) buttonView;
-        // получаем номер данного SwitchCompat
-        int swNumber = (int) swActive.getTag(R.id.swAnalogInState);
-        // запоминаем новое значение переключателя (входа)
-        // проверяем изменилось ли состояние переключателя относительно сохраненного значения
-        if (activity.mAnalogInState.get(swNumber) != isChecked) {
-            // изменяем сохраненное значене
-            activity.mAnalogInState.set(swNumber, isChecked);
-            // передаем в BT команду на включение/ отключение входа
-            if (isChecked) {
-                if (activity.checkAbilityTxBT())
-                    activity.sendDataBT(String.format("%s%d\r", Utils.ADC_IN_ON, (swNumber + 1)), 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(activity.getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
-            } else {
-                if (activity.checkAbilityTxBT())
-                    activity.sendDataBT(String.format("%s%d\r", Utils.ADC_IN_OFF, (swNumber + 1)), 0);
-                else
-                    // выдаем текстовое оповещение что соединение отсутствует
-                    Toast.makeText(activity.getApplicationContext(),
-                            R.string.connectionFailed, // + Integer.toString(ivNumber) + R.string.outOnTimeEnd,
-                            Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-    */
-
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
     }

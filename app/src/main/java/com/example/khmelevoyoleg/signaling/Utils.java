@@ -112,11 +112,11 @@ class Utils {
     static final int TIMER_TOAST = 3000;  // периодичность вызова runToast
     static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
     static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
-    static final int AUTO_CONNECT_TIMEOUT = 300;  // время между запуском поиска SIM 2 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
+    static final int AUTO_CONNECT_TIMEOUT = 540;  // время между запуском поиска SIM 5 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
     static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
-    static final short DEFAULT_DIG_IN_NUMBER = 12; // количество входов по умолчанию
-    static final short DEFAULT_ANALOG_IN_NUMBER = 3; // количество входов по умолчанию
-    static final short DEFAULT_OUT_NUMBER = 15; // количество выходов по умолчанию
+    static final short DEFAULT_LIST_VIEW_DIG_IN_NUMBER = 12; // количество входов по умолчанию
+    static final short DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER = 2; // количество входов по умолчанию
+    static final short DEFAULT_LIST_VIEW_OUT_NUMBER = 15; // количество выходов по умолчанию
     static final short SB_IN_ON = 1; // SeekBar для цифровых входов в среднем положении
     static final short SB_IN_OFF = 0; // SeekBar для цифровых входов в левом положении
     static final short SB_IN_TIME_OFF = 2; // SeekBar для цифровых входов в правом положении
@@ -139,8 +139,9 @@ class Utils {
     static final short CMD_ADC_RSSI_FROM = 64; // начало значения RSSI в команде ADC
     static final short CMD_ADC_ON_OFF_STATUS_FROM = 12; // начало флагов сатуса входов в команде ADC_ON_OFF
     static final short IN_VOLTAGE_POSITION = 2; // позиция напряжения питания в посылке ADC Val
-    static final short RTC_BATTERY = 3; // напряжение батарейки RTC
-    static final short TEMPERATURE = 4; // температура
+    static final short CAR_BATTERY_VOLTAGE_POSITION = 2; // напряжение автомобильной батареи
+    static final short RTC_BATTERY_POSITION = 3; // напряжение батарейки RTC
+    static final short TEMPERATURE_POSITION = 4; // температура
 
     static final short CMD_INPUT_A_MAIN_STATUS_FROM = 9; // начало флагов статуса охраны в команде INPUT
     static final short CMD_INPUT_A_CUR_ON_FROM = 14; // начало флагов включенных датчиков в команде INPUT_A
@@ -161,6 +162,7 @@ class Utils {
 
     private static final short CMD_INPUT_TIME_OFF_TIME_NUMBER = 24; // количество времен в посылке
     static final short INPUT_OFF_TIME_NUMBER = 2; // положение переключателя в списке настроек цифровых входов
+    static final int MAX_MAIN_STATUS_SIZE = 200; // максимальный размер списка событий на главном экране
 
     /**
      * установка в digInStatus актуальных значений

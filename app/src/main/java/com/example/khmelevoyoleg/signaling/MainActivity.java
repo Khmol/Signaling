@@ -70,6 +70,7 @@ public class MainActivity extends AppCompatActivity
 
     private enum MainStatus {
         CLOSE,
+        STARTING,
         IDLE,
         CONNECTING,
         CONNECTED,
@@ -119,6 +120,7 @@ public class MainActivity extends AppCompatActivity
     private TextView tvInVoltage;                   // напряжениа АКБ
     private TextView tvBatteryValue;                // напряжениа батарейки
     private TextView tvTemperatureValue;            // температура
+    private TextView tvCarBatteryValue;             // напряжение автомобильного аккумулятора
 
     private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
     private SharedPreferences sPref;                // настройки приложения
@@ -285,18 +287,18 @@ public class MainActivity extends AppCompatActivity
             flipper.addView(currentView);
         }
         // читаем значения настроек дискретных входов, результат в mDigInName, mDigInNumber, mDigInState
-        loadInOutPreferences(Utils.DEFAULT_DIG_IN_NUMBER, Utils.IN_NAME, Utils.DEFAULT_IN_NAME, mDigInName,
+        loadInOutPreferences(Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER, Utils.IN_NAME, Utils.DEFAULT_IN_NAME, mDigInName,
                 mDigInNumber, Utils.DEFAULT_IN_OUT_STATUS, mDigInStatus, Utils.IN_STATE, Utils.DEFAULT_IN_OUT_STATE,
                 mDigInState, mDigInTimeOff, mDigInDelayTime, null);
         // читаем значения настроек аналоговых входов, результат в mAnalogInName, mAnalogInNumber, mAnalogInState
-        loadInOutPreferences(Utils.DEFAULT_ANALOG_IN_NUMBER, Utils.ANALOG_IN_NAME, Utils.DEFAULT_AN_IN_NAME, mAnalogInName,
+        loadInOutPreferences(Utils.DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER, Utils.ANALOG_IN_NAME, Utils.DEFAULT_AN_IN_NAME, mAnalogInName,
                 mAnalogInNumber, Utils.DEFAULT_IN_OUT_STATUS, mAnalogInStatus, Utils.ANALOG_IN_STATE,
                 Utils.DEFAULT_IN_OUT_STATE, mAnalogInState, mAnalogInTimeOff, mAnalogInDelayTime, mAnalogVal);
         // читаем значения настроек выходов, результат в mOutName, mOutNumber, mOutState
-        loadInOutPreferences(Utils.DEFAULT_OUT_NUMBER, Utils.OUT_NAME, Utils.DEFAULT_OUT_NAME, mOutName,
+        loadInOutPreferences(Utils.DEFAULT_LIST_VIEW_OUT_NUMBER, Utils.OUT_NAME, Utils.DEFAULT_OUT_NAME, mOutName,
                 mOutNumber, null, null, Utils.OUT_STATE, Utils.DEFAULT_OUT_STATE, mOutState, null, null, null);
         // заполняем исходными значениями список mOutTimeOnState
-        Utils.addFalseArrayList(Utils.DEFAULT_OUT_NUMBER, mOutTimeOnState);
+        Utils.addFalseArrayList(Utils.DEFAULT_LIST_VIEW_OUT_NUMBER, mOutTimeOnState);
         // заполняем значениями список InOutListView и создаем адапер
         adapterDigIn = createDigInAdapter(mDigInName, mDigInNumber, mDigInTimeOff);
         adapterAnalogIn = createAnalogInAdapter(mAnalogInName, mAnalogInNumber, mAnalogInState);
@@ -358,6 +360,7 @@ public class MainActivity extends AppCompatActivity
         tvInVoltage = (TextView) findViewById(R.id.tvInVoltage);
         tvBatteryValue = (TextView) findViewById(R.id.tvBatteryValue);
         tvTemperatureValue = (TextView) findViewById(R.id.tvTemperatureValue);
+        tvCarBatteryValue = (TextView) findViewById(R.id.tvCarBatteryValue);
         pbIBPress = (ProgressBar) findViewById(R.id.pbIBPress);
         pbIBPress.setMax(Utils.MAX_PROGRESS_VALUE);
         pbIBPress.setProgress(0);
@@ -593,14 +596,14 @@ public class MainActivity extends AppCompatActivity
 
     /**
      * загрузка данных из настроек либо сохранение настроек по умолчанию если настроек не было
-     * @param defaultInOutNumber - количество входов по умолчанию при создании настроек
+     * @param defaultListViewInOutNumber - количество входов по умолчанию при создании настроек
      * @param inOutName - массив имен входов/ выходов
      * @param inOutNumber - массив номеров входов/ выходов
      * @param inOutStatus - массив статусов входов/ выходов
      * @param inOutState - массив состояний входов/ выходов
      * @param inTimeOff - массив времен выключенного состояния
      */
-    private void loadInOutPreferences(short defaultInOutNumber,
+    private void loadInOutPreferences(short defaultListViewInOutNumber,
                                       String keyName,
                                       String defaultName,
                                       ArrayList<String> inOutName,
@@ -657,16 +660,18 @@ public class MainActivity extends AppCompatActivity
             inTimeOff.remove(i);
         if (inOutStatus != null)
             inOutStatus.remove(i);
-        // добавляем еще 2 дополнительных аналоговых входа
+        // добавляем еще 3 дополнительных аналоговых входа
         // для этого один добавляем и один не удаляем (как выше)
-        if (analogVal != null)
+        if (analogVal != null) {
             analogVal.add(0f);
+            analogVal.add(0f);
+        }
         // проверяем есть ли данные в настройках
         if (inOutName.size() == 0) {
             // сохраненных настроек нет, нужно сохранить настройки по умолчанию
             // создаем эдитор для записи настройки
             SharedPreferences.Editor ed = sPref.edit();
-            for (i = 0; i < defaultInOutNumber; i++){
+            for (i = 0; i < defaultListViewInOutNumber; i++){
                 // формируем ключ для записи настроек "имени"
                 prefKey.replace(0, prefKey.capacity(), keyName + Integer.toString(i));
                 // указываем значение для вводимой настройки "имени"
@@ -1155,13 +1160,16 @@ public class MainActivity extends AppCompatActivity
 
     private void checkStatus(){
         if (mMainStatus == MainStatus.IDLE & autoConnectFlag) {
-            // включен автоматический поиск базы - AutoConnect
-            if (autoConnectCnt <= Utils.AUTO_CONNECT_TIMEOUT)
-                autoConnectCnt++;
-            else {
-                autoConnectCnt = 0;
-                // запускаем поиск базы, нажимаем кнопку поиска в меню
-                onOptionsItemSelected(mainMenu.findItem(R.id.action_connect));
+            if (mBluetoothAdapter.isEnabled()) {
+                // если BT включен
+                // включен автоматический поиск базы - AutoConnect
+                if (autoConnectCnt <= Utils.AUTO_CONNECT_TIMEOUT)
+                    autoConnectCnt++;
+                else {
+                    autoConnectCnt = 0;
+                    // запускаем поиск базы, нажимаем кнопку поиска в меню
+                    onOptionsItemSelected(mainMenu.findItem(R.id.action_connect));
+                }
             }
         }
         else
@@ -1264,7 +1272,11 @@ public class MainActivity extends AppCompatActivity
                     timerHandler.postDelayed(runCheckStatus, Utils.TIMER_CHECK_STATUS);
                     return;
                 }
-        // вызываем runCheckStatus с задержкой 100 мс.
+        if (mMainStatus != MainStatus.IDLE & !mBluetoothAdapter.isEnabled()) {
+            //   если BT выключили, переходим в исходное состояние
+            returnIdleState(true);
+        }
+            // вызываем runCheckStatus с задержкой 100 мс.
         timerHandler.postDelayed(runCheckStatus, Utils.TIMER_CHECK_STATUS);
     }
 
@@ -1421,7 +1433,7 @@ public class MainActivity extends AppCompatActivity
                         checkEventChangeDigitalInput();
                     }
                     // обновляем прошлые значения mOldDigitalInputLatch и mOldDigitalInputCurrent
-                    for (int i = 0; i < Utils.DEFAULT_DIG_IN_NUMBER; i++) {
+                    for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER; i++) {
                         mOldDigitalInputLatch[i] = mDigitalInputLatch[i];
                         mOldDigitalInputCurrent[i] = mDigitalInputCurrent[i];
                     }
@@ -1478,7 +1490,7 @@ public class MainActivity extends AppCompatActivity
                     parseRxInputFlags(parseData, Utils.CMD_INPUT_ON_OFF_STATUS_FROM, parseData.length(),
                             Utils.LENGTH_INPUT_GROUP, mDigitalInputActive);
                     // обновляем значения состояний входов которые отображаются
-                    for(int i = 0; i < Utils.DEFAULT_DIG_IN_NUMBER; i++) {
+                    for(int i = 0; i < Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER; i++) {
                         mDigInState.set(i, mDigitalInputActive[i]);
                     }
                     // обновляем список для настроек цифровых входов
@@ -1565,7 +1577,7 @@ public class MainActivity extends AppCompatActivity
                     parseRxInputFlags(parseData, Utils.CMD_ADC_A_STATUS_FROM, parseData.length(),
                             Utils.LENGTH_INPUT_GROUP, mAnalogInputActive);
                     // проверка были ли изменения в состоянии датчиков
-                    for (int i = 0; i < Utils.DEFAULT_ANALOG_IN_NUMBER; i++) {
+                    for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER; i++) {
                         if (mAnalogACurLarger[i] != mOldAnalogACurLarger[i]) {
                             // проверка включен ли вход
                             if (mAnalogInputActive[i]) {
@@ -1610,7 +1622,7 @@ public class MainActivity extends AppCompatActivity
                     parseRxInputFlags(parseData, Utils.CMD_ADC_ON_OFF_STATUS_FROM, parseData.length(),
                             Utils.LENGTH_INPUT_GROUP, mAnalogInputActive);
                     // обновляем значения состояний входов которые отображаются
-                    for(int i = 0; i < Utils.DEFAULT_ANALOG_IN_NUMBER; i++) {
+                    for(int i = 0; i < Utils.DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER; i++) {
                         mAnalogInState.set(i, mAnalogInputActive[i]);
                     }
                     // обновляем список для настроек аналоговых входов
@@ -1621,7 +1633,7 @@ public class MainActivity extends AppCompatActivity
                 // region TYPE_INPUT_TIME_OFF
                 if (parseData.indexOf(Utils.TYPE_INPUT_TIME_OFF) > 0) {
                     // получаем значения состояний входов
-                    Utils.parseRxInputTimeOffDelayStart(parseData, mDigInTimeOff, Utils.DEFAULT_DIG_IN_NUMBER);
+                    Utils.parseRxInputTimeOffDelayStart(parseData, mDigInTimeOff, Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER);
                     // обновляем список для настроек цифровых входов
                     modifyDigInAdapter();
                 }
@@ -1630,7 +1642,7 @@ public class MainActivity extends AppCompatActivity
                 // region TYPE_INPUT_DELAY_START
                 if (parseData.indexOf(Utils.TYPE_INPUT_DELAY_START) > 0) {
                     // получаем значения состояний входов
-                    Utils.parseRxInputTimeOffDelayStart(parseData, mDigInDelayTime, Utils.DEFAULT_DIG_IN_NUMBER);
+                    Utils.parseRxInputTimeOffDelayStart(parseData, mDigInDelayTime, Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER);
                     // обновляем список для настроек цифровых входов
                     modifyDigInAdapter();
                 }
@@ -1639,7 +1651,7 @@ public class MainActivity extends AppCompatActivity
                 // region TYPE_ADC_TIME_OFF
                 if (parseData.indexOf(Utils.TYPE_ADC_TIME_OFF) > 0) {
                     // получаем значения состояний входов
-                    Utils.parseRxInputTimeOffDelayStart(parseData, mAnalogInTimeOff, Utils.DEFAULT_ANALOG_IN_NUMBER);
+                    Utils.parseRxInputTimeOffDelayStart(parseData, mAnalogInTimeOff, Utils.DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER);
                     // обновляем список для настроек цифровых входов
                     modifyAnalogInAdapter();
                 }
@@ -1648,7 +1660,7 @@ public class MainActivity extends AppCompatActivity
                 // region TYPE ADC DELAY START
                 if (parseData.indexOf(Utils.TYPE_ADC_DELAY_START) > 0) {
                     // получаем значения состояний входов
-                    Utils.parseRxInputTimeOffDelayStart(parseData, mAnalogInDelayTime, Utils.DEFAULT_ANALOG_IN_NUMBER);
+                    Utils.parseRxInputTimeOffDelayStart(parseData, mAnalogInDelayTime, Utils.DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER);
                     // обновляем список для настроек цифровых входов
                     modifyAnalogInAdapter();
                 }
@@ -1659,11 +1671,13 @@ public class MainActivity extends AppCompatActivity
                     // получаем значения состояний входов
                     Utils.parseRxAdcVal(parseData, mAnalogVal);
                     // изменяем значение напряжения питания "на капоте машины"
-                    tvInVoltage.setText(mAnalogVal.get(Utils.IN_VOLTAGE_POSITION).toString());
+                    tvInVoltage.setText(mAnalogVal.get(Utils.CAR_BATTERY_VOLTAGE_POSITION).toString());
                     // изменяем значение температуры
-                    tvTemperatureValue.setText(mAnalogVal.get(Utils.TEMPERATURE).toString());
+                    tvTemperatureValue.setText(String.format("%.1f °C", mAnalogVal.get(Utils.TEMPERATURE_POSITION))); //
                     // изменяем значение напряжения батарейки
-                    tvBatteryValue.setText(mAnalogVal.get(Utils.RTC_BATTERY).toString());
+                    tvBatteryValue.setText(String.format("%.1f В", mAnalogVal.get(Utils.RTC_BATTERY_POSITION))); //
+                    // изменяем значение напряжения автомобильного аккумулятора
+                    tvCarBatteryValue.setText(String.format("%.1f В", mAnalogVal.get(Utils.CAR_BATTERY_VOLTAGE_POSITION)));//
                 }
                 // endregion
                 // проверка на команду TYPE_OUT_ON_OFF
@@ -1673,7 +1687,7 @@ public class MainActivity extends AppCompatActivity
                             Utils.LENGTH_INPUT_GROUP, mOutActive);
                     // обновляем значения состояний выходов, которые отображаются
                     int j = 0;
-                    for(int i = 0; i < Utils.DEFAULT_OUT_NUMBER; i++) {
+                    for(int i = 0; i < Utils.DEFAULT_LIST_VIEW_OUT_NUMBER; i++) {
                         if (mOutActive[j])
                             mOutState.set(i, true);
                         else
@@ -1870,7 +1884,7 @@ public class MainActivity extends AppCompatActivity
      * если они изменились, добавляем событие в главный список
      */
     private void checkEventChangeDigitalInput() {
-        for (int i = 0; i < Utils.DEFAULT_DIG_IN_NUMBER; i++) {
+        for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER; i++) {
             // проверяем изменения состояния защелкнутых входов
             if ( mDigitalInputLatch[i] != mOldDigitalInputLatch[i] ) {
                 if (mDigitalInputLatch[i]) {
@@ -1904,7 +1918,7 @@ public class MainActivity extends AppCompatActivity
      * если они изменились, добавляем событие в главный список
      */
     private void checkEventChangeAnalogInput() {
-        for (int i = 0; i < Utils.DEFAULT_ANALOG_IN_NUMBER; i++) {
+        for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER; i++) {
             // проверяем изменения состояния защелкнутых входов
             if ( mAnalogLargerLatch[i] != mOldAnalogLargerLatch[i] |
                     mAnalogLargerCur[i] != mOldAnalogLargerCur[i]) {
@@ -2080,6 +2094,8 @@ public class MainActivity extends AppCompatActivity
         m.put(Utils.ATTRIBUTE_TIME, mMainStatusTime.get(cnt));
         m.put(Utils.ATTRIBUTE_STATUS_IMAGE, getImageViewValue(mMainStatusImage.get(cnt)));
         mAlMainInStatus.add(m);
+        if (cnt > Utils.MAX_MAIN_STATUS_SIZE)
+            mAlMainInStatus.remove(0); // удаляем самый давний элемент в списке
         adapterMainInStatus.notifyDataSetChanged();
         // усанавливаем фокус на последнем элементе
         lvMainInStatus.smoothScrollToPosition(cnt);

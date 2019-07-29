@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Shield</string>
-    <string name="version">Версия программы 1.00.02</string>
+    <string name="app_name">Car Shield</string>
+    <string name="version">Версия программы 1.00.03</string>
     <string name="pb_showPaired">Показать\nспаренные</string>
     <string name="tvConnectionState">Соединение отсутствует</string>
     <string name="hintTextEdit1">Введите телефон</string>
@@ -33,6 +33,7 @@
     <string name="title_analog_in">Состояние аналоговых входов</string>
     <string name="title_temperature">Температура - </string>
     <string name="title_battery">Напряжение батарейки - </string>
+    <string name="title_car_battery">Напряжение аккумулятора - </string>
     <string name="title_out">Состояние выходов</string>
     <string name="radioButtomSize">16</string>
     <string name="save">Сохранить</string>
@@ -70,5 +71,7 @@
     <string name="action_sound_on_mode">Режим \"Звуковой\"</string>
     <string name="sound_off_mode_setted">Включен режим \"Без звука\" для установки и снятия с охраны"</string>
     <string name="sound_on_mode_setted">Включен \"Звуковой\" режим для установки и снятия с охраны</string>
+    <string name="degries">°C</string>
+    <string name="volts"> В</string>
 
 </resources>

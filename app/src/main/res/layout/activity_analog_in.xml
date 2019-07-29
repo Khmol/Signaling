@@ -19,13 +19,37 @@
         android:layout_marginEnd="8dp" />
 
     <TextView
+        android:id="@+id/tvCarBatteryTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/title_car_battery"
+        android:textSize="18sp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitleAnalogIn"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp" />
+
+    <TextView
+        android:id="@+id/tvCarBatteryValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="18sp"
+        app:layout_constraintLeft_toRightOf="@+id/tvCarBatteryTitle"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitleAnalogIn"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp" />
+
+    <TextView
         android:id="@+id/tvTemperatureTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/title_temperature"
         android:textSize="18sp"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvTitleAnalogIn"
+        app:layout_constraintTop_toBottomOf="@+id/tvCarBatteryTitle"
         android:layout_marginTop="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp" />
@@ -37,7 +61,7 @@
         android:text=""
         android:textSize="18sp"
         app:layout_constraintLeft_toRightOf="@+id/tvTemperatureTitle"
-        app:layout_constraintTop_toBottomOf="@+id/tvTitleAnalogIn"
+        app:layout_constraintTop_toBottomOf="@+id/tvCarBatteryTitle"
         android:layout_marginTop="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp" />
