@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:id="@+id/lpPairedDevices"
+        android:key="@string/listPrefPairedDevices"
+        android:summary="@string/checkDevice"
+        android:title="@string/PairedDevicesList">
+    </ListPreference>
+    <CheckBoxPreference
+        android:key="@string/cbAutoConnect"
+        android:summary="@string/cbAutoConnectFlagSummary"
+        android:title="@string/cbAutoConnectFlag">
+    </CheckBoxPreference>
+</PreferenceScreen>

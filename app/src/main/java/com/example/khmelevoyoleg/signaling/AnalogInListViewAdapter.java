@@ -56,7 +56,7 @@ class AnalogInListViewAdapter extends SimpleAdapter
                     activity.sendDataBT(String.format("%s%d\r", Utils.ADC_IN_OFF, (swNumber + 1)), 0);
                     activity.mAnalogInTimeOff.set(swNumber, 0);
                     activity.mAnalogInState.set(swNumber, false);
-                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
+                    Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32_dark, null);
                     seekBar.setThumb(draw);
                 }
                 break;
@@ -171,7 +171,7 @@ class AnalogInListViewAdapter extends SimpleAdapter
             }
             else {
                 viewHolder.sbAnalogInState.setProgress(Utils.SB_IN_OFF);
-                Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32, null);
+                Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32_dark, null);
                 viewHolder.sbAnalogInState.setThumb(draw);
                 // значение текста для времени - пусто
                 viewHolder.tvAnalogInTimeOff.setText("");

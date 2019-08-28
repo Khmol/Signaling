@@ -10,9 +10,12 @@ class Utils {
     // определяем строковые константы
     static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
     static final String RX_ERROR = "RX_ERROR" ;
-    static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
+    //static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
+    static final String SELECTED_BOUNDED_DEV = "listPrefPairedDevices";   // выбранное спаренное устройство
     static final String FINISHED = "FINISHED";      // задача завершена
-    static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
+    //static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
+    static final String AUTO_CONNECT = "cbAutoConnect";   // вкл/выкл автоматическое соединение
+
     static final String IN_NAME = "IN_NAME_"; // название ключа для имени входа в настройках
     static final String ANALOG_IN_NAME = "ANALOG_IN_NAME"; // название ключа для имени входа в настройках
     static final String OUT_NAME = "OUT_NAME_"; // название ключа для имени выхода в настройках
@@ -98,6 +101,7 @@ class Utils {
     static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
     static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
     static final int SET_SETTINGS = 2;          // редактирование настроек
+    static final int SET_PREFERENCES = 3;       // редактирование настроек
     static final long UUID_SERIAL = 0x1101;     // нужный UUID
     static final long UUID_MASK = 0xFFFFFFFF00000000L;  // маска для извлечения нужных битов UUID
     static final short MASK_GUARD = 0;  // 0-й бит в маске - для извлечения флага нахождения на охране

@@ -29,6 +29,11 @@
             android:label="Settings"
             android:theme="@style/AppTheme.NoActionBar">
         </activity>
+        <activity
+            android:name=".SigPreferences"
+            android:label="@string/preferences"
+            android:theme="@style/AppTheme.NoActionBar">
+        </activity>
     </application>
 
 </manifest>

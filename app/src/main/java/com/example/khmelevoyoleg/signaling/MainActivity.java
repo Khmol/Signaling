@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.os.Vibrator;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AlertDialog;
@@ -53,7 +54,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-// TODO - удалять запись из списка на главном окне, когда он более 200 строк при добавлении новой
 
 public class MainActivity extends AppCompatActivity
         implements View.OnTouchListener, View.OnClickListener,
@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity
     private TextView tvCarBatteryValue;             // напряжение автомобильного аккумулятора
 
     private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
-    private SharedPreferences sPref;                // настройки приложения
+    private SharedPreferences sPref, sp;            // настройки приложения
     int btRxCnt;                                    // счетчик принятых пакетов
     int numberPass;                         // количество пропусков при вызапросе состояний выходов
     ImageButton ibOpen;                     // кнопка снятия с охраны
@@ -260,14 +260,14 @@ public class MainActivity extends AppCompatActivity
         if (requestCode == Utils.REQUEST_ENABLE_BT) {
             returnIdleState(true);
         }
-        else if(requestCode == Utils.SET_SETTINGS){
-            if (data != null){
-                // читаем значение флага AutoConnect
-                autoConnectFlag = Boolean.parseBoolean(sPref.getString(Utils.AUTO_CONNECT, ""));
-                //Toast.makeText(getApplicationContext(), data.getStringExtra("address"), Toast.LENGTH_SHORT).show();
-            }
-        }
     }
+
+    @Override
+    protected void onResume() {
+        autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
+        super.onResume();
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -275,6 +275,8 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main_flip);
         // определяем объект для работы с настройками
         sPref = getSharedPreferences(Utils.SETTINGS_FILENAME, MODE_PRIVATE);
+        // получаем SharedPreferences, которое работает с файлом настроек
+        sp = PreferenceManager.getDefaultSharedPreferences(this);
         // определяем объекты для flipper
         flipper = (ViewFlipper) findViewById(R.id.flipper);
         // Создаем View и добавляем их в уже готовый flipper
@@ -366,7 +368,8 @@ public class MainActivity extends AppCompatActivity
         pbIBPress.setProgress(0);
 
         // читаем значение флага AutoConnect
-        autoConnectFlag = Boolean.parseBoolean(sPref.getString(Utils.AUTO_CONNECT, ""));
+        autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
+        //autoConnectFlag = Boolean.parseBoolean(sPref.getString(Utils.AUTO_CONNECT, ""));
 
         // регистрация активностей
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED));
@@ -742,7 +745,7 @@ public class MainActivity extends AppCompatActivity
                 // записываем настройку
                 ed.putString(prefKey.toString(), prefText.toString());
             }
-        };
+        }
         // сохраняем изменения для настроек
         ed.apply();
     }
@@ -861,36 +864,43 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
         // получаем код выбранного пункта меню
         int id = item.getItemId();
         // если выбран пункт меню "Настройки"
         switch (id) {
-            case R.id.action_settings :
+            case R.id.action_settings : {
+                CharSequence[] csAdressPairedDevices;
+                CharSequence[] csNamePairedDevices;
                 // получаем список спаренных устройств
                 pairedDevices = mBluetoothAdapter.getBondedDevices();
-                // новые списки имен и адресов спаренных устройств
-                ArrayList<String> namePairedDevices = new ArrayList<>();
-                ArrayList<String> adressPairedDevices = new ArrayList<>();
-                // запускаем намерение
-                Intent intent = new Intent(MainActivity.this, SigSettings.class);
+                int size = pairedDevices.size();
+                csNamePairedDevices = new CharSequence[size];
+                csAdressPairedDevices = new CharSequence[size];
                 // передаем данные для активности IntentActivity
-                if (pairedDevices.size() > 0) {
+                if (size > 0) {
                     int i = 0;
                     for (BluetoothDevice device : pairedDevices) {
                         // читаем имена спаренных устройств
                         String name = device.getName();
-                        namePairedDevices.add(i, name);
+                        csNamePairedDevices[i] = name;
                         // читаем адреса спаренных устройств
                         String mac_adress = device.getAddress();
-                        adressPairedDevices.add(i, mac_adress);
+                        csAdressPairedDevices[i] = mac_adress;
                         i++;    // переход к следующему устройству
                     }
                 }
-                intent.putExtra("paired_names", namePairedDevices);
-                intent.putExtra("paired_adresses", adressPairedDevices);
+                // запускаем окно настроек
+                Intent intentPref = new Intent(MainActivity.this, SigPreferences.class);
+                // читаем и передаем имя активного устройства
+                CharSequence selectedBoundedDevice = sp.getString(Utils.SELECTED_BOUNDED_DEV, "");
+                intentPref.putExtra("paired_device_adress", selectedBoundedDevice);
+                intentPref.putExtra("paired_adresses", csAdressPairedDevices);
+                intentPref.putExtra("paired_names", csNamePairedDevices);
                 // запускаем активность
-                startActivityForResult(intent, Utils.SET_SETTINGS);
-                return true;
+                startActivityForResult(intentPref, Utils.SET_PREFERENCES);
+                break;
+            }
             case R.id.action_connect :
                 if (mMainStatus == MainStatus.IDLE){
                     // выводим сообщение "Запущен поиск сигнализации"
@@ -972,7 +982,8 @@ public class MainActivity extends AppCompatActivity
             UUID serialUUID;
             // проверяем включен ли Bluetooth
             if (mBluetoothAdapter.isEnabled()) {
-                String selectedBoundedDevice = sPref.getString(Utils.SELECTED_BOUNDED_DEV, "");
+                String selectedBoundedDevice = sp.getString(Utils.SELECTED_BOUNDED_DEV, "");
+                // TODO - дабавить вычитку из новых настроек
                 // проверим определено ли устройство для связи
                 if (selectedBoundedDevice.equals("")) {
                     // переходим в исходное состояние
@@ -1004,7 +1015,7 @@ public class MainActivity extends AppCompatActivity
                                 // переходим в исходное состояние
                                 returnIdleState(true);
                                 // если получено NO_BOUNDED_DEVICE, выдать предупреждение
-                                Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getApplicationContext(), R.string.noValidBoundedDevice, Toast.LENGTH_SHORT).show();
                             }
                         }
                     }

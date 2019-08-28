@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Car Shield</string>
-    <string name="version">Версия программы 1.00.03</string>
+    <string name="version">Версия программы 1.00.05</string>
     <string name="pb_showPaired">Показать\nспаренные</string>
     <string name="tvConnectionState">Соединение отсутствует</string>
     <string name="hintTextEdit1">Введите телефон</string>
@@ -22,6 +22,7 @@
     <string name="recieveError">Ошибка получения данных</string>
     <string name="Recieve">Получено:</string>
     <string name="action_settings">Настройки</string>
+    <string name="action_settings_new">Настройки новые</string>
     <string name="action_clear_main_listview">Очистить список</string>
     <string name="action_connect">Соединение с сигнализацией</string>
     <string name="ivCarDescription">Car</string>
@@ -73,5 +74,13 @@
     <string name="sound_on_mode_setted">Включен \"Звуковой\" режим для установки и снятия с охраны</string>
     <string name="degries">°C</string>
     <string name="volts"> В</string>
+    <string name="preferences">Настройки</string>
+    <string name="PairedDevicesList">Устройство для подключения</string>
+    <string name="checkDevice">Выберите устройсто</string>
+    <string name="cbAutoConnectFlag">Автоматическое соединение</string>
+    <string name="cbAutoConnectFlagSummary">Вкл/выкл</string>
+    <string name="listPrefPairedDevices">listPrefPairedDevices</string>
+    <string name="cbAutoConnect">cbAutoConnect</string>
+    <string name="noValidBoundedDevice">Невозможно установить связь с данным устройсвом</string>
 
 </resources>
