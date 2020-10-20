@@ -19,15 +19,20 @@ class Utils {
     static final String IN_NAME = "IN_NAME_"; // название ключа для имени входа в настройках
     static final String ANALOG_IN_NAME = "ANALOG_IN_NAME"; // название ключа для имени входа в настройках
     static final String OUT_NAME = "OUT_NAME_"; // название ключа для имени выхода в настройках
+    static final String CAN_NAME = "CAN_NAME_"; // название ключа для имени входа по CAN в настройках
     static final String IN_STATE = "IN_STATE_"; // название ключа для состояния входа в настройках
     static final String ANALOG_IN_STATE = "ANALOG_IN_STATE_"; // название ключа для состояния входа в настройках
     static final String OUT_STATE = "OUT_STATE_"; // название ключа для состояния входа в настройках
+    static final String CAN_STATE = "CAN_STATE_"; // название ключа для состояния входа CAN в настройках
+
     static final String DEFAULT_IN_NAME = "Вход замыкания "; // имя входа по умолчанию
     static final String DEFAULT_AN_IN_NAME = "Вход сигнала "; // имя входа по умолчанию
     static final String DEFAULT_OUT_NAME = "Выход "; // имя выхода по умолчанию
+    static final String DEFAULT_CAN_NAME = "Вход CAN "; // имя входа CAN по умолчанию
     static final String DEFAULT_IN_OUT_STATUS = "STATUS_INPUT_OFF"; // статус входа по умолчанию - выкл
     static final String DEFAULT_IN_OUT_STATE = "STATE_ON"; // состояние входа по умолчанию - выкл
     static final String DEFAULT_OUT_STATE = "STATE_OFF"; // состояние выхода по умолчанию - выкл
+    static final String DEFAULT_CAN_STATE = "STATE_ON"; // состояние входа по умолчанию - выкл
     static final String STATE_ON = "STATE_ON"; // состояние входа - включен
     static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
     // команды по BT
@@ -45,6 +50,12 @@ class Utils {
     static final String TYPE_INPUT_ON_OFF = "INPUT ON OFF,"; // тип команды в ответе на IN GET ON от SIM
     static final String TYPE_INPUT_TIME_OFF = "INPUT TIME OFF,"; // тип команды "INPUT TIME OFF" в ответе от SIM
     static final String TYPE_INPUT_DELAY_START = "INPUT DELAY START,"; // тип команды "INPUT DELAY START" в ответе от SIM
+
+    static final String TYPE_CAN = "IN CAN A,"; // тип команды IN CAN A в ответе от SIM
+    static final String TYPE_CAN_A = "IN CAN A,"; // тип команды "IN CAN AF" в ответе от SIM
+    static final String TYPE_CAN_ON_OFF = "IN CAN ON OFF,"; // тип команды "IN CAN ON OFF" в ответе от SIM
+    static final String TYPE_CAN_DELAY_START = "IN CAN DELAY START,"; // тип команды "IN CAN DELAY START" в ответе от SIM
+    static final String TYPE_CAN_TIME_OFF = "IN CAN TIME OFF,"; // тип команды "IN CAN TIME OFF" в ответе от SIM
 
     static final String TYPE_OUT_ON_OFF = "OUTPUT ON OFF,"; // тип команды в ответе на OUT ON OFF от SIM
 
@@ -121,6 +132,7 @@ class Utils {
     static final short DEFAULT_LIST_VIEW_DIG_IN_NUMBER = 12; // количество входов по умолчанию
     static final short DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER = 2; // количество входов по умолчанию
     static final short DEFAULT_LIST_VIEW_OUT_NUMBER = 15; // количество выходов по умолчанию
+    static final short DEFAULT_LIST_VIEW_CAN_NUMBER = 10; // количество входов по CAN по умолчанию
     static final short SB_IN_ON = 1; // SeekBar для цифровых входов в среднем положении
     static final short SB_IN_OFF = 0; // SeekBar для цифровых входов в левом положении
     static final short SB_IN_TIME_OFF = 2; // SeekBar для цифровых входов в правом положении
@@ -158,7 +170,8 @@ class Utils {
 
     static final short CMD_INPUT_ON_OFF_STATUS_FROM = 14; // начало флагов сатуса входов в команде INPUT_ON_OFF
     static final short LENGTH_INPUT_GROUP = 4; // длина данных для группы входов (по 16 входов)
-    static final short NUMBER_BT_DIGITAL_INPUTS_OUTPUTS = 96; // количество цифровых входов в посылке по BT
+    static final short NUMBER_BT_DIGITAL_INPUTS = 96; // количество цифровых входов в посылке по BT
+    static final short NUMBER_BT_DIGITAL_OUTPUTS = 128; // количество цифровых входов в посылке по BT
     static final short NUMBER_BT_ANALOG_INPUTS = 32; // количество аналоговых входов в посылке по BT
 
     static final short ALL_OUT = 0;         // количество для выключения всех выходов

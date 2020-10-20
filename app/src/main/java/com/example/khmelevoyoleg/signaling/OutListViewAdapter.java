@@ -36,7 +36,7 @@ class OutListViewAdapter extends SimpleAdapter
     private Runnable runCheckStatus = new Runnable() {
         @Override
         public void run() {
-            setButtonImage();
+            //setButtonImage();
         }
     };
 
@@ -82,9 +82,8 @@ class OutListViewAdapter extends SimpleAdapter
             if (activity.checkAbilityTxBT()) {
                 // activity.sendDataBT(activity.OUT_ON + Integer.toString(swNumber + 1), 0);
                 activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON_TIME, (ivNumber + 1)), 0);
-                ivActive.setImageResource(R.drawable.circle_grey32_dark);
                 // вызываем runCheckStatus с задержкой 100 мс.
-                timerHandler.postDelayed(runCheckStatus, TIMER_ON_BUTTON);
+                //timerHandler.postDelayed(runCheckStatus, TIMER_ON_BUTTON);
                 ivActive.setImageResource(R.drawable.circle_grey32_dark);
                 int i = 0;
                 do {
@@ -155,12 +154,12 @@ class OutListViewAdapter extends SimpleAdapter
             // проверяем находится ли выход в режиме сработал по времени
             if (activity.mOutTimeOnState.get(position)) {
                 // сработал, нужно отобразить его темным цветом
-                viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_dark);
+                viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_aver);
             }
             else {
                 if (activity.mOutState.get(position)) {
                     // не сработал, нужно отобразить его светлым цветом
-                    viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_off);
+                    viewHolder.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_aver);
                 }
                 else {
                     // не сработал, нужно отобразить его светлым цветом
@@ -207,22 +206,26 @@ class OutListViewAdapter extends SimpleAdapter
         // получаем номер данного SwitchCompat
         int swNumber = (int) swActive.getTag(R.id.swOutState);
         // отправляем команду на включение/ выключение реле
-        // посылаем команду установить на охрану в 1-м режиме
         if (isChecked) {
             // передаем данные если возможна передача
             if (activity.checkAbilityTxBT()) {
                 // выдаем текстовое оповещение о включении с номером вкюченного выхода
                 // только в том случае когда изменения были сделаны руками путем переключения
                 if (scOutState[swNumber] == activity.mOutState.get(swNumber))
-                    addToast(swNumber, activity.getString(R.string.outOnTimeBegin));
+                    // выдаем сообщение только для выключенного выхода
+                    if ( ! scOutState[swNumber]) {
+                        addToast(swNumber, activity.getString(R.string.outOnTimeBegin));
+                        // отправляем команду по BT
+                        activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON, (swNumber + 1)), 0);
+                        // меняем индикацию выхода
+                        View parent = (View) swActive.getParent();
+                        ViewHolder vh = (ViewHolder) parent.getTag();
+                        vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_aver);
+                    }
                 // устанавливаем переключатель
                 scOutState[swNumber] = true;
                 // изменяем статус для данного входа
                 activity.mOutState.set(swNumber, true);
-                activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON, (swNumber + 1)), 0);
-                View parent = (View) swActive.getParent();
-                ViewHolder vh = (ViewHolder) parent.getTag();
-                vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32_off);
             }
             else {
                 // устанавливаем переключатель
@@ -241,15 +244,21 @@ class OutListViewAdapter extends SimpleAdapter
                 // выдаем текстовое оповещение с номером вкюченного выхода
                 // только в том случае когда изменения были сделаны руками путем переключения
                 if (scOutState[swNumber] == activity.mOutState.get(swNumber))
-                    addToast(swNumber, activity.getString(R.string.outOff));
+                    // выдаем сообщение только для включенного выхода
+                    if (scOutState[swNumber]) {
+                        addToast(swNumber, activity.getString(R.string.outOff));
+                        // отправляем команду по BT
+                        activity.sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, (swNumber + 1)), 0);
+                        // меняем индикацию выхода
+                        View parent = (View) swActive.getParent();
+                        ViewHolder vh = (ViewHolder) parent.getTag();
+                        vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32);
+                    }
                 // устанавливаем переключатель
                 scOutState[swNumber] = false;
                 // изменяем статус для данного входа
                 activity.mOutState.set(swNumber, false);
-                activity.sendDataBT(String.format("%s%d\r", Utils.OUT_OFF, (swNumber + 1)), 0);
-                View parent = (View) swActive.getParent();
-                ViewHolder vh = (ViewHolder) parent.getTag();
-                vh.ivOutTimeSwitch.setImageResource(R.drawable.circle_grey32);
+
 
             }
             else {

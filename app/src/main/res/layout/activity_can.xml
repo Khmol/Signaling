@@ -7,10 +7,10 @@
     android:layout_height="match_parent">
 
     <TextView
-        android:id="@+id/tvTitleOut"
+        android:id="@+id/tvTitleCan"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/title_out"
+        android:text="@string/title_can"
         android:textSize="18sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -20,17 +20,17 @@
         android:layout_marginEnd="8dp" />
 
     <LinearLayout
-        android:id="@+id/llListViewOut"
+        android:id="@+id/llListViewCan"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@+id/tvTitleOut"
-        app:layout_constraintBottom_toTopOf="@+id/pbOutSave"
+        app:layout_constraintTop_toBottomOf="@+id/tvTitleCan"
+        app:layout_constraintBottom_toTopOf="@+id/pbCanSave"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintLeft_toLeftOf="parent">
 
         <!-- разрешаем фокус для потомков ListViwew-->
         <ListView
-            android:id="@+id/lvOut"
+            android:id="@+id/lvCan"
             android:descendantFocusability="afterDescendants"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
@@ -38,26 +38,38 @@
     </LinearLayout>
 
     <Button
-        android:id="@+id/pbOutPrevious"
+        android:id="@+id/pbCanPrevious"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/pbPrevious"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintRight_toLeftOf="@+id/pbOutSave"
+        app:layout_constraintRight_toLeftOf="@+id/pbCanSave"
         app:layout_constraintLeft_toLeftOf="parent"
         />
+
     <Button
-        android:id="@+id/pbOutSave"
+        android:id="@+id/pbCanSave"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/pbInOutSave"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@+id/pbCanNext"
+        app:layout_constraintLeft_toRightOf="@+id/pbCanPrevious"
         />
 
+    <Button
+        android:id="@+id/pbCanNext"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/pbNext"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/pbCanSave"
+        />
 </android.support.constraint.ConstraintLayout>

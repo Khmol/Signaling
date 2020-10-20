@@ -31,6 +31,7 @@
     <string name="base_name">имя базового\nблока</string>
     <string name="settings">Выберите устройство для подключения</string>
     <string name="title_in">Состояние дискретных входов</string>
+    <string name="title_can">Состояние входов CAN</string>
     <string name="title_analog_in">Состояние аналоговых входов</string>
     <string name="title_temperature">Температура - </string>
     <string name="title_battery">Напряжение батарейки - </string>
@@ -76,7 +77,7 @@
     <string name="volts"> В</string>
     <string name="preferences">Настройки</string>
     <string name="PairedDevicesList">Устройство для подключения</string>
-    <string name="checkDevice">Выберите устройсто</string>
+    <string name="checkDevice">Выберите устройство</string>
     <string name="cbAutoConnectFlag">Автоматическое соединение</string>
     <string name="cbAutoConnectFlagSummary">Вкл/выкл</string>
     <string name="listPrefPairedDevices">listPrefPairedDevices</string>

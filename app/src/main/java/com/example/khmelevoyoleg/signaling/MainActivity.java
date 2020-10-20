@@ -92,6 +92,9 @@ public class MainActivity extends AppCompatActivity
     SimpleAdapter adapterMainInStatus;
     ListView lvOutSettigs;
     OutListViewAdapter adapterOut;
+    ListView lvCan;
+    CanListViewAdapter adapterCan;
+
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
 
@@ -142,11 +145,14 @@ public class MainActivity extends AppCompatActivity
     Button pbDigInSave;                     // кнопка сохранить изменения на вкладке In
     Button pbAnalogInSave;                  // кнопка сохранить изменения на вкладке AnalogIn
     Button pbNext;                          // кнопка перейти к следующим настройкам
-    Button pbAnalogNext;                          // кнопка перейти к следующим настройкам
+    Button pbAnalogNext;                    // кнопка перейти к следующим настройкам
     Button pbPrevious;                      // кнопка перейти к предыдущим настройкам
     Button pbAnalogPrevious;                // кнопка перейти к предыдущим настройкам
     Button pbOutPrevious;                   // кнопка перейти к предыдущим настройкам
     Button pbOutSave;                       // кнопка сохранить изменения на вкладке Out
+    Button pbCanPrevious;                   // кнопка перейти к предыдущим настройкам
+    Button pbCanNext;                       // кнопка перейти к следующим настройкам
+    Button pbCanSave;                       // кнопка сохранить изменения на вкладке CAN
 
     MediaPlayer mediaPlayer;
     AudioManager am;
@@ -158,9 +164,9 @@ public class MainActivity extends AppCompatActivity
     ArrayList<Boolean> mDigInState = new ArrayList<>();
     ArrayList<Integer> mDigInTimeOff = new ArrayList<>();
     ArrayList<Integer> mDigInDelayTime = new ArrayList<>();
+
     ArrayList<Integer> mAnalogInDelayTime = new ArrayList<>();
     ArrayList<Float> mAnalogVal = new ArrayList<>();
-
     ArrayList<String> mAnalogInName = new ArrayList<>();
     ArrayList<String> mAnalogInNumber = new ArrayList<>();
     ArrayList<String> mAnalogInStatus = new ArrayList<>();
@@ -172,6 +178,13 @@ public class MainActivity extends AppCompatActivity
     ArrayList<Boolean> mOutState = new ArrayList<>();
     ArrayList<Boolean> mOutTimeOnState = new ArrayList<>();
 
+    ArrayList<String> mCanName = new ArrayList<>();
+    ArrayList<String> mCanNumber = new ArrayList<>();
+    ArrayList<String> mCanStatus = new ArrayList<>();
+    ArrayList<Boolean> mCanState = new ArrayList<>();
+    ArrayList<Integer> mCanTimeOff = new ArrayList<>();
+    ArrayList<Integer> mCanDelayTime = new ArrayList<>();
+
     ArrayList<String> mMainStatusNumber = new ArrayList<>();
     ArrayList<String> mMainStatusName = new ArrayList<>();
     ArrayList<String> mMainStatusTime = new ArrayList<>();
@@ -181,6 +194,7 @@ public class MainActivity extends AppCompatActivity
     ArrayList<Map<String, Object>> mAlAnalogInStatus;
     ArrayList<Map<String, Object>> mAlOutStatus;
     ArrayList<Map<String, Object>> mAlMainInStatus;
+    ArrayList<Map<String, Object>> mAlCanStatus;
 
     int statusSIM;     // флаги статусов охраны
     int oldStatusSIM = Utils.FIRST_START;  // флаги статусов охраны - прошлое сосояние
@@ -282,7 +296,7 @@ public class MainActivity extends AppCompatActivity
         // Создаем View и добавляем их в уже готовый flipper
         LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         int layouts[] = new int[]{ R.layout.activity_main, R.layout.activity_dig_in,
-                R.layout.activity_analog_in, R.layout.activity_out};
+                R.layout.activity_analog_in, R.layout.activity_can, R.layout.activity_out};
         for (int layout : layouts) {
             View currentView = inflater.inflate(layout, null);
             currentView.setTag(layout);
@@ -299,12 +313,18 @@ public class MainActivity extends AppCompatActivity
         // читаем значения настроек выходов, результат в mOutName, mOutNumber, mOutState
         loadInOutPreferences(Utils.DEFAULT_LIST_VIEW_OUT_NUMBER, Utils.OUT_NAME, Utils.DEFAULT_OUT_NAME, mOutName,
                 mOutNumber, null, null, Utils.OUT_STATE, Utils.DEFAULT_OUT_STATE, mOutState, null, null, null);
+        // читаем значения настроек входов по CAN, результат в mOutName, mOutNumber, mOutState
+        loadInOutPreferences(Utils.DEFAULT_LIST_VIEW_CAN_NUMBER, Utils.CAN_NAME, Utils.DEFAULT_CAN_NAME, mCanName,
+                mCanNumber, Utils.DEFAULT_IN_OUT_STATUS, mCanStatus, Utils.CAN_STATE, Utils.DEFAULT_CAN_STATE, mCanState,
+                mCanTimeOff, mCanDelayTime, null);
+
         // заполняем исходными значениями список mOutTimeOnState
         Utils.addFalseArrayList(Utils.DEFAULT_LIST_VIEW_OUT_NUMBER, mOutTimeOnState);
         // заполняем значениями список InOutListView и создаем адапер
         adapterDigIn = createDigInAdapter(mDigInName, mDigInNumber, mDigInTimeOff);
         adapterAnalogIn = createAnalogInAdapter(mAnalogInName, mAnalogInNumber, mAnalogInState);
         adapterMainInStatus = createMainInStatusAdapter();
+        adapterCan = createCanAdapter(mCanName, mCanNumber, mCanTimeOff);
         adapterOut = createOutSettingsAdapter();
         // определяем список lvDigIn и присваиваем ему адаптер
         lvDigIn = (ListView) findViewById(R.id.lvDigIn);
@@ -321,6 +341,10 @@ public class MainActivity extends AppCompatActivity
         lvOutSettigs = (ListView) findViewById(R.id.lvOut);
         lvOutSettigs.setAdapter(adapterOut);    // назначаем адаптер для lvOutSettigs
         lvOutSettigs.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
+        // определяем список lvDigIn и присваиваем ему адаптер
+        lvCan = (ListView) findViewById(R.id.lvCan);
+        lvCan.setAdapter(adapterCan);    // назначаем адаптер для ListView
+        lvCan.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
 
         pbDigInSave = (Button) findViewById(R.id.pbDigInSave);
         pbDigInSave.setOnClickListener(this);
@@ -338,6 +362,12 @@ public class MainActivity extends AppCompatActivity
         pbOutPrevious.setOnClickListener(this);
         pbOutSave = (Button) findViewById(R.id.pbOutSave);
         pbOutSave.setOnClickListener(this);
+        pbCanPrevious = (Button) findViewById(R.id.pbCanPrevious);
+        pbCanPrevious.setOnClickListener(this);
+        pbCanSave = (Button) findViewById(R.id.pbCanSave);
+        pbCanSave.setOnClickListener(this);
+        pbCanNext = (Button) findViewById(R.id.pbCanNext);
+        pbCanNext.setOnClickListener(this);
 
         // Устанавливаем listener касаний, для последующего перехвата жестов
         ConstraintLayout mainLayout = (ConstraintLayout) findViewById(R.id.main_layout);
@@ -379,15 +409,15 @@ public class MainActivity extends AppCompatActivity
         // определяем AudioManager
         am = (AudioManager) getSystemService(AUDIO_SERVICE);
         // массивы для состояний дискретных входов
-        mDigitalInputLatch = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // защелкнутые
-        mOldDigitalInputLatch = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // защелкнутые
-        mDigitalInputCurrent = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // текущие
-        mOldDigitalInputCurrent = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // текущие
-        mDigitalInputActive = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // активные
-        mDigitalInputACurOn = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // текущие при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mDigitalInputACurOn);
-        mOldDigitalInputACurOn = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS]; // прошлое при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mOldDigitalInputACurOn);
+        mDigitalInputLatch = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // защелкнутые
+        mOldDigitalInputLatch = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // защелкнутые
+        mDigitalInputCurrent = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // текущие
+        mOldDigitalInputCurrent = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // текущие
+        mDigitalInputActive = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // активные
+        mDigitalInputACurOn = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // текущие при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mDigitalInputACurOn);
+        mOldDigitalInputACurOn = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // прошлое при постановке на охр.
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mOldDigitalInputACurOn);
         // массивы для состояний аналоговых входов
         mAnalogLargerLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
         mOldAnalogLargerLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
@@ -410,7 +440,7 @@ public class MainActivity extends AppCompatActivity
         mOldAnalogACurLess = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // прошлое при постановке на охр.
         Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogACurLess);
         mAnalogInputActive = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // прошлое при постановке на охр.
-        mOutActive = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS];
+        mOutActive = new boolean[Utils.NUMBER_BT_DIGITAL_OUTPUTS];
 
         // определяем адаптер
         //region BluetoothAdapter
@@ -470,6 +500,40 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
+     * заполнение значениями список InOutListView
+     * @param canName - массив имен входов/ выходов
+     * @param canNumber - массив номеров входов/ выходов
+     * @param canStateTime - массив состояний входов/ выходов
+     */
+    private CanListViewAdapter createCanAdapter(ArrayList<String> canName, ArrayList<String> canNumber,
+                                                    ArrayList<Integer> canStateTime) {
+        // настраиваем ListView
+        // упаковываем данные в понятную для адаптера структуру
+        mAlCanStatus = new ArrayList<>(1);
+        Map<String, Object> m;
+        CanListViewAdapter adapter;
+        for (int i = 0; i < canNumber.size(); i++) {
+            m = new HashMap<>();
+            m.put(Utils.ATRIBUTE_NUMBER, canNumber.get(i));
+            m.put(Utils.ATTRIBUTE_NAME, canName.get(i));
+            m.put(Utils.ATTRIBUTE_STATE, canStateTime.get(i));
+            m.put(Utils.ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey48);
+            mAlCanStatus.add(m);
+        }
+        // массив имен атрибутов, из которых будут читаться данные
+        String[] from = {Utils.ATRIBUTE_NUMBER, Utils.ATTRIBUTE_NAME,
+                /*Utils.ATTRIBUTE_STATE,*/ Utils.ATTRIBUTE_STATUS_IMAGE};
+        // массив ID View-компонентов, в которые будут вставлять данные
+        int[] to = { R.id.tvCanNumber, R.id.etCanName,
+                /*R.id.sbDigInState,*/ R.id.ivCanStatus}; //R.id.cbChecked,
+        // создаем адаптер
+        adapter = new CanListViewAdapter(this, mAlCanStatus, R.layout.can_item, from, to);
+        // передаем ссылку на основную activity
+        adapter.link(this);
+        return adapter;
+    }
+
+    /**
      * изменяем адаптер adapterDigIn
      */
     void modifyDigInAdapter () {
@@ -489,6 +553,28 @@ public class MainActivity extends AppCompatActivity
         }
         // подтверждаем изменения
         adapterDigIn.notifyDataSetChanged();
+    }
+
+    /**
+     * изменяем адаптер adapterDigIn
+     */
+    void modifyCanAdapter () {
+        Map<String, Object> m;
+        for (int i = 0; i < mCanNumber.size(); i++) {
+            m = new HashMap<>();
+            m.put(Utils.ATRIBUTE_NUMBER, mCanNumber.get(i));
+            m.put(Utils.ATTRIBUTE_NAME, mCanName.get(i));
+            if (mCanTimeOff.get(i) > 0) {
+                m.put(Utils.ATTRIBUTE_STATE, Utils.INPUT_OFF_TIME_NUMBER);
+            }
+            else {
+                m.put(Utils.ATTRIBUTE_STATE, mDigInState.get(i));
+            }
+            m.put(Utils.ATTRIBUTE_STATUS_IMAGE, Utils.getImageViewValue(mCanStatus, i));
+            mAlCanStatus.set(i, m);
+        }
+        // подтверждаем изменения
+        adapterCan.notifyDataSetChanged();
     }
 
     /**
@@ -833,9 +919,16 @@ public class MainActivity extends AppCompatActivity
                 flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
                 flipper.showNext();
                 break;
-            case R.id.pbOutSave:
+            case R.id.pbCanNext:
+                showNextActivity();
+                break;
+            case R.id.pbCanSave:
                 // сохраняем настройки
-                saveInOutPreferences(Utils.OUT_NAME, mOutName, null, null);
+                // TODO продолжить тут
+                //saveCanPreferences(Utils.OUT_NAME, mOutName, null, null);
+            case R.id.pbCanPrevious:
+                showPreviousActivity();
+                break;
             case R.id.pbOutPrevious:
                 adapterOut.notifyDataSetChanged();
                 // закрываем экранную клавиатуру
@@ -853,6 +946,7 @@ public class MainActivity extends AppCompatActivity
                 // запрашиваем текущее значение задержки обработки входа при постановке на охрану
                 sendDataBT(Utils.ADC_IN_GET_DELAY_START, 0);
                 break;
+
             case R.id.toolbar:
                 // выводим сообщение "Запущен поиск сигнализации"
                 Toast toast = Toast.makeText(getApplicationContext(), R.string.version, Toast.LENGTH_SHORT);
@@ -1470,7 +1564,7 @@ public class MainActivity extends AppCompatActivity
                     parseRxInputFlags(parseData, Utils.CMD_INPUT_A_STATUS_FROM, parseData.length(),
                             Utils.LENGTH_INPUT_GROUP, mDigitalInputActive);
                     // проверка были ли изменения в состоянии датчиков
-                    for (int i = 0; i < Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS; i++) {
+                    for (int i = 0; i < Utils.NUMBER_BT_DIGITAL_INPUTS; i++) {
                         if (mDigitalInputACurOn[i] != mOldDigitalInputACurOn[i]) {
                             // проверка включен ли вход
                             if (mDigitalInputActive[i]) {
@@ -1715,6 +1809,14 @@ public class MainActivity extends AppCompatActivity
                 }
                 // region TYPE_OUT_ON_OFF
                 // endregion
+                // region TYPE_ADC_VAL
+                // проверка на команду INPUT_А
+                // region CAN
+                if (parseData.indexOf(Utils.TYPE_CAN) > 0) {
+                    // обновляем графическое отображение входов на вкладке их настроек
+                    adapterCan.checkStatusPictureCan(mCanStatus);
+                }
+                // endregion
             }
         }
         // выводим сообщение, "Соединение отсутствует"
@@ -1727,10 +1829,10 @@ public class MainActivity extends AppCompatActivity
      */
     private void clearDigAnalogLists() {
         // очищаем списки обрабатываемых входов
-        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mDigitalInputACurOn);
-        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mOldDigitalInputACurOn);
-        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mOldDigitalInputCurrent);
-        Utils.setFalseArray(Utils.NUMBER_BT_DIGITAL_INPUTS_OUTPUTS, mDigitalInputCurrent);
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mDigitalInputACurOn);
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mOldDigitalInputACurOn);
+        Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mOldDigitalInputCurrent);
+        Utils.setFalseArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mDigitalInputCurrent);
         // обновляем значение списка mDigInStatus
         Utils.modifyDigInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
                 mDigitalInputACurOn, mDigInStatus);
@@ -1880,7 +1982,7 @@ public class MainActivity extends AppCompatActivity
                 for (int bit = index; bit < index + 16; bit++) {
                     array_out[bit] = checkBit(intInput, (bit - index));
                 }
-                index += (group_length *= 4 );
+                index += (group_length * 4);
             }
             return true;
         }
@@ -2497,6 +2599,70 @@ public class MainActivity extends AppCompatActivity
         }
     };
 
+    /**
+     * диалог при установке времени выключения входа (выключение по времени)
+     * @param swNumber - номер входа (сработавшего переключателя)
+     * @param setOffTime - обработчик для диалогового окна
+     * @param selectInType - выбор типа входа [true] - аналоговый, [false] - цифровой
+     */
+    void showDialogCan (int swNumber, TimePickerDialog.OnTimeSetListener setOffTime, boolean selectInType) {
+        _swNumber = swNumber;
+        final boolean _selectInType = selectInType;
+        _TimeOff = 0;   // обнуляем для последующего определения было ли изменено время
+        TimePickerDialog timeDialog;
+        // настраиваем alertDialog
+        timeDialog = new TimePickerDialog(this, setOffTime, Utils.DEFAULT_HOUR, Utils.DEFAULT_MINUTE, true);
+        timeDialog.setTitle(R.string.daTimeOff);  // заголовок
+        timeDialog.setCancelable(false);
+        timeDialog.setOnDismissListener(new TimePickerDialog.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialogInterface) {
+                // проверяем было ли установлено время выключения входа
+                if (_TimeOff == 0) {
+                    // время установлено не было
+                    if (_selectInType) {
+                        // было выключение аналогового входа
+                        // запрашиваем текущее значения времени выключения входов
+                        sendDataBT(Utils.ADC_IN_GET_TIME_OFF, 0);
+                        // запрашиваем текущее значение входов
+                        sendDataBT(Utils.ADC_IN_GET_ON, 0);
+                        // запрашиваем текущее значение задержки обработки входа при постановке на охрану
+                        sendDataBT(Utils.ADC_IN_GET_DELAY_START, 0);
+                    }
+                    else {
+                        // было выключение цифрового входа
+                        // запрашиваем текущее значения времени выключения входов
+                        sendDataBT(Utils.IN_GET_TIME_OFF, 0);
+                        // запрашиваем текущее значение входов
+                        sendDataBT(Utils.IN_GET_ON, 0);
+                        // запрашиваем текущее значение задержки обработки входа при постановке на охрану
+                        sendDataBT(Utils.IN_GET_DELAY_START, 0);
+                    }
+
+                }
+            }
+        });
+        timeDialog.setCanceledOnTouchOutside(true);
+        timeDialog.show();
+    }
+
+    /**
+     * обработчик выхода из диалога timeDialog
+     */
+    TimePickerDialog.OnTimeSetListener setCanOffTime = new TimePickerDialog.OnTimeSetListener() {
+        @Override
+        public void onTimeSet(TimePicker view, int hour, int minute) {
+            DigInListViewAdapter.setTime(hour, minute);
+            _TimeOff = (hour * 60) + minute;
+            sendDataBT(String.format("%s%d,%s\r", Utils.IN_OFF_TIME,(_swNumber + 1),
+                    Integer.toHexString(_TimeOff)), 0);
+            mCanTimeOff.set(_swNumber, _TimeOff);
+            mCanState.set(_swNumber, true);
+            // обновляем переключатели дискретных входов
+            modifyDigInAdapter();
+        }
+    };
+
     TimePickerDialog.OnTimeSetListener setAnalogInOffTime = new TimePickerDialog.OnTimeSetListener() {
         @Override
         public void onTimeSet(TimePicker view, int hour, int minute) {
@@ -2510,11 +2676,19 @@ public class MainActivity extends AppCompatActivity
             modifyAnalogInAdapter();
         }
     };
+
     // показать предыдущий экран настроек
     private void showPreviousActivity () {
         flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_in));
         flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_prev_out));
         flipper.showPrevious();
+    }
+
+    // показать предыдущий экран настроек
+    private void showNextActivity () {
+        flipper.setInAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_in));
+        flipper.setOutAnimation(AnimationUtils.loadAnimation(this, R.anim.go_next_out));
+        flipper.showNext();
     }
 
     // Вызывается перед уничтожением активности
