@@ -51,7 +51,7 @@ class Utils {
     static final String TYPE_INPUT_TIME_OFF = "INPUT TIME OFF,"; // тип команды "INPUT TIME OFF" в ответе от SIM
     static final String TYPE_INPUT_DELAY_START = "INPUT DELAY START,"; // тип команды "INPUT DELAY START" в ответе от SIM
 
-    static final String TYPE_CAN = "IN CAN A,"; // тип команды IN CAN A в ответе от SIM
+    static final String TYPE_CAN = "IN CAN,"; // тип команды IN CAN A в ответе от SIM
     static final String TYPE_CAN_A = "IN CAN A,"; // тип команды "IN CAN AF" в ответе от SIM
     static final String TYPE_CAN_ON_OFF = "IN CAN ON OFF,"; // тип команды "IN CAN ON OFF" в ответе от SIM
     static final String TYPE_CAN_DELAY_START = "IN CAN DELAY START,"; // тип команды "IN CAN DELAY START" в ответе от SIM
@@ -85,6 +85,13 @@ class Utils {
     static final String IN_OFF_TIME = "IN OFF TIME,"; // команда выключить вход для обработки на время
     static final String IN_GET_TIME_OFF = "IN GET TIME OFF,01\r"; // запросить время выключения входов
     static final String IN_GET_DELAY_START = "IN GET DELAY START,01\r"; // запросить время задержки опроса входа при постановке на охрану
+
+    static final String IN_CAN_GET_ON = "IN CAN GET ON,01\r"; // команда Запросить статус включенных входов CAN
+    static final String IN_CAN_GET_TIME_OFF = "IN CAN GET TIME OFF,01\r"; // команда Запросить время выключения входов CAN
+    static final String IN_CAN_GET_DELAY_START = "IN CAN GET DELAY START,01\r"; // команда Запросить время задержки опроса входа CAN при постановке на охрану
+    static final String IN_CAN_OFF_TIME = "IN CAN OFF TIME,"; // команда выключить вход для обработки на время
+    static final String IN_CAN_ON = "IN CAN ON,"; // команда включить вход для обработки
+    static final String IN_CAN_OFF = "IN CAN OFF,"; // команда выключить вход для обработки
 
     static final String STATUS_GENERAL_ALARM = "STATUS_GENERAL_ALARM"; // состояние модуля - АВАРИЯ
     static final String STATUS_ALARM_TRIGGERED = "STATUS_ALARM_TRIGGERED"; // состояние модуля - предварительная АВАРИЯ
@@ -140,10 +147,19 @@ class Utils {
     static final int DEFAULT_HOUR = 0; // время выключения дискретного входа по умолчанию
     static final int DEFAULT_MINUTE = 10; // время выключения дискретного входа по умолчанию
 
+    static final int DIG_IN = 0; // цифровой вход
+    static final int ANALOG_IN = 1; // аналоговый вход
+    static final int CAN = 2; // аналоговый вход
+
     static final short CMD_INPUT_MAIN_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
     static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
     static final short CMD_INPUT_CUR_LATCH_FROM = 37; // начало флагов защелки статуса входов в команде INPUT
     static final short CMD_INPUT_LATCH_TO = 62; // начало значения RSSI в команде INPUT
+
+    static final short CMD_CAN_MAIN_STATUS_FROM = 8; // начало флагов статуса охраны в команде CAN
+    static final short CMD_CAN_LATCH_FROM = 13; // начало флагов защелки статуса входов в команде CAN
+    static final short CMD_CAN_CUR_LATCH_FROM = 22; // начало флагов защелки статуса входов в команде CAN
+    static final short CMD_CAN_LATCH_TO = 31; //
 
     static final short CMD_ADC_MAIN_STATUS_FROM = 5; // начало флагов статуса охраны в команде ADC
     static final short CMD_ADC_LARGER_LATCH_FROM = 10; // начало флагов защелки статуса входов по превышшению в команде ADC
@@ -163,6 +179,10 @@ class Utils {
     static final short CMD_INPUT_A_CUR_ON_FROM = 14; // начало флагов включенных датчиков в команде INPUT_A
     static final short CMD_INPUT_A_STATUS_FROM = 39; // начало флагов сатуса входов в команде INPUT_А
 
+    static final short CMD_CAN_A_MAIN_STATUS_FROM = 10; // начало флагов статуса охраны в команде CAN A
+    static final short CMD_CAN_A_CUR_ON_FROM = 15; // начало флагов включенных датчиков в команде CAN A
+    static final short CMD_CAN_A_STATUS_FROM = 24; // начало флагов сатуса входов в команде CAN A
+
     static final short CMD_ADC_A_MAIN_STATUS_FROM = 7; // начало флагов стауса входов в команде ADC_A
     static final short CMD_ADC_A_STATUS_FROM = 30; // начало флагов стауса входов в команде ADC_A
     static final short CMD_ADC_A_LARGER_FROM = 12; // начало флагов LARGER в команде ADC_A
@@ -173,6 +193,10 @@ class Utils {
     static final short NUMBER_BT_DIGITAL_INPUTS = 96; // количество цифровых входов в посылке по BT
     static final short NUMBER_BT_DIGITAL_OUTPUTS = 128; // количество цифровых входов в посылке по BT
     static final short NUMBER_BT_ANALOG_INPUTS = 32; // количество аналоговых входов в посылке по BT
+    static final short NUMBER_BT_CAN = 32; // количество входов CAN в посылке по BT
+
+    static final short CMD_CAN_ON_OFF_STATUS_FROM = 15; // начало флагов сатуса входов в команде CAN_ON_OFF
+
 
     static final short ALL_OUT = 0;         // количество для выключения всех выходов
     static final short CMD_OUT_ON_OFF_STATUS_FROM = 15; // начало флагов сатуса входов в команде INPUT_ON_OFF
@@ -188,8 +212,8 @@ class Utils {
      * @param digitalInputACurOn - массив значений состояний дискретных входов при установке на охрану
      * @param digInStatus - список для изменения
      */
-    static void modifyDigInStatus(boolean[] digitalInputCurrent, boolean[] oldDigitalInputCurrent,
-                                   boolean[] digitalInputACurOn, ArrayList<String> digInStatus) {
+    static void modifyInStatus(boolean[] digitalInputCurrent, boolean[] oldDigitalInputCurrent,
+                               boolean[] digitalInputACurOn, ArrayList<String> digInStatus) {
         int len = digInStatus.size();
         for (int i = 0; i < len; i++) {
             if (digitalInputCurrent[i] != oldDigitalInputCurrent[i]) {

@@ -82,7 +82,7 @@ class CanListViewAdapter extends SimpleAdapter
             case 0:
                 if ( activity.mCanState.get(swNumber) ||
                         activity.mCanTimeOff.get(swNumber) != 0) {
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_OFF, (swNumber + 1)), 0);
+                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_CAN_OFF, (swNumber + 1)), 0);
                     activity.mCanTimeOff.set(swNumber, 0);
                     activity.mCanState.set(swNumber, false);
                     Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_grey32_dark, null);
@@ -92,7 +92,7 @@ class CanListViewAdapter extends SimpleAdapter
             case 1: {
                 if (!activity.mCanState.get(swNumber) ||
                         activity.mCanTimeOff.get(swNumber) != 0) {
-                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_ON, (swNumber + 1)), 0);
+                    activity.sendDataBT(String.format("%s%d\r", Utils.IN_CAN_ON, (swNumber + 1)), 0);
                     activity.mCanTimeOff.set(swNumber, 0);
                     activity.mCanState.set(swNumber, true);
                 }
@@ -104,7 +104,7 @@ class CanListViewAdapter extends SimpleAdapter
                 if ( !activity.mCanState.get(swNumber) ||
                         activity.mCanTimeOff.get(swNumber) == 0) {
                     // запрашиваем установку времени выключения входа
-                    activity.showDialogCan(swNumber, activity.setCanOffTime, false);
+                    activity.showDialogIn(swNumber, activity.setCanOffTime, Utils.CAN);
                     Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
                     seekBar.setThumb(draw);
                 }

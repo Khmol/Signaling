@@ -105,7 +105,7 @@ class DigInListViewAdapter extends SimpleAdapter
                 if ( !activity.mDigInState.get(swNumber) ||
                         activity.mDigInTimeOff.get(swNumber) == 0) {
                     // запрашиваем установку времени выключения входа
-                    activity.showDialogIn(swNumber, activity.setDigInOffTime, false);
+                    activity.showDialogIn(swNumber, activity.setDigInOffTime, Utils.DIG_IN);
                     Drawable draw = ResourcesCompat.getDrawable(activity.getResources(), R.drawable.circle_blue32, null);
                     seekBar.setThumb(draw);
                 }
