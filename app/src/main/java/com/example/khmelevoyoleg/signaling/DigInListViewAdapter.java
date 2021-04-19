@@ -3,6 +3,7 @@ package com.example.khmelevoyoleg.signaling;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.support.v4.content.res.ResourcesCompat;
+import android.view.ContextMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -17,11 +18,12 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 class DigInListViewAdapter extends SimpleAdapter
-        implements View.OnFocusChangeListener, SeekBar.OnSeekBarChangeListener{
+        implements View.OnFocusChangeListener, SeekBar.OnSeekBarChangeListener, View.OnCreateContextMenuListener{
 
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
     private ArrayList<ViewHolder> viewHolderList;
     private ArrayList<String> oldDigInStatus;
+    boolean editableName = false;
     private static int _minute;
     private static int _hour;
 
@@ -30,37 +32,41 @@ class DigInListViewAdapter extends SimpleAdapter
         // создаем список если его нет
         viewHolderList = new ArrayList<>();
         oldDigInStatus = new ArrayList<>();
+
     }
 
     // получаем ссылку на MainActivity
     void link(MainActivity act) {
         activity = act;
+        int len = activity.mDigInStatus.size();
+        if (oldDigInStatus.size() != len) {
+            oldDigInStatus.addAll(activity.mDigInStatus);
+        }
     }
 
     /**
      * изменение картинки для входов если это нужно
      */
-    void checkStatusPictureDigIn(ArrayList<String> digInStatus) {
+    boolean checkStatusPictureDigIn(ArrayList<String> digInStatus) {
         int len = digInStatus.size();
-        if (oldDigInStatus.size() != len) {
-            for (String curStatus : digInStatus) {
-                oldDigInStatus.add(curStatus);
-            }
-        }
-        for (int i = 0; i < len; i++) {
-            // проверяем изменился ли статус входа
-            if ( !digInStatus.get(i).equals(oldDigInStatus.get(i))) {
-                // изменился
-                for(ViewHolder viewHolder: viewHolderList) {
-                    int pos = (int) viewHolder.ivDigInStatus.getTag(R.id.ivDigInStatus);
-                    if (pos == i) {
-                        // устанавливаем значение картинки
-                        viewHolder.ivDigInStatus.setImageResource(Utils.getImageViewValue(activity.mDigInStatus, i));
+        if (viewHolderList.size() == 0)
+            return false;
+        else
+            for (int i = 0; i < len; i++) {
+                // проверяем изменился ли статус входа
+                if ( !digInStatus.get(i).equals(oldDigInStatus.get(i))) {
+                    // изменился
+                    for(ViewHolder viewHolder: viewHolderList) {
+                        int pos = (int) viewHolder.ivDigInStatus.getTag(R.id.ivDigInStatus);
+                        if (pos == i) {
+                            // устанавливаем значение картинки
+                            viewHolder.ivDigInStatus.setImageResource(Utils.getImageViewValue(activity.mDigInStatus, i));
+                        }
                     }
+                    oldDigInStatus.set(i, digInStatus.get(i));
                 }
-                oldDigInStatus.set(i, digInStatus.get(i));
             }
-        }
+        return true;
     }
 
     @Override
@@ -137,6 +143,13 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder = new ViewHolder();
             viewHolder.tvDigInNumber = (TextView) convertView.findViewById(R.id.tvDigInNumber);
             viewHolder.etDigInName = (EditText) convertView.findViewById(R.id.etDigInName);
+            viewHolder.etDigInName.setOnCreateContextMenuListener(this);
+            if (editableName)
+                viewHolder.etDigInName.setFocusableInTouchMode(true);
+            else {
+                viewHolder.etDigInName.setFocusableInTouchMode(false);
+                viewHolder.etDigInName.setFocusable(false);
+            }
             viewHolder.ivDigInStatus = (ImageView) convertView.findViewById(R.id.ivDigInStatus);
             viewHolder.sbDigInState = (SeekBar) convertView.findViewById(R.id.sbDigInState);
             viewHolder.tvDigInTimeOff = (TextView) convertView.findViewById(R.id.tvDigInTimeOff);
@@ -162,6 +175,12 @@ class DigInListViewAdapter extends SimpleAdapter
             // задаем Tag для всех элементнов группы
             viewHolder.tvDigInNumber.setTag(R.id.tvDigInNumber, position);
             viewHolder.etDigInName.setTag(R.id.etDigInName, position);
+            if (editableName)
+                viewHolder.etDigInName.setFocusableInTouchMode(true);
+            else {
+                viewHolder.etDigInName.setFocusableInTouchMode(false);
+                viewHolder.etDigInName.setFocusable(false);
+            }
             viewHolder.ivDigInStatus.setTag(R.id.ivDigInStatus, position);
             viewHolder.sbDigInState.setTag(R.id.sbDigInState, position);
             viewHolder.tvDigInTimeOff.setTag(R.id.tvDigInTimeOff, position);
@@ -238,6 +257,15 @@ class DigInListViewAdapter extends SimpleAdapter
             viewHolder.tvDigInDelayTime.setText("");
         }
         return convertView;
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo){
+        switch (v.getId()) {
+            case R.id.etDigInName:
+                menu.add(0, activity.EDIT_NAME_DIG_IN, 0, "Редактировать");
+                break;
+        }
     }
 
     @Override

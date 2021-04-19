@@ -3,6 +3,7 @@ package com.example.khmelevoyoleg.signaling;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.support.v4.content.res.ResourcesCompat;
+import android.view.ContextMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -16,10 +17,11 @@ import java.util.List;
 import java.util.Map;
 
 class AnalogInListViewAdapter extends SimpleAdapter
-        implements View.OnFocusChangeListener, SeekBar.OnSeekBarChangeListener{
+        implements View.OnFocusChangeListener, SeekBar.OnSeekBarChangeListener, View.OnCreateContextMenuListener{
 
     private ArrayList<ViewHolder> viewHolderList;
     private ArrayList<String> oldAnalogInStatus;
+    boolean editableName = false;
 
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
@@ -101,6 +103,13 @@ class AnalogInListViewAdapter extends SimpleAdapter
             viewHolder = new AnalogInListViewAdapter.ViewHolder();
             viewHolder.tvAnalogInNumber = (TextView) convertView.findViewById(R.id.tvAnalogInNumber);
             viewHolder.etAnalogInName = (EditText) convertView.findViewById(R.id.etAnalogInName);
+            viewHolder.etAnalogInName.setOnCreateContextMenuListener(this);
+            if (editableName)
+                viewHolder.etAnalogInName.setFocusableInTouchMode(true);
+            else {
+                viewHolder.etAnalogInName.setFocusableInTouchMode(false);
+                viewHolder.etAnalogInName.setFocusable(false);
+            }
             viewHolder.ivAnalogInStatus = (ImageView) convertView.findViewById(R.id.ivAnalogInStatus);
             viewHolder.sbAnalogInState = (SeekBar) convertView.findViewById(R.id.sbAnalogInState);
             viewHolder.tvAnalogInTimeOff = (TextView) convertView.findViewById(R.id.tvAnalogInTimeOff);
@@ -127,6 +136,12 @@ class AnalogInListViewAdapter extends SimpleAdapter
             // задаем Tag для всех элементнов группы
             viewHolder.tvAnalogInNumber.setTag(R.id.tvAnalogInNumber, position);
             viewHolder.etAnalogInName.setTag(R.id.etAnalogInName, position);
+            if (editableName)
+                viewHolder.etAnalogInName.setFocusableInTouchMode(true);
+            else {
+                viewHolder.etAnalogInName.setFocusableInTouchMode(false);
+                viewHolder.etAnalogInName.setFocusable(false);
+            }
             viewHolder.ivAnalogInStatus.setTag(R.id.ivAnalogInStatus, position);
             viewHolder.sbAnalogInState.setTag(R.id.sbAnalogInState, position);
             viewHolder.tvAnalogInTimeOff.setTag(R.id.tvAnalogInTimeOff, position);
@@ -200,6 +215,15 @@ class AnalogInListViewAdapter extends SimpleAdapter
             viewHolder.tvAnalogInDelayTime.setText("");
         }
         return convertView;
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo){
+        switch (v.getId()) {
+            case R.id.etAnalogInName:
+                menu.add(0, activity.EDIT_NAME_ANALOG_IN, 0, "Редактировать");
+                break;
+        }
     }
 
     @Override

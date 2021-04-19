@@ -40,6 +40,7 @@ class CanListViewAdapter extends SimpleAdapter
      * изменение картинки для входов если это нужно
      */
     void checkStatusPictureCan(ArrayList<String> canStatus) {
+        /*
         int len = canStatus.size();
         if (oldCanStatus.size() != len) {
             for (String curStatus : canStatus) {
@@ -60,6 +61,7 @@ class CanListViewAdapter extends SimpleAdapter
                 oldCanStatus.set(i, canStatus.get(i));
             }
         }
+         */
     }
 
     @Override
@@ -71,8 +73,10 @@ class CanListViewAdapter extends SimpleAdapter
 
     }
 
+
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
+        /*
         int swNumber = (int) seekBar.getTag(R.id.sbCanState);
         int progress = seekBar.getProgress();
         // запоминаем новое значение переключателя (входа)
@@ -110,7 +114,9 @@ class CanListViewAdapter extends SimpleAdapter
                 }
                 break;
         }
+         */
     }
+
 
     static void setTime(int hour, int minute) {
         _hour = hour;
@@ -128,6 +134,7 @@ class CanListViewAdapter extends SimpleAdapter
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
+        /*
         // получаем View
         CanListViewAdapter.ViewHolder viewHolder;
         if (convertView == null) {
@@ -236,6 +243,7 @@ class CanListViewAdapter extends SimpleAdapter
             viewHolder.tvCanTimeOff.setText("");
             viewHolder.tvCanDelayTime.setText("");
         }
+         */
         return convertView;
     }
 
@@ -249,7 +257,7 @@ class CanListViewAdapter extends SimpleAdapter
         } else {
             // фокус был потерян, нужно сохранить новое значение EditText в mDigInName
             int etActiveNumber = (int) etActive.getTag(R.id.etCanName);
-            activity.mCanName.set(etActiveNumber, etActive.getText().toString());
+            //activity.mCanName.set(etActiveNumber, etActive.getText().toString());
         }
     }
 }

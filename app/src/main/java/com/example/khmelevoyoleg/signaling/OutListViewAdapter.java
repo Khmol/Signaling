@@ -6,6 +6,7 @@ import android.support.v7.widget.SwitchCompat;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ContextMenu;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -18,7 +19,7 @@ import java.util.Map;
 
 class OutListViewAdapter extends SimpleAdapter
         implements View.OnFocusChangeListener, CompoundButton.OnCheckedChangeListener,
-        View.OnClickListener {
+        View.OnClickListener, View.OnCreateContextMenuListener {
 
     private final static int TIMER_ON_BUTTON = 1000;  // время отжатия кнопкок
     private Handler timerHandler;
@@ -27,6 +28,7 @@ class OutListViewAdapter extends SimpleAdapter
     private final short BUTTON_COUNT = 10; // количество одновременно нажатых кнопок за 1 с.
     private String toastText;   // текст который будет выводиться в Toast
     private short toastActive;
+    boolean editableName = false;
 
     private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
 
@@ -83,7 +85,7 @@ class OutListViewAdapter extends SimpleAdapter
                 // activity.sendDataBT(activity.OUT_ON + Integer.toString(swNumber + 1), 0);
                 activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON_TIME, (ivNumber + 1)), 0);
                 // вызываем runCheckStatus с задержкой 100 мс.
-                //timerHandler.postDelayed(runCheckStatus, TIMER_ON_BUTTON);
+                //timerBTHandler.postDelayed(runCheckStatus, TIMER_ON_BUTTON);
                 ivActive.setImageResource(R.drawable.circle_grey32_dark);
                 int i = 0;
                 do {
@@ -126,6 +128,13 @@ class OutListViewAdapter extends SimpleAdapter
             viewHolder = new ViewHolder();
             viewHolder.tvOutNumber = (TextView) convertView.findViewById(R.id.tvOutNumber);
             viewHolder.etOutName = (EditText) convertView.findViewById(R.id.etOutName);
+            if (editableName)
+                viewHolder.etOutName.setFocusableInTouchMode(true);
+            else {
+                viewHolder.etOutName.setFocusableInTouchMode(false);
+                viewHolder.etOutName.setFocusable(false);
+            }
+            viewHolder.etOutName.setOnCreateContextMenuListener(this);
             viewHolder.swOutState = (SwitchCompat) convertView.findViewById(R.id.swOutState);
             viewHolder.ivOutTimeSwitch = (ImageView) convertView.findViewById(R.id.ivOutTimeSwitch);
             // задаем Tag для группы View
@@ -144,6 +153,12 @@ class OutListViewAdapter extends SimpleAdapter
             // устанавливаем значение текстовых полей группы
             viewHolder.tvOutNumber.setText(activity.mOutNumber.get(position));
             viewHolder.etOutName.setText(activity.mOutName.get(position));
+            if (editableName)
+                viewHolder.etOutName.setFocusableInTouchMode(true);
+            else {
+                viewHolder.etOutName.setFocusableInTouchMode(false);
+                viewHolder.etOutName.setFocusable(false);
+            }
         }
         // устанавливаем значение переключателя и текстовых полей времени
         if (activity.checkAbilityTxBT()) {
@@ -179,6 +194,15 @@ class OutListViewAdapter extends SimpleAdapter
         viewHolder.etOutName.setTag(R.id.etOutName, position);
         viewHolder.swOutState.setTag(R.id.swOutState, position);
         viewHolder.ivOutTimeSwitch.setTag(R.id.ivOutTimeSwitch, position);
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo){
+        switch (v.getId()) {
+            case R.id.etOutName:
+                menu.add(0, activity.EDIT_NAME_DIG_OUT, 0, "Редактировать");
+                break;
+        }
     }
 
     @Override

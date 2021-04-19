@@ -7,6 +7,10 @@ import java.util.ArrayList;
 
 class Utils {
 
+    static final int INDEX_STATUS_SIM = 1;
+    static final int INDEX_LATCH_INPUT = 2;
+    static final int INDEX_CURRENT_INPUT = 3;
+
     // определяем строковые константы
     static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
     static final String RX_ERROR = "RX_ERROR" ;
