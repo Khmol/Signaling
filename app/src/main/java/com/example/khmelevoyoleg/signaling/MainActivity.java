@@ -100,8 +100,6 @@ public class MainActivity extends AppCompatActivity
     SimpleAdapter adapterMainInStatus;
     ListView lvOutSettigs;
     OutListViewAdapter adapterOut;
-    //ListView lvCan;
-    //CanListViewAdapter adapterCan;
 
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
@@ -164,9 +162,6 @@ public class MainActivity extends AppCompatActivity
     Button pbAnalogPrevious;                // кнопка перейти к предыдущим настройкам
     Button pbOutPrevious;                   // кнопка перейти к предыдущим настройкам
     Button pbOutSave;                       // кнопка сохранить изменения на вкладке Out
-    //Button pbCanPrevious;                   // кнопка перейти к предыдущим настройкам
-    //Button pbCanNext;                       // кнопка перейти к следующим настройкам
-    //Button pbCanSave;                       // кнопка сохранить изменения на вкладке CAN
 
     MediaPlayer mediaPlayer;
     AudioManager am;
@@ -191,14 +186,7 @@ public class MainActivity extends AppCompatActivity
     ArrayList<String> mOutNumber = new ArrayList<>();
     ArrayList<Boolean> mOutState = new ArrayList<>();
     ArrayList<Boolean> mOutTimeOnState = new ArrayList<>();
-/*
-    ArrayList<String> mCanName = new ArrayList<>();
-    ArrayList<String> mCanNumber = new ArrayList<>();
-    ArrayList<String> mCanStatus = new ArrayList<>();
-    ArrayList<Boolean> mCanState = new ArrayList<>();
-    ArrayList<Integer> mCanTimeOff = new ArrayList<>();
-    ArrayList<Integer> mCanDelayTime = new ArrayList<>();
-*/
+
     ArrayList<String> mMainStatusNumber = new ArrayList<>();
     ArrayList<String> mMainStatusName = new ArrayList<>();
     ArrayList<String> mMainStatusTime = new ArrayList<>();
@@ -208,10 +196,11 @@ public class MainActivity extends AppCompatActivity
     ArrayList<Map<String, Object>> mAlAnalogInStatus;
     ArrayList<Map<String, Object>> mAlOutStatus;
     ArrayList<Map<String, Object>> mAlMainInStatus;
-    //ArrayList<Map<String, Object>> mAlCanStatus;
 
     int statusSIM;     // флаги статусов охраны
     int oldStatusSIM = Utils.FIRST_START;  // флаги статусов охраны - прошлое сосояние
+    String latchInputLast; //флаги защелкнутых цифровых входов
+    String curInputLast;   //флаги текущих цифровых входов
     boolean[] mDigitalInputLatch;       // фдаги статусов цифровых входов защелкнутые
     boolean[] mOldDigitalInputLatch;    // прошлые фдаги статусов цифровых входов защелкнутые
     boolean[] mDigitalInputCurrent;     // фдаги статусов цифровых входов текущие
@@ -219,15 +208,6 @@ public class MainActivity extends AppCompatActivity
     boolean[] mDigitalInputActive;      // фдаги статусов включенных входов
     boolean[] mDigitalInputACurOn;      // фдаги текущих статусов сработавших входов
     boolean[] mOldDigitalInputACurOn;   // прошлые фдаги текущих статусов сработавших входов
-    /*
-    boolean[] mCanLatch;                // фдаги статусов входов CAN защелкнутые
-    boolean[] mOldCanLatch;             // прошлые фдаги статусов входов CAN защелкнутые
-    boolean[] mCanCurrent;              // фдаги статусов входов CAN текущие
-    boolean[] mOldCanCurrent;           // прошлые фдаги статусов входов CAN текущие
-    boolean[] mCanActive;               // фдаги статусов включенных входов CAN
-    boolean[] mCanACurOn;               // фдаги текущих статусов сработавших входов CAN
-    boolean[] mOldCanACurOn;            // прошлые фдаги текущих статусов сработавших входов CAN
-    */
 
     boolean[] mOutActive;      // фдаги статусов включенных выходов
 
@@ -305,6 +285,14 @@ public class MainActivity extends AppCompatActivity
         super.onResume();
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Bundle bundleAdapterMainInStatus = new Bundle();
+        //bundleAdapterMainInStatus.putObject("mainA", (Object) adapterMainInStatus);
+        outState.putBundle("mainAdapter", bundleAdapterMainInStatus);
+        Log.d(LOG_TAG, "onSaveInstanceState");
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -336,19 +324,12 @@ public class MainActivity extends AppCompatActivity
         // читаем значения настроек выходов, результат в mOutName, mOutNumber, mOutState
         loadInOutPreferences(Utils.DEFAULT_LIST_VIEW_OUT_NUMBER, Utils.OUT_NAME, Utils.DEFAULT_OUT_NAME, mOutName,
                 mOutNumber, null, null, Utils.OUT_STATE, Utils.DEFAULT_OUT_STATE, mOutState, null, null, null);
-        // читаем значения настроек входов по CAN, результат в mOutName, mOutNumber, mOutState
-        /*
-        loadInOutPreferences(Utils.DEFAULT_LIST_VIEW_CAN_NUMBER, Utils.CAN_NAME, Utils.DEFAULT_CAN_NAME, mCanName,
-                mCanNumber, Utils.DEFAULT_IN_OUT_STATUS, mCanStatus, Utils.CAN_STATE, Utils.DEFAULT_CAN_STATE, mCanState,
-                mCanTimeOff, mCanDelayTime, null);
-        */
         // заполняем исходными значениями список mOutTimeOnState
         Utils.addFalseArrayList(Utils.DEFAULT_LIST_VIEW_OUT_NUMBER, mOutTimeOnState);
         // заполняем значениями список InOutListView и создаем адапер
         adapterDigIn = createDigInAdapter(mDigInName, mDigInNumber, mDigInTimeOff);
         adapterAnalogIn = createAnalogInAdapter(mAnalogInName, mAnalogInNumber, mAnalogInState);
         adapterMainInStatus = createMainInStatusAdapter();
-        //adapterCan = createCanAdapter(mCanName, mCanNumber, mCanTimeOff);
         adapterOut = createOutSettingsAdapter();
         // определяем список lvDigIn и присваиваем ему адаптер
         lvDigIn = (ListView) findViewById(R.id.lvDigIn);
@@ -365,12 +346,7 @@ public class MainActivity extends AppCompatActivity
         lvOutSettigs = (ListView) findViewById(R.id.lvOut);
         lvOutSettigs.setAdapter(adapterOut);    // назначаем адаптер для lvOutSettigs
         lvOutSettigs.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
-        // определяем список lvDigIn и присваиваем ему адаптер
-        /*
-        lvCan = (ListView) findViewById(R.id.lvCan);
-        lvCan.setAdapter(adapterCan);    // назначаем адаптер для ListView
-        lvCan.setItemsCanFocus(true); // разрешаем элементам списка иметь фокус
-        */
+
         pbDigInSave = (Button) findViewById(R.id.pbDigInSave);
         pbDigInSave.setOnClickListener(this);
         pbAnalogInSave = (Button) findViewById(R.id.pbAnalogInSave);
@@ -387,14 +363,7 @@ public class MainActivity extends AppCompatActivity
         pbOutPrevious.setOnClickListener(this);
         pbOutSave = (Button) findViewById(R.id.pbOutSave);
         pbOutSave.setOnClickListener(this);
-        /*
-        pbCanPrevious = (Button) findViewById(R.id.pbCanPrevious);
-        pbCanPrevious.setOnClickListener(this);
-        pbCanSave = (Button) findViewById(R.id.pbCanSave);
-        pbCanSave.setOnClickListener(this);
-        pbCanNext = (Button) findViewById(R.id.pbCanNext);
-        pbCanNext.setOnClickListener(this);
-        */
+
         // Устанавливаем listener касаний, для последующего перехвата жестов
         ConstraintLayout mainLayout = (ConstraintLayout) findViewById(R.id.main_layout);
         mainLayout.setOnTouchListener(this);
@@ -425,16 +394,16 @@ public class MainActivity extends AppCompatActivity
         pbIBPress.setMax(Utils.MAX_PROGRESS_VALUE);
         pbIBPress.setProgress(0);
 
-        //tvTemp = (TextView) findViewById(R.id.tvTemp);
         // читаем значение флага AutoConnect
         autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
-        //autoConnectFlag = Boolean.parseBoolean(sPref.getString(Utils.AUTO_CONNECT, ""));
 
         // регистрация активностей
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_CONNECTED));
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED));
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED));
-
+        // определяем начальные значения дискретных входов
+        latchInputLast = "";
+        curInputLast = "";
         // определяем AudioManager
         am = (AudioManager) getSystemService(AUDIO_SERVICE);
         // массивы для состояний дискретных входов
@@ -448,19 +417,6 @@ public class MainActivity extends AppCompatActivity
         Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mDigitalInputACurOn);
         mOldDigitalInputACurOn = new boolean[Utils.NUMBER_BT_DIGITAL_INPUTS]; // прошлое при постановке на охр.
         Utils.setTrueArray(Utils.NUMBER_BT_DIGITAL_INPUTS, mOldDigitalInputACurOn);
-        // массивы для состояний входов CAN
-        /*
-        mCanLatch = new boolean[Utils.NUMBER_BT_CAN]; // защелкнутые
-        mOldCanLatch = new boolean[Utils.NUMBER_BT_CAN]; // защелкнутые
-        mCanCurrent = new boolean[Utils.NUMBER_BT_CAN]; // текущие
-        mOldCanCurrent = new boolean[Utils.NUMBER_BT_CAN]; // текущие
-        mCanActive = new boolean[Utils.NUMBER_BT_CAN]; // активные
-        Utils.setTrueArray(Utils.NUMBER_BT_CAN, mCanActive);
-        mCanACurOn = new boolean[Utils.NUMBER_BT_CAN]; // текущие при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_BT_CAN, mCanACurOn);
-        mOldCanACurOn = new boolean[Utils.NUMBER_BT_CAN]; // прошлое при постановке на охр.
-        Utils.setTrueArray(Utils.NUMBER_BT_CAN, mOldCanACurOn);
-         */
         // массивы для состояний аналоговых входов
         mAnalogLargerLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
         mOldAnalogLargerLatch = new boolean[Utils.NUMBER_BT_ANALOG_INPUTS]; // защелкнутые
@@ -513,7 +469,6 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v,
                                     ContextMenu.ContextMenuInfo menuInfo) {
-        // TODO - продолжить тут
         switch (v.getId()) {
             case R.id.ivCar:
                 menu.add(0, DIG_IN, 0, "Цифровые входы");
@@ -558,42 +513,6 @@ public class MainActivity extends AppCompatActivity
     }
 
     /**
-     * заполнение значениями список InOutListView
-     * @param canName - массив имен входов/ выходов
-     * @param canNumber - массив номеров входов/ выходов
-     * @param canStateTime - массив состояний входов/ выходов
-     */
-    /*
-    private CanListViewAdapter createCanAdapter(ArrayList<String> canName, ArrayList<String> canNumber,
-                                                    ArrayList<Integer> canStateTime) {
-        // настраиваем ListView
-        // упаковываем данные в понятную для адаптера структуру
-        mAlCanStatus = new ArrayList<>(1);
-        Map<String, Object> m;
-        CanListViewAdapter adapter;
-        for (int i = 0; i < canNumber.size(); i++) {
-            m = new HashMap<>();
-            m.put(Utils.ATRIBUTE_NUMBER, canNumber.get(i));
-            m.put(Utils.ATTRIBUTE_NAME, canName.get(i));
-            m.put(Utils.ATTRIBUTE_STATE, canStateTime.get(i));
-            m.put(Utils.ATTRIBUTE_STATUS_IMAGE, R.drawable.circle_grey48);
-            mAlCanStatus.add(m);
-        }
-        // массив имен атрибутов, из которых будут читаться данные
-        String[] from = {Utils.ATRIBUTE_NUMBER, Utils.ATTRIBUTE_NAME,
-                Utils.ATTRIBUTE_STATUS_IMAGE};//Utils.ATTRIBUTE_STATE,
-        // массив ID View-компонентов, в которые будут вставлять данные
-        int[] to = { R.id.tvCanNumber, R.id.etCanName,
-                 R.id.ivCanStatus}; //R.id.cbChecked, R.id.sbDigInState,
-        // создаем адаптер
-        adapter = new CanListViewAdapter(this, mAlCanStatus, R.layout.can_item, from, to);
-        // передаем ссылку на основную activity
-        adapter.link(this);
-        return adapter;
-    }
-    */
-
-    /**
      * изменяем адаптер adapterDigIn
      */
     void modifyDigInAdapter () {
@@ -615,30 +534,6 @@ public class MainActivity extends AppCompatActivity
         adapterDigIn.notifyDataSetChanged();
     }
 
-    /*
-     * изменяем адаптер adapterDigIn
-     */
-    /*
-    void modifyCanAdapter () {
-        Map<String, Object> m;
-        for (int i = 0; i < mCanNumber.size(); i++) {
-            m = new HashMap<>();
-            m.put(Utils.ATRIBUTE_NUMBER, mCanNumber.get(i));
-            m.put(Utils.ATTRIBUTE_NAME, mCanName.get(i));
-            if (mCanTimeOff.get(i) > 0) {
-                m.put(Utils.ATTRIBUTE_STATE, Utils.INPUT_OFF_TIME_NUMBER);
-            }
-            else {
-                m.put(Utils.ATTRIBUTE_STATE, mCanState.get(i));
-            }
-            m.put(Utils.ATTRIBUTE_STATUS_IMAGE, Utils.getImageViewValue(mCanStatus, i));
-            mAlCanStatus.set(i, m);
-        }
-        // подтверждаем изменения
-        adapterCan.notifyDataSetChanged();
-    }
-    */
-
     /**
      * изменяем адаптер adapterAnalogIn
      */
@@ -655,7 +550,6 @@ public class MainActivity extends AppCompatActivity
         // подтверждаем изменения
         adapterAnalogIn.notifyDataSetChanged();
     }
-
 
     /**
      * заполнение значениями список InOutListView
@@ -910,37 +804,16 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onClick(View v) {
         View view = this.getCurrentFocus();
+        Toast toast;
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         switch (v.getId()){
             case R.id.pbDigInSave:
                 // сохраняем настройки
                 savePreferences(Utils.IN_NAME, mDigInName, Utils.IN_STATE, mDigInState);
-            case R.id.pbPrevious:
-                adapterDigIn.editableName = false;
-                // фиксируем изменения в адаптере
-                modifyDigInAdapter();
-                // закрываем экранную клавиатуру
-                hideWindowKeyboard(view, imm);
-                // переходим на предыдущую страницу
-                showPreviousActivity();
-                break;
-            case R.id.pbAnalogInSave:
-                // сохраняем настройки
-                savePreferences(Utils.ANALOG_IN_NAME, mAnalogInName, Utils.ANALOG_IN_STATE, mAnalogInState);
-            case R.id.pbAnalogPrevious:
-                adapterAnalogIn.editableName = false;
-                // фиксируем изменения в адаптере
-                modifyAnalogInAdapter();
-                // закрываем экранную клавиатуру
-                hideWindowKeyboard(view, imm);
-                // запрашиваем текущее значения времени выключения входов
-                sendDataBT(Utils.IN_GET_TIME_OFF, 0);
-                // запрашиваем текущее значение входов
-                sendDataBT(Utils.IN_GET_ON, 0);
-                // запрашиваем текущее значение задержки обработки входа при постановке на охрану
-                sendDataBT(Utils.IN_GET_DELAY_START, 0);
-                // переходим на предыдущую страницу
-                showPreviousActivity();
+                // выводим сообщение "Запущен поиск сигнализации"
+                toast = Toast.makeText(getApplicationContext(), R.string.save_ok, Toast.LENGTH_SHORT);
+                toast.setGravity(Gravity.TOP,0,20);
+                toast.show();
                 break;
             case R.id.pbNext:
                 adapterDigIn.editableName = false;
@@ -957,69 +830,74 @@ public class MainActivity extends AppCompatActivity
                 // переходим на следующую страницу
                 showNextActivity();
                 break;
+            case R.id.pbPrevious:
+                adapterDigIn.editableName = false;
+                // фиксируем изменения в адаптере
+                modifyDigInAdapter();
+                // закрываем экранную клавиатуру
+                hideWindowKeyboard(view, imm);
+                // переходим на предыдущую страницу
+                showPreviousActivity();
+                break;
+            case R.id.pbAnalogInSave:
+                // сохраняем настройки
+                savePreferences(Utils.ANALOG_IN_NAME, mAnalogInName, Utils.ANALOG_IN_STATE, mAnalogInState);
+                // выводим сообщение "Запущен поиск сигнализации"
+                toast = Toast.makeText(getApplicationContext(), R.string.save_ok, Toast.LENGTH_SHORT);
+                toast.setGravity(Gravity.TOP,0,20);
+                toast.show();
+                break;
             case R.id.pbAnalogNext:
                 adapterAnalogIn.editableName = false;
                 // фиксируем изменения в адаптере
                 modifyAnalogInAdapter();
                 // закрываем экранную клавиатуру
                 hideWindowKeyboard(view, imm);
-                // запрашиваем текущее значения времени выключения входов CAN
-                sendDataBT(Utils.IN_CAN_GET_TIME_OFF, 0);
-                // запрашиваем текущее значение входов CAN
-                sendDataBT(Utils.IN_CAN_GET_ON, 0);
-                // запрашиваем текущее значение задержки обработки входа CAN при постановке на охрану
-                sendDataBT(Utils.IN_CAN_GET_DELAY_START, 0);
+                // запрашиваем текущее значение выходов
+                sendDataBT(Utils.OUT_GET_ON, 0);
                 // переходим на следующую страницу
                 showNextActivity();
                 break;
-            /*
-            case R.id.pbCanNext:
+            case R.id.pbAnalogPrevious:
+                adapterAnalogIn.editableName = false;
                 // фиксируем изменения в адаптере
-                modifyCanAdapter();
-                // включаем запрос текущих состояний выходов
-                sendDataBT(Utils.OUT_GET_ON, 0);
+                modifyAnalogInAdapter();
                 // закрываем экранную клавиатуру
                 hideWindowKeyboard(view, imm);
-                // переходим на следующую страницу
-                showNextActivity();
+                // запрашиваем текущее значения времени выключения входов
+                sendDataBT(Utils.IN_GET_TIME_OFF, 0);
+                // запрашиваем текущее значение входов
+                sendDataBT(Utils.IN_GET_ON, 0);
+                // запрашиваем текущее значение задержки обработки входа при постановке на охрану
+                sendDataBT(Utils.IN_GET_DELAY_START, 0);
+                // переходим на предыдущую страницу
+                showPreviousActivity();
                 break;
-
-            case R.id.pbCanSave:
+            case R.id.pbOutSave:
                 // сохраняем настройки
-                savePreferences(Utils.CAN_NAME, mCanName, Utils.CAN_STATE, mCanState);
-            case R.id.pbCanPrevious:
-                // включаем запрос текущих состояний выходов
-                sendDataBT(Utils.OUT_GET_OFF, 0);
+                savePreferences(Utils.OUT_NAME, mOutName, Utils.OUT_STATE, mOutState);
+                // выводим сообщение "Запущен поиск сигнализации"
+                toast = Toast.makeText(getApplicationContext(), R.string.save_ok, Toast.LENGTH_SHORT);
+                toast.setGravity(Gravity.TOP,0,20);
+                toast.show();
+                break;
+            case R.id.pbOutPrevious:
+                adapterOut.editableName = false;
+                adapterOut.notifyDataSetChanged();
+                // закрываем экранную клавиатуру
+                hideWindowKeyboard(view, imm);
                 // запрашиваем текущее значения времени выключения входов
                 sendDataBT(Utils.ADC_IN_GET_TIME_OFF, 0);
                 // запрашиваем текущее значение входов
                 sendDataBT(Utils.ADC_IN_GET_ON, 0);
                 // запрашиваем текущее значение задержки обработки входа при постановке на охрану
                 sendDataBT(Utils.ADC_IN_GET_DELAY_START, 0);
-                // переходим на предыдущую страницу
-                showPreviousActivity();
-                break;
-             */
-            case R.id.pbOutSave:
-                // сохраняем настройки
-                savePreferences(Utils.OUT_NAME, mOutName, Utils.OUT_STATE, mOutState);
-            case R.id.pbOutPrevious:
-                adapterOut.editableName = false;
-                adapterOut.notifyDataSetChanged();
-                // закрываем экранную клавиатуру
-                hideWindowKeyboard(view, imm);
-                // запрашиваем текущее значения времени выключения входов CAN
-                sendDataBT(Utils.IN_CAN_GET_TIME_OFF, 0);
-                // запрашиваем текущее значение входов CAN
-                sendDataBT(Utils.IN_CAN_GET_ON, 0);
-                // запрашиваем текущее значение задержки обработки входа CAN при постановке на охрану
-                sendDataBT(Utils.IN_CAN_GET_DELAY_START, 0);
                 // задаем вопрос нужно ли выключить все реле при выходе из окна
                 showDialogOut();
                 break;
             case R.id.toolbar:
                 // выводим сообщение "Запущен поиск сигнализации"
-                Toast toast = Toast.makeText(getApplicationContext(), R.string.version, Toast.LENGTH_SHORT);
+                toast = Toast.makeText(getApplicationContext(), R.string.version, Toast.LENGTH_SHORT);
                 toast.setGravity(Gravity.TOP,0,20);
                 toast.show();
                 break;
@@ -1072,7 +950,6 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-
         // получаем код выбранного пункта меню
         int id = item.getItemId();
         // если выбран пункт меню "Настройки"
@@ -1455,7 +1332,6 @@ public class MainActivity extends AppCompatActivity
                     }
                 }
             }
-            //else
             if (mMainStatus != MainStatus.CLOSE) {
                 if (ibOpenPress) {
                     pbIBPress.setProgress(++pbProgress);
@@ -1605,6 +1481,7 @@ public class MainActivity extends AppCompatActivity
      */
     private boolean analiseRxData(String data){
         ArrayList<String> commandsToParse = new ArrayList<>();
+        String[] parsedData; //массив данных ля парсинга
         if (data.length() > 0){
             int startIndexIDCommandBT = 0;
             int endIndexIDCommandBT = 0;
@@ -1627,52 +1504,60 @@ public class MainActivity extends AppCompatActivity
                 // проверка на команду INPUT
                 // region INPUT
                 if (command.indexOf(Utils.TYPE_INPUT) > 0){
+                    boolean showDigIn = false;
                     // принята команда INPUT
-                    String[] parsedData = command.split(",");
-                    //String strStatusSIM = parseData.substring(Utils.CMD_INPUT_MAIN_STATUS_FROM,
-                    //        Utils.CMD_INPUT_LATCH_FROM - 1);
+                    parsedData = command.split(",");
                     // обновляем значение статуса SIM модуля
                     statusSIM = Integer.parseInt(parsedData[Utils.INDEX_STATUS_SIM], 16);
-                    // обновляем защелкнутые значения флагов входов
-                    if ( ! parseRxInputFlagsFromString(parsedData[Utils.INDEX_LATCH_INPUT], Utils.LENGTH_INPUT_GROUP, mDigitalInputLatch)) {
-                        // выводим сообщение "Ошибка в пакете INPUT"
-                        Toast toast = Toast.makeText(getApplicationContext(), R.string.errorInputPack, Toast.LENGTH_SHORT);
-                        toast.setGravity(Gravity.TOP,0,20);
-                        toast.show();
+                    // проверка изменилось ли состояние модуля
+                    if (statusSIM != oldStatusSIM) {
+                        // выполняем действия по установке либо снятию аварии
+                        setAndClearAlarm();
+                        showDigIn = true;
                     }
-                    // обновляем текущие значения флагов входов
-                    if ( ! parseRxInputFlagsFromString(parsedData[Utils.INDEX_CURRENT_INPUT], Utils.LENGTH_INPUT_GROUP, mDigitalInputCurrent)) {
-                        // выводим сообщение "Ошибка в пакете INPUT"
-                        Toast toast = Toast.makeText(getApplicationContext(), R.string.errorInputPack, Toast.LENGTH_SHORT);
-                        toast.setGravity(Gravity.TOP,0,20);
-                        toast.show();
+                    // если защелкнутые значения изменились?
+                    if ( ! latchInputLast.equals(parsedData[Utils.INDEX_LATCH_INPUT]) | showDigIn){
+                        latchInputLast = parsedData[Utils.INDEX_LATCH_INPUT];
+                        // обновляем защелкнутые значения флагов входов
+                        if ( ! parseRxInputFlagsFromString(parsedData[Utils.INDEX_LATCH_INPUT], Utils.LENGTH_INPUT_GROUP, mDigitalInputLatch)) {
+                            // выводим сообщение "Ошибка в пакете INPUT"
+                            Toast toast = Toast.makeText(getApplicationContext(), R.string.errorInputPack, Toast.LENGTH_SHORT);
+                            toast.setGravity(Gravity.TOP,0,20);
+                            toast.show();
+                        }
+                    }
+                    // если защелкнутые значения изменились?
+                    if ( ! curInputLast.equals(parsedData[Utils.INDEX_CURRENT_INPUT])| showDigIn) {
+                        curInputLast = parsedData[Utils.INDEX_CURRENT_INPUT];
+                        // обновляем текущие значения флагов входов
+                        if (!parseRxInputFlagsFromString(parsedData[Utils.INDEX_CURRENT_INPUT], Utils.LENGTH_INPUT_GROUP, mDigitalInputCurrent)) {
+                            // выводим сообщение "Ошибка в пакете INPUT"
+                            Toast toast = Toast.makeText(getApplicationContext(), R.string.errorInputPack, Toast.LENGTH_SHORT);
+                            toast.setGravity(Gravity.TOP, 0, 20);
+                            toast.show();
+                        }
+                        // обновляем значение списка mDigInStatus
+                        Utils.modifyInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
+                                mDigitalInputACurOn, mDigInStatus);
+                        // обновляем графическое отображение входов на вкладке их настроек
+                        if (adapterDigIn.checkStatusPictureDigIn(mDigInStatus))
+                            // обновляем прошлые значения mOldDigitalInputLatch и mOldDigitalInputCurrent
+                            for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER; i++) {
+                                mOldDigitalInputLatch[i] = mDigitalInputLatch[i];
+                                mOldDigitalInputCurrent[i] = mDigitalInputCurrent[i];
+                            }
                     }
                     // обновляем значение RSSI в главном меню
                     // String rssi = "-" + Integer.toString(parseRxRSSI(parseData, Utils.CMD_INPUT_LATCH_TO)) + "dB";
                     // mainMenu.findItem(R.id.RSSI).setTitle(rssi);
                     // обновляем рисунок показывая что связь установлена и есть прием данных
                     changePictureMenuConnect();
-                    // обновляем значение списка mDigInStatus
-                    Utils.modifyInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
-                            mDigitalInputACurOn, mDigInStatus);
 
-                    // проверка изменилось ли состояние модуля
-                    if (statusSIM != oldStatusSIM) {
-                        // выполняем действия по установке либо снятию аварии
-                        setAndClearAlarm();
-                    }
                     // проверка изменились ли входы, выводим сообщения в главный список
                     // только на охране
                     if (Utils.getValueOnMask(statusSIM, Utils.MASK_GUARD) > 0) {
                         checkEventChangeDigitalInput();
                     }
-                    // обновляем графическое отображение входов на вкладке их настроек
-                    if (adapterDigIn.checkStatusPictureDigIn(mDigInStatus))
-                        // обновляем прошлые значения mOldDigitalInputLatch и mOldDigitalInputCurrent
-                        for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_DIG_IN_NUMBER; i++) {
-                            mOldDigitalInputLatch[i] = mDigitalInputLatch[i];
-                            mOldDigitalInputCurrent[i] = mDigitalInputCurrent[i];
-                        }
                 }
                 // endregion
                 // проверка на команду INPUT_А
@@ -1713,12 +1598,12 @@ public class MainActivity extends AppCompatActivity
                         }
                         // перезаписываем старое значение флагов
                         mOldDigitalInputACurOn[i] = mDigitalInputACurOn[i];
-                        // обновляем значение списка mDigInStatus
-                        Utils.modifyInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
-                                mDigitalInputACurOn, mDigInStatus);
-                        // обновляем графическое отображение входов на вкладке их настроек
-                        adapterDigIn.checkStatusPictureDigIn(mDigInStatus);
                     }
+                    // обновляем значение списка mDigInStatus
+                    Utils.modifyInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
+                            mDigitalInputACurOn, mDigInStatus);
+                    // обновляем графическое отображение входов на вкладке их настроек
+                    adapterDigIn.checkStatusPictureDigIn(mDigInStatus);
                 }
                 // endregion
                 // проверка на команду INPUT_ON_OFF
@@ -1949,128 +1834,8 @@ public class MainActivity extends AppCompatActivity
                     adapterOut.notifyDataSetChanged();
                 }
                 // endregion
-                // проверка на команду IN CAN
-                // region TYPE_CAN
-                /*
-                if (command.indexOf(Utils.TYPE_CAN) > 0) {
-                    // принята команда IN CAN
-                    String strStatusSIM = command.substring(Utils.CMD_CAN_MAIN_STATUS_FROM,
-                            Utils.CMD_CAN_LATCH_FROM - 1);
-                    // обновляем значение статуса SIM модуля
-                    statusSIM = Integer.parseInt(strStatusSIM, 16);
-                    // обновляем защелкнутые значения флагов входов
-                    parseRxInputFlags(command, Utils.CMD_CAN_LATCH_FROM, Utils.CMD_CAN_CUR_LATCH_FROM,
-                            Utils.LENGTH_INPUT_GROUP, mCanLatch);
-                    // обновляем текущие значения флагов входов
-                    parseRxInputFlags(command, Utils.CMD_CAN_CUR_LATCH_FROM, Utils.CMD_CAN_LATCH_TO,
-                            Utils.LENGTH_INPUT_GROUP, mCanCurrent);
-                    // обновляем значение списка mDigInStatus
-                    Utils.modifyInStatus(mCanCurrent, mOldCanCurrent,
-                            mCanACurOn, mCanStatus);
-                    // обновляем графическое отображение входов на вкладке их настроек
-                    adapterCan.checkStatusPictureCan(mCanStatus);
-                    // проверка изменилось ли состояние модуля
-                    if (statusSIM != oldStatusSIM) {
-                        // выполняем действия по установке либо снятию аварии
-                        setAndClearAlarm();
-                    }
-                    // проверка изменились ли входы, выводим сообщения в главный список
-                    // только на охране
-                    if (Utils.getValueOnMask(statusSIM, Utils.MASK_GUARD) > 0) {
-                        checkEventChangeCan();
-                    }
-                    // обновляем прошлые значения mOldCanLatch и mOldCanCurrent
-                    for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_CAN_NUMBER; i++) {
-                        mOldCanLatch[i] = mCanLatch[i];
-                        mOldCanCurrent[i] = mCanCurrent[i];
-                    }
-                    // обновляем графическое отображение входов на вкладке их настроек
-                    adapterCan.checkStatusPictureCan(mCanStatus);
-                }
-                // endregion
-                // проверка на команду TYPE_CAN_A
-                // region TYPE_CAN_A
-                if (command.indexOf(Utils.TYPE_CAN_A) > 0) {
-                    // принята команда TYPE_CAN_A
-                    String strStatusSIM = command.substring(Utils.CMD_CAN_A_MAIN_STATUS_FROM,
-                            Utils.CMD_CAN_A_CUR_ON_FROM - 1);
-                    // обновляем значение статуса SIM модуля
-                    statusSIM = Integer.parseInt(strStatusSIM, 16);
-                    // проверка изменилось ли состояние модуля
-                    if (statusSIM != oldStatusSIM) {
-                        // выполняем действия по установке либо снятию аварии
-                        setAndClearAlarm();
-                    }
-                    // получаем значение обрабатываемых входов
-                    parseRxInputFlags(command, Utils.CMD_CAN_A_CUR_ON_FROM, Utils.CMD_CAN_A_STATUS_FROM,
-                            Utils.LENGTH_INPUT_GROUP, mCanACurOn);
-                    // получаем статус включенных входов
-                    parseRxInputFlags(command, Utils.CMD_CAN_A_STATUS_FROM, command.length(),
-                            Utils.LENGTH_INPUT_GROUP, mCanActive);
-                    // получаем размер mCanName, для обработки их в списке на главный экран
-                    int sizeCanName = mCanName.size();
-                    // проверка были ли изменения в состоянии датчиков
-                    for (int i = 0; i < Utils.NUMBER_BT_CAN; i++) {
-                        if (mCanACurOn[i] != mOldCanACurOn[i]) {
-                            // проверка включен ли вход
-                            if (mCanActive[i]) {
-                                // вход ключен проверка обрабатывается ли он
-                                if ( !mCanACurOn[i]) {
-                                    // вход не обрабатывается
-                                    // добавляем событие "Вход выключен" в главный список
-                                    if (sizeCanName > i) {
-                                        addEventStatusList(Utils.STATUS_INPUT_FAULT, mCanName.get(i));
-                                    }
-                                }
-                            }
-                        }
-                        // перезаписываем старое значение флагов
-                        mOldCanACurOn[i] = mCanACurOn[i];
-                    }
-                    // обновляем значение списка mDigInStatus
-                    Utils.modifyInStatus(mCanCurrent, mOldCanCurrent,
-                            mCanACurOn, mCanStatus);
-                    // обновляем графическое отображение входов на вкладке их настроек
-                    adapterCan.checkStatusPictureCan(mCanStatus);
-                }
-                // endregion
-                // проверка на команду CAN_ON_OFF
-                // region CAN_ON_OFF
-                if (command.indexOf(Utils.TYPE_CAN_ON_OFF) > 0) {
-                    // получаем значения состояний входов
-                    parseRxInputFlags(command, Utils.CMD_CAN_ON_OFF_STATUS_FROM, command.length(),
-                            Utils.LENGTH_INPUT_GROUP, mCanActive);
-                    // обновляем значения состояний входов которые отображаются
-                    for(int i = 0; i < Utils.DEFAULT_LIST_VIEW_CAN_NUMBER; i++) {
-                        mCanState.set(i, mCanActive[i]);
-                    }
-                    // обновляем список для настроек цифровых входов
-                    modifyCanAdapter();
-                }
-                // endregion
-                // проверка на команду CAN_TIME_OFF
-                // region TYPE_CAN_TIME_OFF
-                if (command.indexOf(Utils.TYPE_CAN_TIME_OFF) > 0) {
-                    // получаем значения состояний входов
-                    Utils.parseRxInputTimeOffDelayStart(command, mCanTimeOff, Utils.DEFAULT_LIST_VIEW_CAN_NUMBER);
-                    // обновляем список для настроек цифровых входов
-                    modifyCanAdapter();
-                }
-                // endregion
-                // проверка на команду CAN_DELAY_START
-                // region TYPE_CAN_DELAY_START
-                if (command.indexOf(Utils.TYPE_CAN_DELAY_START) > 0) {
-                    // получаем значения состояний входов
-                    Utils.parseRxInputTimeOffDelayStart(command, mCanDelayTime, Utils.DEFAULT_LIST_VIEW_CAN_NUMBER);
-                    // обновляем список для настроек цифровых входов
-                    modifyCanAdapter();
-                }
-                // endregion
-                */
             }
         }
-        // выводим сообщение, "Соединение отсутствует"
-        //Toast.makeText(getApplicationContext(), statusSIM, Toast.LENGTH_SHORT).show();
         return true;
     }
 
@@ -2086,16 +1851,6 @@ public class MainActivity extends AppCompatActivity
         // обновляем значение списка mDigInStatus
         Utils.modifyInStatus(mDigitalInputCurrent, mOldDigitalInputCurrent,
                 mDigitalInputACurOn, mDigInStatus);
-        // очищаем списки обрабатываемых входов CAN
-        /*
-        Utils.setTrueArray(Utils.NUMBER_BT_CAN, mCanACurOn);
-        Utils.setTrueArray(Utils.NUMBER_BT_CAN, mOldCanACurOn);
-        Utils.setTrueArray(Utils.NUMBER_BT_CAN, mOldCanCurrent);
-        Utils.setFalseArray(Utils.NUMBER_BT_CAN, mCanCurrent);
-        // обновляем значение списка mCanStatus
-        Utils.modifyInStatus(mCanCurrent, mOldCanCurrent,
-                mCanACurOn, mCanStatus);
-        */
         // очищаем списки обрабатываемых аналоговых входов
         Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mAnalogACurLarger);
         Utils.setTrueArray(Utils.NUMBER_BT_ANALOG_INPUTS, mOldAnalogACurLarger);
@@ -2129,9 +1884,10 @@ public class MainActivity extends AppCompatActivity
             }
         }
         else {
+            // сигн. не на охране
             if (Utils.getValueOnMask(statusSIM, Utils.MASK_GUARD) !=
-                    Utils.getValueOnMask(oldStatusSIM, Utils.MASK_GUARD) |
-                    oldStatusSIM == Utils.FIRST_START) {
+                    Utils.getValueOnMask(oldStatusSIM, Utils.MASK_GUARD)) {
+                //  | oldStatusSIM == Utils.FIRST_START
                 // устанавливаем рисунок - open_small "открыто"
                 ivSigState.setImageResource(R.drawable.open_small);
                 // добавляем событие "Снятие с охраны" в главный список
@@ -2141,7 +1897,7 @@ public class MainActivity extends AppCompatActivity
             }
         }
         // включаем/ выключаем звук аварии
-        // проверяем счетчик сработавших аварий
+        // получаем счетчики сработавших аварий
         int preAlarmCounter = (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED_START,
                 Utils.MASK_ALARM_TRIGERED_START + 1,
                 Utils.MASK_ALARM_TRIGERED_START + 2)) >> Utils.MASK_ALARM_TRIGERED_START;
@@ -2323,47 +2079,6 @@ public class MainActivity extends AppCompatActivity
                 }
         }
     }
-
-    /**
-     * проверка изменения дискретных входов
-     * если они изменились, добавляем событие в главный список
-     */
-    /*
-    private void checkEventChangeCan() {
-        int sizeCanName = mCanName.size();
-        for (int i = 0; i < Utils.DEFAULT_LIST_VIEW_CAN_NUMBER; i++) {
-            // проверяем изменения состояния защелкнутых входов
-            if ( mCanLatch[i] != mOldCanLatch[i] ) {
-                if (mCanLatch[i]) {
-                    // проверка включен ли вход
-                    if (mCanActive[i]) {
-                        // вход включен проверка обрабатывается ли он
-                        if (mCanACurOn[i]) {
-                            if (sizeCanName > i) {
-                                // добавляем событие "сработал вход" в главный список
-                                addEventStatusList(Utils.STATUS_INPUT_ON, mCanName.get(i));
-                            }
-                        }
-                    }
-                }
-            } else // проверяем изменения состояния текущих входов
-                if ( mCanCurrent[i] != mOldCanCurrent[i] ) {
-                    if (mCanCurrent[i]) {
-                        // проверка включен ли вход
-                        if (mCanActive[i]) {
-                            // вход включен проверка обрабатывается ли он
-                            if (mCanACurOn[i]) {
-                                if (sizeCanName > i) {
-                                    // добавляем событие "сработал вход" в главный список
-                                    addEventStatusList(Utils.STATUS_INPUT_ON, mCanName.get(i));
-                                }
-                            }
-                        }
-                    }
-                }
-        }
-    }
-    */
 
     /**
      * проверка изменения аналоговых входов
@@ -2658,6 +2373,9 @@ public class MainActivity extends AppCompatActivity
         //statusSIM = Utils.FIRST_START;
         // очищаем списки для цифровых и аналоговых воходов
         clearDigAnalogLists();
+        // стираем прошлое значение по цифровым входам
+        curInputLast = "";
+        latchInputLast = "";
         // обновляем графическое отображение входов на вкладке их настроек
         adapterDigIn.checkStatusPictureDigIn(mDigInStatus);
         adapterAnalogIn.checkStatusPictureAnalogIn(mAnalogInStatus);
@@ -2669,7 +2387,6 @@ public class MainActivity extends AppCompatActivity
         modifyDigInAdapter();
         adapterAnalogIn.editableName = false;
         modifyAnalogInAdapter();
-        //modifyCanAdapter();
         // выключаем звук аварии
         stopMediaPlayer();
     }
@@ -2940,16 +2657,6 @@ public class MainActivity extends AppCompatActivity
                             sendDataBT(Utils.ADC_IN_GET_DELAY_START, 0);
                         }
                         break;
-                        case 2: {
-                            // было выключение аналогового входа
-                            // запрашиваем текущее значения времени выключения входов
-                            sendDataBT(Utils.IN_CAN_GET_TIME_OFF, 0);
-                            // запрашиваем текущее значение входов
-                            sendDataBT(Utils.IN_CAN_GET_ON, 0);
-                            // запрашиваем текущее значение задержки обработки входа при постановке на охрану
-                            sendDataBT(Utils.IN_CAN_GET_DELAY_START, 0);
-                        }
-                        break;
                     }
                 }
             }
@@ -2961,7 +2668,6 @@ public class MainActivity extends AppCompatActivity
     /**
      * обработчик выхода из диалога timeDialog
      */
-
     TimePickerDialog.OnTimeSetListener setDigInOffTime = new TimePickerDialog.OnTimeSetListener() {
         @Override
         public void onTimeSet(TimePicker view, int hour, int minute) {
@@ -2975,25 +2681,6 @@ public class MainActivity extends AppCompatActivity
             modifyDigInAdapter();
         }
     };
-
-    /**
-     * обработчик выхода из диалога timeDialog
-     */
-    /*
-    TimePickerDialog.OnTimeSetListener setCanOffTime = new TimePickerDialog.OnTimeSetListener() {
-        @Override
-        public void onTimeSet(TimePicker view, int hour, int minute) {
-            CanListViewAdapter.setTime(hour, minute);
-            _TimeOff = (hour * 60) + minute;
-            sendDataBT(String.format("%s%d,%s\r", Utils.IN_CAN_OFF_TIME,(_swNumber + 1),
-                    Integer.toHexString(_TimeOff)), 0);
-            mCanTimeOff.set(_swNumber, _TimeOff);
-            mCanState.set(_swNumber, true);
-            // обновляем переключатели дискретных входов
-            modifyCanAdapter();
-        }
-    };
-    */
 
     TimePickerDialog.OnTimeSetListener setAnalogInOffTime = new TimePickerDialog.OnTimeSetListener() {
         @Override

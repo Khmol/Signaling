@@ -9,34 +9,35 @@ class Utils {
 
     static final int INDEX_STATUS_SIM = 1;
     static final int INDEX_LATCH_INPUT = 2;
+    static final int INDEX_LATCH_LARGER_ADC = 2;
+    static final int INDEX_LATCH_LESS_ADC = 3;
+    static final int INDEX_LATCH_SHOCK_ADC = 4;
+    static final int INDEX_CUR_LARGER_ADC = 2;
+    static final int INDEX_CUR_LESS_ADC = 3;
+    static final int INDEX_CUR_SHOCK_ADC = 4;
+    static final int ADC_GROUP_LENGTH = 8;
     static final int INDEX_CURRENT_INPUT = 3;
 
     // определяем строковые константы
     static final String SETTINGS_FILENAME = "Signaling";   // имя файла для хранения настроек
     static final String RX_ERROR = "RX_ERROR" ;
-    //static final String SELECTED_BOUNDED_DEV = "SELECTED_BOUNDED_DEV";   // выбранное спаренное устройство
     static final String SELECTED_BOUNDED_DEV = "listPrefPairedDevices";   // выбранное спаренное устройство
     static final String FINISHED = "FINISHED";      // задача завершена
-    //static final String AUTO_CONNECT = "AUTO_CONNECT";   // вкл/выкл автоматическое соединение
     static final String AUTO_CONNECT = "cbAutoConnect";   // вкл/выкл автоматическое соединение
 
     static final String IN_NAME = "IN_NAME_"; // название ключа для имени входа в настройках
     static final String ANALOG_IN_NAME = "ANALOG_IN_NAME"; // название ключа для имени входа в настройках
     static final String OUT_NAME = "OUT_NAME_"; // название ключа для имени выхода в настройках
-    static final String CAN_NAME = "CAN_NAME_"; // название ключа для имени входа по CAN в настройках
     static final String IN_STATE = "IN_STATE_"; // название ключа для состояния входа в настройках
     static final String ANALOG_IN_STATE = "ANALOG_IN_STATE_"; // название ключа для состояния входа в настройках
     static final String OUT_STATE = "OUT_STATE_"; // название ключа для состояния входа в настройках
-    static final String CAN_STATE = "CAN_STATE_"; // название ключа для состояния входа CAN в настройках
 
     static final String DEFAULT_IN_NAME = "Вход замыкания "; // имя входа по умолчанию
     static final String DEFAULT_AN_IN_NAME = "Вход сигнала "; // имя входа по умолчанию
     static final String DEFAULT_OUT_NAME = "Выход "; // имя выхода по умолчанию
-    static final String DEFAULT_CAN_NAME = "Вход CAN "; // имя входа CAN по умолчанию
     static final String DEFAULT_IN_OUT_STATUS = "STATUS_INPUT_OFF"; // статус входа по умолчанию - выкл
     static final String DEFAULT_IN_OUT_STATE = "STATE_ON"; // состояние входа по умолчанию - выкл
     static final String DEFAULT_OUT_STATE = "STATE_OFF"; // состояние выхода по умолчанию - выкл
-    static final String DEFAULT_CAN_STATE = "STATE_ON"; // состояние входа по умолчанию - выкл
     static final String STATE_ON = "STATE_ON"; // состояние входа - включен
     static final String STATE_OFF = "STATE_OFF"; // состояние входа - выключен
     // команды по BT
@@ -54,12 +55,6 @@ class Utils {
     static final String TYPE_INPUT_ON_OFF = "INPUT ON OFF,"; // тип команды в ответе на IN GET ON от SIM
     static final String TYPE_INPUT_TIME_OFF = "INPUT TIME OFF,"; // тип команды "INPUT TIME OFF" в ответе от SIM
     static final String TYPE_INPUT_DELAY_START = "INPUT DELAY START,"; // тип команды "INPUT DELAY START" в ответе от SIM
-
-    static final String TYPE_CAN = "IN CAN,"; // тип команды IN CAN A в ответе от SIM
-    static final String TYPE_CAN_A = "IN CAN A,"; // тип команды "IN CAN AF" в ответе от SIM
-    static final String TYPE_CAN_ON_OFF = "IN CAN ON OFF,"; // тип команды "IN CAN ON OFF" в ответе от SIM
-    static final String TYPE_CAN_DELAY_START = "IN CAN DELAY START,"; // тип команды "IN CAN DELAY START" в ответе от SIM
-    static final String TYPE_CAN_TIME_OFF = "IN CAN TIME OFF,"; // тип команды "IN CAN TIME OFF" в ответе от SIM
 
     static final String TYPE_OUT_ON_OFF = "OUTPUT ON OFF,"; // тип команды в ответе на OUT ON OFF от SIM
 
@@ -89,13 +84,6 @@ class Utils {
     static final String IN_OFF_TIME = "IN OFF TIME,"; // команда выключить вход для обработки на время
     static final String IN_GET_TIME_OFF = "IN GET TIME OFF,01\r"; // запросить время выключения входов
     static final String IN_GET_DELAY_START = "IN GET DELAY START,01\r"; // запросить время задержки опроса входа при постановке на охрану
-
-    static final String IN_CAN_GET_ON = "IN CAN GET ON,01\r"; // команда Запросить статус включенных входов CAN
-    static final String IN_CAN_GET_TIME_OFF = "IN CAN GET TIME OFF,01\r"; // команда Запросить время выключения входов CAN
-    static final String IN_CAN_GET_DELAY_START = "IN CAN GET DELAY START,01\r"; // команда Запросить время задержки опроса входа CAN при постановке на охрану
-    static final String IN_CAN_OFF_TIME = "IN CAN OFF TIME,"; // команда выключить вход для обработки на время
-    static final String IN_CAN_ON = "IN CAN ON,"; // команда включить вход для обработки
-    static final String IN_CAN_OFF = "IN CAN OFF,"; // команда выключить вход для обработки
 
     static final String STATUS_GENERAL_ALARM = "STATUS_GENERAL_ALARM"; // состояние модуля - АВАРИЯ
     static final String STATUS_ALARM_TRIGGERED = "STATUS_ALARM_TRIGGERED"; // состояние модуля - предварительная АВАРИЯ
@@ -143,7 +131,6 @@ class Utils {
     static final short DEFAULT_LIST_VIEW_DIG_IN_NUMBER = 12; // количество входов по умолчанию
     static final short DEFAULT_LIST_VIEW_ANALOG_IN_NUMBER = 2; // количество входов по умолчанию
     static final short DEFAULT_LIST_VIEW_OUT_NUMBER = 15; // количество выходов по умолчанию
-    static final short DEFAULT_LIST_VIEW_CAN_NUMBER = 10; // количество входов по CAN по умолчанию
     static final short SB_IN_ON = 1; // SeekBar для цифровых входов в среднем положении
     static final short SB_IN_OFF = 0; // SeekBar для цифровых входов в левом положении
     static final short SB_IN_TIME_OFF = 2; // SeekBar для цифровых входов в правом положении
@@ -153,17 +140,6 @@ class Utils {
 
     static final int DIG_IN = 0; // цифровой вход
     static final int ANALOG_IN = 1; // аналоговый вход
-    static final int CAN = 2; // аналоговый вход
-
-    static final short CMD_INPUT_MAIN_STATUS_FROM = 7; // начало флагов статуса охраны в команде INPUT
-    static final short CMD_INPUT_LATCH_FROM = 12; // начало флагов защелки статуса входов в команде INPUT
-    static final short CMD_INPUT_CUR_LATCH_FROM = 37; // начало флагов защелки статуса входов в команде INPUT
-    static final short CMD_INPUT_LATCH_TO = 62; // начало значения RSSI в команде INPUT
-
-    static final short CMD_CAN_MAIN_STATUS_FROM = 8; // начало флагов статуса охраны в команде CAN
-    static final short CMD_CAN_LATCH_FROM = 13; // начало флагов защелки статуса входов в команде CAN
-    static final short CMD_CAN_CUR_LATCH_FROM = 22; // начало флагов защелки статуса входов в команде CAN
-    static final short CMD_CAN_LATCH_TO = 31; //
 
     static final short CMD_ADC_MAIN_STATUS_FROM = 5; // начало флагов статуса охраны в команде ADC
     static final short CMD_ADC_LARGER_LATCH_FROM = 10; // начало флагов защелки статуса входов по превышшению в команде ADC
@@ -220,13 +196,11 @@ class Utils {
                                boolean[] digitalInputACurOn, ArrayList<String> digInStatus) {
         int len = digInStatus.size();
         for (int i = 0; i < len; i++) {
-            if (digitalInputCurrent[i] != oldDigitalInputCurrent[i]) {
-                if (digitalInputCurrent[i]) {
-                    digInStatus.set(i, STATUS_INPUT_ON);
-                }
-                else {
-                    digInStatus.set(i, STATUS_INPUT_OFF);
-                }
+            if (digitalInputCurrent[i]) {
+                digInStatus.set(i, STATUS_INPUT_ON);
+            }
+            else {
+                digInStatus.set(i, STATUS_INPUT_OFF);
             }
             // если вход не обрабатывается, нужно изменить его состояние
             if (!digitalInputACurOn[i]){
@@ -369,8 +343,8 @@ class Utils {
             return R.drawable.circle_red48_high;
         } else if (inputStatus.get(position).equals(Utils.STATUS_INPUT_FAULT_LESS)) {
             return R.drawable.circle_red48_low;
-        }
-        return 0;
+        } else
+            return 0;
     }
 
     static boolean parseRxInputTimeOffDelayStart(String parseData, ArrayList<Integer> digInTimeOff, int inNumber ) {

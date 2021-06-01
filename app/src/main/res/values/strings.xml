@@ -84,5 +84,6 @@
     <string name="cbAutoConnect">cbAutoConnect</string>
     <string name="noValidBoundedDevice">Невозможно установить связь с данным устройсвом</string>
     <string name="errorInputPack">Ошибка в пакете INPUT</string>
+    <string name="save_ok">Названия сохранены</string>
 
 </resources>
