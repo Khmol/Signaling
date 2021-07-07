@@ -904,15 +904,14 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    boolean hideWindowKeyboard(View view, InputMethodManager imm) {
+    void hideWindowKeyboard(View view, InputMethodManager imm) {
         try {
             if (view != null) {
                 imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
             }
-            return true;
         }
         catch (NullPointerException e) {
-            return false;
+            assert true;
         }
     }
 
