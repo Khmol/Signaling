@@ -12,11 +12,16 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
     static final String CONNECTION_OK = "CONNECTION_OK";
     private static final String CONNECTION_INTERRUPTED = "CONNECTION_INTERRUPTED";
     private static final String CONNECTION_ERROR = "CONNECTION_ERROR";
-    private MainActivity activity;
+    private MainActivity activity = null;
+    private BTService serviceBT = null;
 
     // получаем ссылку на MainActivity
     void link(MainActivity act) {
         activity = act;
+    }
+    // получаем ссылку на MainActivity
+    void link(BTService act) {
+        serviceBT = act;
     }
 
     // обнуляем ссылку
@@ -29,7 +34,10 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
         try {
             long delay = delays[0];
             TimeUnit.SECONDS.sleep(delay);
-            activity.mClientSocket.connect();
+            if (activity != null)
+                BTService.btClientSocket.connect();
+            else
+                serviceBT.btClientSocket.connect();
         }
         catch (IOException e) {
             return CONNECTION_ERROR;
@@ -44,7 +52,10 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
     protected void onPostExecute(String result) {
         Log.d(LOG_TAG, "Connect end. Result = " + result);
         super.onPostExecute(result);
-        activity.onPostExecuteBTConnect(result);
+        if (activity != null)
+            activity.onPostExecuteBTConnect(result);
+        else
+            serviceBT.onPostExecuteBTConnect(result);
     }
 
     @Override

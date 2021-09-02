@@ -39,9 +39,9 @@ class BTTx extends AsyncTask<Integer, Void, String> {
         try {
             long delay = delays[0];
             TimeUnit.MILLISECONDS.sleep(delay);
-            if (activity.mClientSocket != null) {
+            if (BTService.btClientSocket != null) {
                 if (activity.mOutStream == null)
-                    activity.mOutStream = activity.mClientSocket.getOutputStream();
+                    activity.mOutStream = BTService.btClientSocket.getOutputStream();
                 byte[] byteArray = txData.getBytes();
                 activity.mOutStream.write(byteArray);
             }

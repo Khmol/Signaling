@@ -49,7 +49,7 @@ class BTRx extends AsyncTask<Integer, Void, String> {
                 else {
                     if (numBytes != 0) {
                         // данные получены
-                        if (activity.mClientSocket != null) {
+                        if (BTService.btClientSocket != null) {
                             bytesRead = activity.mInStream.read(buffer);
                             if (bytesRead != -1) {
                                 while (bytesRead == BUFFER_SIZE) {

@@ -47,6 +47,7 @@
     <string name="ivSigStateDescription">SigState</string>
     <string name="сonnectionStoped">Поиск сигнализации остановлен</string>
     <string name="connectionStart">Запущен поиск сигнализации</string>
+    <string name="connectionImpossible">Поиск сигнализации невозможен</string>
     <string name="connectionError">Ошибка установления связи</string>
     <string name="connectionActiv">Соединение уже активно</string>
     <string name="connectionInterrupted">Соединение разорвано</string>
