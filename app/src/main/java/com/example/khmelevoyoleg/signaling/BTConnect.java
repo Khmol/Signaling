@@ -34,10 +34,10 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
         try {
             long delay = delays[0];
             TimeUnit.SECONDS.sleep(delay);
-            if (activity != null)
+            //if (activity != null)
+            //    BTService.btClientSocket.connect();
+            //else
                 BTService.btClientSocket.connect();
-            else
-                serviceBT.btClientSocket.connect();
         }
         catch (IOException e) {
             return CONNECTION_ERROR;
@@ -52,9 +52,9 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
     protected void onPostExecute(String result) {
         Log.d(LOG_TAG, "Connect end. Result = " + result);
         super.onPostExecute(result);
-        if (activity != null)
-            activity.onPostExecuteBTConnect(result);
-        else
+        //if (activity != null)
+            //activity.onPostExecuteBTConnect(result);
+        //else
             serviceBT.onPostExecuteBTConnect(result);
     }
 

@@ -184,6 +184,7 @@ class Utils {
     private static final short CMD_INPUT_TIME_OFF_TIME_NUMBER = 24; // количество времен в посылке
     static final short INPUT_OFF_TIME_NUMBER = 2; // положение переключателя в списке настроек цифровых входов
     static final int MAX_MAIN_STATUS_SIZE = 200; // максимальный размер списка событий на главном экране
+    static final int TIMER_BT_TASK = 250;   // периодичность вызова timerBTTaskHandler
 
     /**
      * установка в digInStatus актуальных значений

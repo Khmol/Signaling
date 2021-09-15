@@ -152,7 +152,7 @@ class AnalogInListViewAdapter extends SimpleAdapter
         }
 
         // устанавливаем значение переключателя и текстовых полей времени
-        if (activity.checkAbilityTxBT()){
+        if (activity.btService.checkAbilityTxBT()){
             // если подключение по BT есть
             viewHolder.sbAnalogInState.setEnabled(true);
             if (activity.mAnalogInState.get(position)) {

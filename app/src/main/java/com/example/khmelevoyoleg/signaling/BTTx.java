@@ -13,13 +13,16 @@ class BTTx extends AsyncTask<Integer, Void, String> {
     static final String TX_INTERRUPTED = "TX_INTERRUPTED";  // передача прервана
     static final String TX_OK = "TX_OK";  // передача выполнена успешно
     private String txData;      // данные для передачи
-    private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
+    //private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
+    private BTService serviceBT = null;
 
     // получаем ссылку на MainActivity
-    void link(MainActivity act) {
-        activity = act;
+    //void link(MainActivity act) {
+    //    activity = act;
+    //}
+    void link(BTService act) {
+        serviceBT = act;
     }
-
     /**
      * конструктор задачи передачи
      * @param _data - данные для передачи
@@ -28,6 +31,8 @@ class BTTx extends AsyncTask<Integer, Void, String> {
         // данные для передачи
         txData = _data;
     }
+    // TODO - RX_ERROR_0 обработать чтобы ен возникало
+    // TODO - Start recieve удалить
 
     /**
      * задача передачи данных по BT
@@ -40,10 +45,10 @@ class BTTx extends AsyncTask<Integer, Void, String> {
             long delay = delays[0];
             TimeUnit.MILLISECONDS.sleep(delay);
             if (BTService.btClientSocket != null) {
-                if (activity.mOutStream == null)
-                    activity.mOutStream = BTService.btClientSocket.getOutputStream();
+                if (serviceBT.mOutStream == null)
+                    serviceBT.mOutStream = BTService.btClientSocket.getOutputStream();
                 byte[] byteArray = txData.getBytes();
-                activity.mOutStream.write(byteArray);
+                serviceBT.mOutStream.write(byteArray);
             }
             else {
                 return TX_ERROR;
@@ -62,8 +67,8 @@ class BTTx extends AsyncTask<Integer, Void, String> {
     @Override
     protected void onPostExecute(String result) {
         super.onPostExecute(result);
-        activity.onPostExecuteBTTx(result);
-        Log.d(LOG_TAG, "Tx end. Result = " + result);
+        serviceBT.onPostExecuteBTTx(result);
+        Log.d(LOG_TAG, String.format("Tx end. Result = %s: %s ", result, txData));
     }
 
     @Override

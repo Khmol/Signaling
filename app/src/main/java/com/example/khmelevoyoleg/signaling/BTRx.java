@@ -14,14 +14,19 @@ class BTRx extends AsyncTask<Integer, Void, String> {
     private static final String RX_INTERRUPTED = "RX_INTERRUPTED";  // передача прервана
     private static final String RX_OK = "RX_OK";  // передача выполнена успешно
     private String rxData;      // принятые данные
-    private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
-
+    //private MainActivity activity;  // связывание с активностью, которая вызвала данную задачу
+    private BTService serviceBT = null;
     private static final int EMPTY_MSG = 65535;
     private static final int BUFFER_SIZE = 1024;
 
     // получаем ссылку на MainActivity
+    /*
     void link(MainActivity act) {
         activity = act;
+    }
+     */
+    void link(BTService act) {
+        serviceBT = act;
     }
 
     /**
@@ -40,7 +45,7 @@ class BTRx extends AsyncTask<Integer, Void, String> {
             long delay = delays[0];
             TimeUnit.SECONDS.sleep(delay);
             while (true) {
-                int numBytes = activity.mInStream.available();
+                int numBytes = serviceBT.mInStream.available();
                 if (numBytes == EMPTY_MSG) {
                     // ошибка выполнения mInStream.available()
                     Log.d("MY_LOG", "Rx Error");
@@ -50,11 +55,11 @@ class BTRx extends AsyncTask<Integer, Void, String> {
                     if (numBytes != 0) {
                         // данные получены
                         if (BTService.btClientSocket != null) {
-                            bytesRead = activity.mInStream.read(buffer);
+                            bytesRead = serviceBT.mInStream.read(buffer);
                             if (bytesRead != -1) {
                                 while (bytesRead == BUFFER_SIZE) {
                                     result = result + new String(buffer, 0, bytesRead);
-                                    bytesRead = activity.mInStream.read(buffer);
+                                    bytesRead = serviceBT.mInStream.read(buffer);
                                 }
                                 result = result + new String(buffer, 0, bytesRead);
                                 return result;
@@ -80,12 +85,11 @@ class BTRx extends AsyncTask<Integer, Void, String> {
     protected void onPostExecute(String result) {
         Log.d(LOG_TAG, "Rx end. Result = " + result);
         super.onPostExecute(result);
-        activity.onPostExecuteBTRx(result);
+        serviceBT.onPostExecuteBTRx(result);
     }
 
     @Override
     protected void onCancelled() {
-        // TODO - реализовать прерывание приема
         super.onCancelled();
         Log.d(LOG_TAG, "Rx cancel");
     }

@@ -15,7 +15,6 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 class DigInListViewAdapter extends SimpleAdapter
         implements View.OnFocusChangeListener, SeekBar.OnSeekBarChangeListener, View.OnCreateContextMenuListener{
@@ -193,7 +192,7 @@ class DigInListViewAdapter extends SimpleAdapter
         }
 
         // устанавливаем значение переключателя и текстовых полей времени
-        if (activity.checkAbilityTxBT()){
+        if (activity.btService.checkAbilityTxBT()){
             // если подключение по BT есть
             viewHolder.sbDigInState.setEnabled(true);
             if (activity.mDigInState.get(position)) {

@@ -81,7 +81,7 @@ class OutListViewAdapter extends SimpleAdapter
         // обрабатываем нажатие только в случае выключенного swOutState
         if (!vh.swOutState.isChecked()) {
             // передаем данные если возможна передача
-            if (activity.checkAbilityTxBT()) {
+            if (activity.btService.checkAbilityTxBT()) {
                 // activity.sendDataBT(activity.OUT_ON + Integer.toString(swNumber + 1), 0);
                 activity.sendDataBT(String.format("%s%d\r", Utils.OUT_ON_TIME, (ivNumber + 1)), 0);
                 // вызываем runCheckStatus с задержкой 100 мс.
@@ -161,7 +161,7 @@ class OutListViewAdapter extends SimpleAdapter
             }
         }
         // устанавливаем значение переключателя и текстовых полей времени
-        if (activity.checkAbilityTxBT()) {
+        if (activity.btService.checkAbilityTxBT()) {
             // если подключение по BT есть
             viewHolder.swOutState.setEnabled(true);
             // устанавливаем значение переключателя
@@ -232,7 +232,7 @@ class OutListViewAdapter extends SimpleAdapter
         // отправляем команду на включение/ выключение реле
         if (isChecked) {
             // передаем данные если возможна передача
-            if (activity.checkAbilityTxBT()) {
+            if (activity.btService.checkAbilityTxBT()) {
                 // выдаем текстовое оповещение о включении с номером вкюченного выхода
                 // только в том случае когда изменения были сделаны руками путем переключения
                 if (scOutState[swNumber] == activity.mOutState.get(swNumber))
@@ -264,7 +264,7 @@ class OutListViewAdapter extends SimpleAdapter
         }
         else {
             // передаем данные если возможна передача
-            if (activity.checkAbilityTxBT()) {
+            if (activity.btService.checkAbilityTxBT()) {
                 // выдаем текстовое оповещение с номером вкюченного выхода
                 // только в том случае когда изменения были сделаны руками путем переключения
                 if (scOutState[swNumber] == activity.mOutState.get(swNumber))
