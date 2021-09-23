@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 class BTTx extends AsyncTask<Integer, Void, String> {
 
-    static final String LOG_TAG = "MY_LOG";  // вывод в LOG
+    static final String LOG_TAG = "SERVICE_LOG";  // вывод в LOG
     static final String TX_ERROR = "TX_ERROR";  // ошибка передачи
     static final String TX_INTERRUPTED = "TX_INTERRUPTED";  // передача прервана
     static final String TX_OK = "TX_OK";  // передача выполнена успешно
@@ -31,8 +31,6 @@ class BTTx extends AsyncTask<Integer, Void, String> {
         // данные для передачи
         txData = _data;
     }
-    // TODO - RX_ERROR_0 обработать чтобы ен возникало
-    // TODO - Start recieve удалить
 
     /**
      * задача передачи данных по BT

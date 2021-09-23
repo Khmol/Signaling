@@ -8,25 +8,15 @@ import java.util.concurrent.TimeUnit;
 
 class BTConnect extends AsyncTask<Integer, Void, String> {
 
-    private static final String LOG_TAG = "MY_LOG";
-    static final String CONNECTION_OK = "CONNECTION_OK";
+    private static final String LOG_TAG = "SERVICE_LOG";
+    private static final String CONNECTION_OK = "CONNECTION_OK";
     private static final String CONNECTION_INTERRUPTED = "CONNECTION_INTERRUPTED";
-    private static final String CONNECTION_ERROR = "CONNECTION_ERROR";
-    private MainActivity activity = null;
+    static final String CONNECTION_ERROR = "CONNECTION_ERROR";
     private BTService serviceBT = null;
 
     // получаем ссылку на MainActivity
-    void link(MainActivity act) {
-        activity = act;
-    }
-    // получаем ссылку на MainActivity
     void link(BTService act) {
         serviceBT = act;
-    }
-
-    // обнуляем ссылку
-    void unLink() {
-        activity = null;
     }
 
     @Override
@@ -34,10 +24,7 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
         try {
             long delay = delays[0];
             TimeUnit.SECONDS.sleep(delay);
-            //if (activity != null)
-            //    BTService.btClientSocket.connect();
-            //else
-                BTService.btClientSocket.connect();
+            BTService.btClientSocket.connect();
         }
         catch (IOException e) {
             return CONNECTION_ERROR;
@@ -52,10 +39,7 @@ class BTConnect extends AsyncTask<Integer, Void, String> {
     protected void onPostExecute(String result) {
         Log.d(LOG_TAG, "Connect end. Result = " + result);
         super.onPostExecute(result);
-        //if (activity != null)
-            //activity.onPostExecuteBTConnect(result);
-        //else
-            serviceBT.onPostExecuteBTConnect(result);
+        serviceBT.onPostExecuteBTConnect(result);
     }
 
     @Override

@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 class BTRx extends AsyncTask<Integer, Void, String> {
 
-    private static final String LOG_TAG = "MY_LOG";  // вывод в LOG
+    private static final String LOG_TAG = "SERVICE_LOG";  // вывод в LOG
     private static final String RX_ERROR = "RX_ERROR";  // ошибка передачи
     private static final String RX_ERROR_0 = "RX_ERROR_0";  // ошибка передачи принято 0 байт
     private static final String RX_INTERRUPTED = "RX_INTERRUPTED";  // передача прервана

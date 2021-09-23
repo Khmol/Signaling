@@ -192,7 +192,7 @@ class DigInListViewAdapter extends SimpleAdapter
         }
 
         // устанавливаем значение переключателя и текстовых полей времени
-        if (activity.btService.checkAbilityTxBT()){
+        if (activity.checkAbilityTxBT()){
             // если подключение по BT есть
             viewHolder.sbDigInState.setEnabled(true);
             if (activity.mDigInState.get(position)) {

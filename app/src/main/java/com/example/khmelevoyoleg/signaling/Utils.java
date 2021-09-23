@@ -185,6 +185,8 @@ class Utils {
     static final short INPUT_OFF_TIME_NUMBER = 2; // положение переключателя в списке настроек цифровых входов
     static final int MAX_MAIN_STATUS_SIZE = 200; // максимальный размер списка событий на главном экране
     static final int TIMER_BT_TASK = 250;   // периодичность вызова timerBTTaskHandler
+    static final int TIMER_PAUSE_INIT_MESSAGE = 10000;   // периодичность вызова timerPauseExecution
+    static final int TIMER_DELAY = 500;   // периодичность вызова timerPauseExecution
 
     /**
      * установка в digInStatus актуальных значений

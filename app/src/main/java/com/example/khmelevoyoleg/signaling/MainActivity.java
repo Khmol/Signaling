@@ -19,7 +19,6 @@ import android.os.IBinder;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.support.constraint.ConstraintLayout;
-import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -82,6 +81,10 @@ public class MainActivity extends AppCompatActivity
     final String CMDBT_SET_SEARCH_STATE = "CMDBT_SET_SEARCH_STATE";
     final String CMDBT_SET_CONNECTED_STATE = "CMDBT_SET_CONNECTED_STATE";
     final String CMDBT_ANALIZE_BT_DATA = "CMDBT_ANALIZE_BT_DATA";
+    final String CMDBT_CONNECTION_IMPOSSIBLE = "CMDBT_CONNECTION_IMPOSSIBLE";
+    final String CMDBT_CONNECTION_ERROR = "CMDBT_CONNECTION_ERROR";
+
+    final String ACTION_DATA_FROM_ACTIVITY = "com.example.khmelevoyoleg.signaling";
 
     BluetoothAdapter btBluetoothAdapter;
 
@@ -99,9 +102,18 @@ public class MainActivity extends AppCompatActivity
         NO_CONNECT,
         CONNECTED
     }
-    ConnectionStatusBT connectionStatusBT = ConnectionStatusBT.NO_CONNECT; // состояние подключения по Bluetooth
 
+    enum CommandActivity {
+        CMDACT_SET_CONNECT,
+        CMDACT_SET_IDLE,
+        CMDACT_SET_SEARCH,
+        CMDACT_SEND_DATA_BT,
+        CMDACT_SEND_DATA_BT_ANYWAY // передать данные без проверки готовности передатчика
+    }
+
+    ConnectionStatusBT connectionStatusBT = ConnectionStatusBT.NO_CONNECT; // состояние подключения по Bluetooth
     ArrayList<String > commandBt = new ArrayList<>(); // команды от BT к основной программе
+    ArrayList<String> dataToAnalize = new ArrayList<>(); // данные принятые через BT для анализа
 
     // переменные для адаптера
     ListView lvDigIn;
@@ -116,11 +128,7 @@ public class MainActivity extends AppCompatActivity
     // определяем стринговые переменные
     protected String actionRequestEnable = BluetoothAdapter.ACTION_REQUEST_ENABLE;
 
-    BTService.ConnectionStatusBT mConnectionStatusBT; // состояние подключения по Bluetooth
     Handler timerCheckStatusHandler;
-    // BTRx bluetooth_Rx;        // поток приема
-    // BTTx bluetooth_Tx;        // поток передачи
-    //ArrayList<String> mBTDataTx = new ArrayList<>();
 
     private int _swNumber; // номер переключателя дискретных входов
     int necessaryInitMessage = 0;
@@ -236,11 +244,11 @@ public class MainActivity extends AppCompatActivity
     boolean[] mOldAnalogACurLess;   // прошлые фдаги сработавших входов по превышению
 
     boolean mOpenCloseCommandSoundMode = true;      //режим работы при постановке и снятию с охраны
-
+    boolean pauseFinish = true;
+    String delayedCommand;
     Intent serviceBT;
-    boolean boundBT = false;
+    //boolean boundBT = false;
     ServiceConnection sConnBT;
-    BTService btService;
     //endregion
 
     /**
@@ -270,6 +278,23 @@ public class MainActivity extends AppCompatActivity
         }
     };
 
+    // опрос команд от BT
+    Handler timerPauseExecution;
+    Runnable runPauseExecution = new Runnable() {
+        @Override
+        public void run() {
+            // выполняем команды пришедшие по BT
+            pauseFinish = true;
+        }
+    };
+    // опрос команд от BT
+    Handler timerDelaySendMessage;
+    Runnable runDelaySendMessage = new Runnable() {
+        @Override
+        public void run() {
+            sendMessageToService(delayedCommand);
+        }
+    };
     /** обработка результатов намерений */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -278,15 +303,16 @@ public class MainActivity extends AppCompatActivity
         if (requestCode == Utils.REQUEST_ENABLE_BT) {
             if (resultCode == -1) {
                 // запускаем сервис BT который ищет сигнализацию
+//                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
                 serviceBT = new Intent(this, BTService.class);
                 serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
                 startService(serviceBT);
-                if (btMainStatus == MainStatus.CONNECTING &&
+/*                if (btMainStatus == MainStatus.CONNECTING &&
                         connectionStatusBT == ConnectionStatusBT.CONNECTING) {
                     // подключаемся к сервису serviceBT
                     if (!boundBT)
                         bindService(serviceBT, sConnBT, 0);
-                }
+                }*/
             }
             else {
                 // выводим сообщение "Поиск сигнализации невозможен"
@@ -298,8 +324,16 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     protected void onResume() {
+        Log.d(LOG_TAG, "onResume");
         autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
         super.onResume();
+
+    }
+
+    @Override
+    protected void onPause() {
+        Log.d(LOG_TAG, "onPause");
+        super.onPause();
     }
 
     @Override
@@ -473,17 +507,21 @@ public class MainActivity extends AppCompatActivity
         // запускаем таймер исполнения команд от BT
         timerBTTaskHandler = new Handler();
         timerBTTaskHandler.postDelayed(runActivityTask, Utils.TIMER_BT_TASK);
+        // таймера задержек отправки команд мервису и паузы при выполении
+        timerDelaySendMessage = new Handler();
+        timerPauseExecution = new Handler();
 
         // создаем обработчик проверки соединения с сервисом
         sConnBT = new ServiceConnection() {
             public void onServiceConnected(ComponentName name, IBinder binder) {
+                Log.d(LOG_TAG, "Start Service");
                 //btService = ((BTService.BTBinder) binder).getService();
                 //commandBt = btService.commandBt;
-                BTService.boundBT = true;
+                //BTService.boundBT = true;
                 //boundBT = BTService.boundBT;
             }
             public void onServiceDisconnected(ComponentName name) {
-                boundBT = false;
+                //boundBT = false;
             }
         };
 //        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
@@ -492,8 +530,6 @@ public class MainActivity extends AppCompatActivity
         //endregion
     }
 
-    // Our handler for received Intents. This will be called whenever an Intent
-    // with an action named "custom-event-name" is broadcasted.
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -502,14 +538,23 @@ public class MainActivity extends AppCompatActivity
             // добавляем команду на выполнение если она есть
             if (message != null)
                 commandBt.add(message);
+            String data = intent.getStringExtra("dataBT");
+            if (data != null)
+                dataToAnalize.add(data);
             // обновляем занчение btMainStatus
-            setCurrentStatus(intent.getStringExtra("btMainStatus"));
+            String bt_main_status = intent.getStringExtra("btMainStatus");
+            setCurrentStatus(bt_main_status);
             // обновляем занчение connectionStatusBT
-            setCurrentConnectionStatusBT(intent.getStringExtra("connectionStatusBT"));
-            Log.d(LOG_TAG, "Got message: " + message);
+            String bt_connection_status = intent.getStringExtra("connectionStatusBT");
+            setCurrentConnectionStatusBT(bt_connection_status);
+            Log.d(LOG_TAG, String.format("Got message: %s, data: %s, btMainStatus: %s, connectionStatusBT: %s",
+                    message, data, bt_main_status, bt_connection_status));
         }
     };
 
+    /**
+     * установка текущего значения btMainStatus
+     */
     void setCurrentStatus(String status){
         switch (status){
             case "null":
@@ -529,6 +574,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * установка текущего значения connectionStatusBT
+     */
     void setCurrentConnectionStatusBT(String status){
         switch (status){
             case "null":
@@ -545,11 +593,20 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    public void sendMessage() {
-        // TODO - передать данные в сервис
+    /**
+     * передача команды в сервис от Activity
+     */
+    public void sendMessageToService(String message) {
+        sendMessageToService(message, null);
+    }
+
+    public void sendMessageToService(String message, String data) {
         Intent intent = new Intent();
-        intent.setAction("com.example.khmelevoyoleg.signaling");
-        intent.putExtra("message", "Срочно пришлите кота!");
+        intent.setAction(ACTION_DATA_FROM_ACTIVITY);
+        if (message != null)
+            intent.putExtra("commandFromAct", message);
+        if (data != null)
+            intent.putExtra("dataFromAct", data);
         sendBroadcast(intent);
     }
 
@@ -581,14 +638,30 @@ public class MainActivity extends AppCompatActivity
                     setConnectedStatusActivity();
                     break;
                 case CMDBT_ANALIZE_BT_DATA:
-                    analiseRxData(BTService.dataToAnalize);
+                    analiseRxData(dataToAnalize);
+                    break;
+                case CMDBT_CONNECTION_IMPOSSIBLE:
+                    Toast.makeText(getApplicationContext(), R.string.noBoundedDevice, Toast.LENGTH_SHORT).show();
+                    break;
+                case CMDBT_CONNECTION_ERROR:
+                    // повторяем попытку соединения если количество попыток меньше MAX_CONNECTION_ATTEMPTS
+                    if (mConnectionAttemptsCnt <= Utils.MAX_CONNECTION_ATTEMPTS) {
+                        // передаем команду начать соединение CMDACT_SET_CONNECT
+                        sendMessageToService(CommandActivity.CMDACT_SET_CONNECT.toString());
+                        // увеличиваем счетчик попыток установления соединения*/
+                        mConnectionAttemptsCnt++;
+                    }
+                    else {
+                        // все попытки установки соединения закончились неудачей
+                        returnIdleStateActivity(true, true);
+                        // выводим сообщение "Ошибка установления связи"
+                        Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_SHORT).show();
+                    }
                     break;
             }
             commandBt.remove(0);
         }
     }
-
-
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v,
@@ -916,6 +989,7 @@ public class MainActivity extends AppCompatActivity
         ed.apply();
     }
 
+// TODO - проверить переменные BtService.xxxxx
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
@@ -1020,7 +1094,7 @@ public class MainActivity extends AppCompatActivity
                 showDialogOut();
                 break;
             case R.id.toolbar:
-                sendMessage();
+                sendMessageToService("test");
                 // выводим сообщение "Запущен поиск сигнализации"
                 toast = Toast.makeText(getApplicationContext(), R.string.version, Toast.LENGTH_SHORT);
                 toast.setGravity(Gravity.TOP,0,20);
@@ -1046,12 +1120,26 @@ public class MainActivity extends AppCompatActivity
             // пункты меню для tvColor
             case DIG_IN:
                 step = 1;
+                // запрашиваем текущее значения времени выключения входов
+                sendDataBT(Utils.IN_GET_TIME_OFF, 0);
+                // запрашиваем текущее значение входов
+                sendDataBT(Utils.IN_GET_ON, 0);
+                // запрашиваем текущее значение задержки обработки входа при постановке на охрану
+                sendDataBT(Utils.IN_GET_DELAY_START, 0);
                 break;
             case ANALOG_IN:
                 step = 2;
+                // запрашиваем текущее значения времени выключения входов
+                sendDataBT(Utils.ADC_IN_GET_TIME_OFF, 0);
+                // запрашиваем текущее значение входов
+                sendDataBT(Utils.ADC_IN_GET_ON, 0);
+                // запрашиваем текущее значение задержки обработки входа при постановке на охрану
+                sendDataBT(Utils.ADC_IN_GET_DELAY_START, 0);
                 break;
             case DIG_OUT:
                 step = 3;
+                // запрашиваем текущее значение выходов
+                sendDataBT(Utils.OUT_GET_ON, 0);
                 break;
             case EDIT_NAME_DIG_OUT:
                 adapterOut.editableName = true;
@@ -1123,6 +1211,7 @@ public class MainActivity extends AppCompatActivity
                         else {
                             if (serviceBT == null) {
                                 // запускаем сервис BT который ищет сигнализацию
+//                                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
                                 serviceBT = new Intent(this, BTService.class);
                                 serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
                                 startService(serviceBT);
@@ -1130,12 +1219,13 @@ public class MainActivity extends AppCompatActivity
                             // выводим сообщение "Запущен поиск сигнализации"
                             Toast.makeText(getApplicationContext(), R.string.connectionStart, Toast.LENGTH_SHORT).show();
                             // передаем команду начать соединение CMDACT_SET_CONNECT
-                            BTService.commandActivity.add(BTService.CommandActivity.CMDACT_SET_CONNECT);
+                            timerDelaySendMessage.postDelayed(runDelaySendMessage, Utils.TIMER_DELAY);
+                            delayedCommand = CommandActivity.CMDACT_SET_CONNECT.toString();
                             // обнуляем счетчик попыток установления соединения
                             mConnectionAttemptsCnt = 0;
                             // подключаемся к сервису serviceBT
-                            if (!boundBT)
-                                bindService(serviceBT, sConnBT, 0);
+/*                            if (!boundBT)
+                                bindService(serviceBT, sConnBT, 0);*/
                         }
                     }
                 }
@@ -1253,6 +1343,8 @@ public class MainActivity extends AppCompatActivity
                 }
                 break;
             case R.id.main_layout:
+            case R.id.ivCar:
+            case R.id.lvMainInStatus:
                 // обработка перелиствывания экрана на экран InOut
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN: // Пользователь нажал на экран, т.е. начало движения
@@ -1272,7 +1364,7 @@ public class MainActivity extends AppCompatActivity
                                 // запрашиваем новое значения входов (включенные или выключенные)
                                 sendDataBT(Utils.IN_GET_ON, 0);
                                 // запрашиваем текущее значение задержки обработки входа при постановке на охрану
-                                sendDataBT(Utils.IN_GET_DELAY_START,0);
+                                sendDataBT(Utils.IN_GET_DELAY_START, 0);
                             }
                         }
                     default:
@@ -1308,29 +1400,10 @@ public class MainActivity extends AppCompatActivity
                 // проверка установлено ли соединение
                 if (connectionStatusBT == ConnectionStatusBT.CONNECTED) {
                     // соединение установлено, передаем Utils.BT_INIT_MESSAGE
-                    sendDataBT(Utils.BT_INIT_MESSAGE, 0, true);
-                }
-                else {
-                    // проверка завершилась ли прошлая задача установки соединения
-                    if (BTService.bluetoothConnect.getStatus().toString().equals(Utils.FINISHED)) {
-                        // повторяем попытку соединения если количество попыток меньше MAX_CONNECTION_ATTEMPTS
-                        if (mConnectionAttemptsCnt <= Utils.MAX_CONNECTION_ATTEMPTS) {
-                            // передаем команду начать соединение CMDACT_SET_CONNECT
-                            BTService.commandActivity.add(BTService.CommandActivity.CMDACT_SET_CONNECT);
-/*                            // запускаем задачу bluetoothConnect
-                            BTService.bluetoothConnect = new BTConnect();
-                            // передаем ссылку на основную activity
-                            BTService.bluetoothConnect.link(this);
-                            // запускаем задачу с задержкой 12 с
-                            BTService.bluetoothConnect.execute(Utils.DELAY_CONNECTING);
-                            // увеличиваем счетчик попыток установления соединения*/
-                            mConnectionAttemptsCnt++;
-                        } else {
-                            // все попытки установки соединения закончились неудачей
-                            returnIdleStateActivity(true, true);
-                            // выводим сообщение "Ошибка установления связи"
-                            Toast.makeText(getApplicationContext(), R.string.connectionError, Toast.LENGTH_SHORT).show();
-                        }
+                    if (pauseFinish) {
+                        timerPauseExecution.postDelayed(runPauseExecution, Utils.TIMER_PAUSE_INIT_MESSAGE);
+                        sendDataBT(Utils.BT_INIT_MESSAGE, 0, true);
+                        pauseFinish = false;
                     }
                 }
             }
@@ -1339,7 +1412,7 @@ public class MainActivity extends AppCompatActivity
                     pbIBPress.setProgress(++pbProgress);
                     if (pbProgress == Utils.MAX_PROGRESS_VALUE) {
                         // передаем команду если модуль подключен
-                        if (btService.checkAbilityTxBT()) {
+                        if (checkAbilityTxBT()) {
                             ibOpenHeader();
                             Vibrate(Utils.VIBRATE_TIME);
                         } else
@@ -1349,7 +1422,7 @@ public class MainActivity extends AppCompatActivity
                 } else if (ibClosePress) {
                     pbIBPress.setProgress(++pbProgress);
                     if (pbProgress == Utils.MAX_PROGRESS_VALUE) {
-                        if (btService.checkAbilityTxBT()) {
+                        if (checkAbilityTxBT()) {
                             ibCloseHeader();
                             Vibrate(Utils.VIBRATE_TIME);
                         } else
@@ -1359,7 +1432,7 @@ public class MainActivity extends AppCompatActivity
                 } else if (ibMutePress) {
                     pbIBPress.setProgress(++pbProgress);
                     if (pbProgress == Utils.MAX_PROGRESS_VALUE) {
-                        if (btService.checkAbilityTxBT()) {
+                        if (checkAbilityTxBT()) {
                             ibMuteHeader();
                             Vibrate(Utils.VIBRATE_TIME);
                         } else
@@ -1369,7 +1442,7 @@ public class MainActivity extends AppCompatActivity
                 } else if (ibBagagePress) {
                     pbIBPress.setProgress(++pbProgress);
                     if (pbProgress == Utils.MAX_PROGRESS_VALUE) {
-                        if (btService.checkAbilityTxBT()) {
+                        if (checkAbilityTxBT()) {
                             ibBaggageHeader();
                             Vibrate(Utils.VIBRATE_TIME);
                         } else
@@ -1438,13 +1511,13 @@ public class MainActivity extends AppCompatActivity
     }
     // перегружаем метод
     void sendDataBT(String data, int delay, boolean anyway){
-        if (data != null) {
-            BTService.dataToSent.add(data);
-            BTService.delayToSent.add(delay);
-            if (anyway)
-                BTService.commandActivity.add(BTService.CommandActivity.CMDACT_SEND_DATA_BT_ANYWAY);
-            else
-                BTService.commandActivity.add(BTService.CommandActivity.CMDACT_SEND_DATA_BT);
+        if (checkAbilityTxBT() | anyway) {
+            if (data != null) {
+                if (anyway)
+                    sendMessageToService(CommandActivity.CMDACT_SEND_DATA_BT_ANYWAY.toString(), data);
+                else
+                    sendMessageToService(CommandActivity.CMDACT_SEND_DATA_BT.toString(), data);
+            }
         }
     }
 
@@ -2343,13 +2416,12 @@ public class MainActivity extends AppCompatActivity
         if(sendCommandBT) {
             // нужно передать команду в BT
             if (mode) {
-                // TODO - commandActivity переделать через Broadcast
                 // true - полное закрытие всего
                 // передаем команду BT перейти в IDLE состояние CMDACT_SET_IDLE
-                BTService.commandActivity.add(BTService.CommandActivity.CMDACT_SET_IDLE);
+                sendMessageToService(CommandActivity.CMDACT_SET_IDLE.toString());
             } else {
                 // передаем команду BT перейти в SEARCH состояние CMDACT_SET_SEARCH
-                BTService.commandActivity.add(BTService.CommandActivity.CMDACT_SET_SEARCH);
+                sendMessageToService(CommandActivity.CMDACT_SET_SEARCH.toString());
             }
         }
         // false - переход в режим поиска
@@ -2430,11 +2502,6 @@ public class MainActivity extends AppCompatActivity
      */
     private void closeBtStreams(){
         oldStatusSIM = Utils.FIRST_START;  // обнуляем прошлое сосояние
-        BTService.btBluetoothDevice = null;
-        if (BTService.bluetoothConnect != null) {
-            // завершаем задачу установки соединения
-            BTService.bluetoothConnect.cancel(true);
-        }
         stopService(serviceBT); // останавливаем серив BT
         serviceBT = null;
     }
@@ -2610,10 +2677,14 @@ public class MainActivity extends AppCompatActivity
         btMainStatus = MainStatus.CLOSE;
         closeBtStreams();
         releaseMP();    // release the resources of the player
-        // Unregister since the activity is about to be closed.
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
     }
 
+    /**
+     * проверка возможно ли осуществляь передачу по BT
+     */
+    boolean checkAbilityTxBT() {
+        return btMainStatus == MainStatus.CONNECTED;
+    }
 
 }
 
