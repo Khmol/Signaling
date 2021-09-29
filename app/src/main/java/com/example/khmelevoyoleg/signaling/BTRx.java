@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 class BTRx extends AsyncTask<Integer, Void, String> {
 
     private static final String LOG_TAG = "SERVICE_LOG";  // вывод в LOG
+    private static final String LOG_TAG_ERR = "ERR_SERV_LOG";  // вывод в LOG
     private static final String RX_ERROR = "RX_ERROR";  // ошибка передачи
     private static final String RX_ERROR_0 = "RX_ERROR_0";  // ошибка передачи принято 0 байт
     private static final String RX_INTERRUPTED = "RX_INTERRUPTED";  // передача прервана
@@ -19,12 +20,7 @@ class BTRx extends AsyncTask<Integer, Void, String> {
     private static final int EMPTY_MSG = 65535;
     private static final int BUFFER_SIZE = 1024;
 
-    // получаем ссылку на MainActivity
-    /*
-    void link(MainActivity act) {
-        activity = act;
-    }
-     */
+    // получаем ссылку на BTService
     void link(BTService act) {
         serviceBT = act;
     }
@@ -83,7 +79,10 @@ class BTRx extends AsyncTask<Integer, Void, String> {
 
     @Override
     protected void onPostExecute(String result) {
-        Log.d(LOG_TAG, "Rx end. Result = " + result);
+        if (result.equals(RX_ERROR_0))
+            Log.d(LOG_TAG_ERR, "Rx ERROR = " + result);
+        else
+            Log.d(LOG_TAG, "Rx end. Result = " + result);
         super.onPostExecute(result);
         serviceBT.onPostExecuteBTRx(result);
     }

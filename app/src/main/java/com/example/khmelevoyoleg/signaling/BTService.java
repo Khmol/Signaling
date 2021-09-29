@@ -11,7 +11,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.os.AsyncTask;
-import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelUuid;
@@ -45,9 +44,10 @@ public class BTService extends Service{
     OutputStream mOutStream;  // поток по передаче bluetooth
     InputStream mInStream;    // поток по приему bluetooth
     long btRxCnt;
-    static boolean boundBT;          // наличие связи с основной программой
-
-    Handler timerBTRxHandler;       // обработчик таймера
+    boolean activityActiv = false;      // основная программа активка
+    boolean autoConnectFlag = false;    // необходимоать автоматического соединения по BT
+    boolean btMainStatusAlone = false;  // флаг индикации работы без Activity
+    Handler timerBTRxHandler;           // обработчик таймера
 
     // тип перечисления состояний по Bluetooth
     enum MainStatus {
@@ -57,19 +57,23 @@ public class BTService extends Service{
         CONNECTED,
     }
     final String CMDBT_REQUEST_ENABLE_BT = "CMDBT_REQUEST_ENABLE_BT";
-    final String CMDBT_BIND_OK = "CMDBT_BIND_OK";
+    final String CMDBT_SERVICE_OK = "CMDBT_SERVICE_OK";
     final String CMDBT_SET_IDLE_STATE = "CMDBT_SET_IDLE_STATE";
     final String CMDBT_SET_SEARCH_STATE = "CMDBT_SET_SEARCH_STATE";
     final String CMDBT_SET_CONNECTED_STATE = "CMDBT_SET_CONNECTED_STATE";
     final String CMDBT_ANALIZE_BT_DATA = "CMDBT_ANALIZE_BT_DATA";
     final String CMDBT_CONNECTION_IMPOSSIBLE = "CMDBT_CONNECTION_IMPOSSIBLE";
     final String CMDBT_CONNECTION_ERROR = "CMDBT_CONNECTION_ERROR";
+    final String CMDBT_PING_ACT = "CMDBT_PING_ACT";
 
     final String CMDACT_SET_CONNECT = "CMDACT_SET_CONNECT";
     final String CMDACT_SET_IDLE = "CMDACT_SET_IDLE";
     final String CMDACT_SET_SEARCH = "CMDACT_SET_SEARCH";
     final String CMDACT_SEND_DATA_BT = "CMDACT_SEND_DATA_BT";
     final String CMDACT_SEND_DATA_BT_ANYWAY = "CMDACT_SEND_DATA_BT_ANYWAY";
+    final String CMDACT_PING_SERVICE = "CMDACT_PING_SERVICE";
+    final String CMDACT_PAUSE_ACT = "CMDACT_PAUSE_ACT";
+    final String CMDACT_ACT_OK = "CMDACT_ACT_OK";
 
     // передать данные без проверки готовности передатчика
     // тип перечисления состояний по Bluetooth
@@ -90,18 +94,26 @@ public class BTService extends Service{
     ArrayList<String> btTxData = new ArrayList<>(); // данные для передачи в BT
     ArrayList<String> dataToAnalize = new ArrayList<>(); // данные принятые через BT для анализа
 
-    static final int TIMER_MEDIA_PLAYER = 10000;  // периодичность вызова runMediaPlayer
+    static final int TIMER_AUTO_CONNECT = 30000;  // периодичность вызова runAutoConnect
     static final int TIMER_ACTIVITY_TASK = 250;   // периодичность вызова runBTTxTask
+    static final int TIMER_WAIT_ACTIVITY_TASK = 3000;   // ожидание ответа от Activity
 
     final String LOG_TAG = "SERVICE_LOG";
+    final String LOG_TAG_ERR = "ERR_SERV_LOG";
 
     MediaPlayer mediaPlayer;
-    Handler timerMediaPlayerHandler;
-    Runnable runMediaPlayer = new Runnable() {
+    Handler timerAutoConnectHandler;
+    Runnable runAutoConnect = new Runnable() {
         @Override
         public void run() {
-            mediaPlayer.start();
-            timerMediaPlayerHandler.postDelayed(runMediaPlayer, TIMER_MEDIA_PLAYER);
+            //mediaPlayer.start();
+            if (autoConnectFlag){
+                if (connectionStatusBT != ConnectionStatusBT.CONNECTED){
+                    // запускаем автоматический поиск
+                    doCommandActivity(CMDACT_SET_CONNECT);
+                    timerAutoConnectHandler.postDelayed(runAutoConnect, TIMER_AUTO_CONNECT);
+                }
+            }
         }
     };
 
@@ -116,6 +128,17 @@ public class BTService extends Service{
         }
     };
 
+    // исполнение команд от Activity
+    Handler timerWaitActivityHandler;
+    Runnable runWaitActivityTask = new Runnable() {
+        @Override
+        public void run() {
+        // переходим в режим работы без Activity
+        btMainStatusAlone = true;
+        Log.d(LOG_TAG, "ALONE");
+        }
+    };
+//  TODO - добавить статус без Активити и работать по нему со звуком и приемом данных
     /**
      * запуск приема по BT
      */
@@ -140,9 +163,15 @@ public class BTService extends Service{
                         // изменяем состояние BT - CONNECTED
                         connectionStatusBT = ConnectionStatusBT.CONNECTED;
                         sendMessageToActivity(null);
+                        if (btMainStatusAlone){
+                            btMainStatus = MainStatus.CONNECTED;
+                            dataToSent.add(Utils.BT_INIT_MESSAGE);
+                            doCommandActivity(CMDACT_SEND_DATA_BT_ANYWAY);
+                            Log.d(LOG_TAG, "CMDACT_SEND_DATA_BT -> BT_INIT_MESSAGE");
+                        }
                         break;
                     case BluetoothDevice.ACTION_ACL_DISCONNECTED:
-                        if (btMainStatus != MainStatus.CLOSE && btMainStatus != MainStatus.IDLE) {
+                        if (btMainStatus != MainStatus.CLOSE & btMainStatus != MainStatus.IDLE) {
                             // если программа не в закрытии и не в исходном состоянии
                             // состояние - CONNECTING
                             connectionStatusBT = ConnectionStatusBT.CONNECTING;
@@ -180,6 +209,7 @@ public class BTService extends Service{
         btMainStatus = MainStatus.IDLE;
         // получаем SharedPreferences, которое работает с файлом настроек
         sp = PreferenceManager.getDefaultSharedPreferences(this);
+        autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
         btBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         // создаем задачу соединения BTConnect
         bluetoothConnect = new BTConnect();
@@ -189,8 +219,8 @@ public class BTService extends Service{
 //        mediaPlayer = MediaPlayer.create(this, R.raw.sound);
 //        mediaPlayer.start();
         // запускаем таймер просмотра состояний программы
-//        timerMediaPlayerHandler = new Handler();
-//        timerMediaPlayerHandler.postDelayed(runMediaPlayer, TIMER_MEDIA_PLAYER);
+        timerAutoConnectHandler = new Handler();
+        timerAutoConnectHandler.postDelayed(runAutoConnect, TIMER_AUTO_CONNECT);
         // запускаем таймер исполнения команд от Activity
         timerBTTxHandler = new Handler();
         timerBTTxHandler.postDelayed(runBTTxTask, TIMER_ACTIVITY_TASK);
@@ -202,8 +232,13 @@ public class BTService extends Service{
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED));
         registerReceiver(connectionStatus, new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED));
         registerReceiver(mMessageReceiver, new IntentFilter(ACTION_DATA_FROM_ACTIVITY));
-
+        // сообзщаем что сервис запущен
         Log.d(LOG_TAG, "BTService start");
+        // отправляем запрос в Activity
+        sendMessageToActivity(CMDBT_PING_ACT);
+        // ожидаем ответ от Activity
+        timerWaitActivityHandler = new Handler();
+        timerWaitActivityHandler.postDelayed(runWaitActivityTask, TIMER_WAIT_ACTIVITY_TASK);
     }
 
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
@@ -214,8 +249,8 @@ public class BTService extends Service{
             if (dataFromAct != null)
                 dataToSent.add(dataFromAct);
             String commandFromAct = intent.getStringExtra("commandFromAct");
-            doCommandActivity(commandFromAct);
             Log.d(LOG_TAG, String.format("Got message: %s, data: %s", commandFromAct, dataFromAct));
+            doCommandActivity(commandFromAct);
         }
     };
 
@@ -233,10 +268,13 @@ public class BTService extends Service{
         intent.putExtra("btMainStatus", btMainStatus.toString());
         intent.putExtra("connectionStatusBT", connectionStatusBT.toString());
         sendBroadcast(intent);
+        Log.d(LOG_TAG, String.format("Send message: %s, data: %s, btMainStatus: %s, connectionStatusBT %s", message, data,
+                btMainStatus.toString(), connectionStatusBT.toString()));
     }
 
     // выполнение всех команд пришедших от Activity
     private void doCommandActivity(String command){
+        activityActiv = true;
         switch (command) {
             case CMDACT_SET_CONNECT:
                 // команда установить соединение по BT
@@ -245,6 +283,7 @@ public class BTService extends Service{
                     connectionStatusBT = ConnectionStatusBT.CONNECTING;    // переходим в режим CONNECTING
                     sendMessageToActivity(null);
                 }
+                autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
                 // запускаем установление соединения по BT
                 startConnection();
                 break;
@@ -278,6 +317,16 @@ public class BTService extends Service{
                 // Запускаем прослушивание приема по BT
                 listenMessageBT();
                 break;
+            case CMDACT_PING_SERVICE:
+                sendMessageToActivity(CMDBT_SERVICE_OK);
+                break;
+            case CMDACT_PAUSE_ACT:
+                activityActiv = false;
+                break;
+            case CMDACT_ACT_OK:
+                // отменяем вызов runWaitActivityTask
+                timerWaitActivityHandler.removeCallbacks(runWaitActivityTask);
+                break;
         }
     }
 
@@ -294,9 +343,6 @@ public class BTService extends Service{
                 delayToSent.clear();  // очищаем очередь передачи по BT
             if (btTxData != null)
                 btTxData.clear();  // очищаем очередь передачи по BT
-        }
-        else {
-            // false - переход в режим поиска
         }
     }
 
@@ -344,8 +390,6 @@ public class BTService extends Service{
     @Override
     public IBinder onBind(Intent intent) {
         // даем команду что подключение успешно выполнено
-        boundBT = true;
-        sendMessageToActivity(CMDBT_BIND_OK);
         Log.d(LOG_TAG, "BTService onBind");
         return null;
     }
@@ -561,7 +605,6 @@ public class BTService extends Service{
                     sendMessageToActivity(CMDBT_SET_CONNECTED_STATE);
                 }
             }
-
             // обновляем значение текста в окне
             if (!rxData.contains(Utils.RX_ERROR)){
                 // производим анализ полученных данных
@@ -571,7 +614,7 @@ public class BTService extends Service{
                 Log.d(LOG_TAG, "Recieve:" + rxData);
             }
             else {
-                Log.d(LOG_TAG, "Error RX:" + rxData);
+                Log.d(LOG_TAG_ERR, "Error RX:" + rxData);
             }
         }
         // запускаем новый прием данных

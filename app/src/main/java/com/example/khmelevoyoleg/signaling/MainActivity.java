@@ -76,7 +76,8 @@ public class MainActivity extends AppCompatActivity
 
     // переменные идентичные тем что в сервисе
     final String CMDBT_REQUEST_ENABLE_BT = "CMDBT_REQUEST_ENABLE_BT";
-    final String CMDBT_BIND_OK = "CMDBT_BIND_OK";
+    final String CMDBT_SERVICE_OK = "CMDBT_SERVICE_OK";
+    final String CMDBT_PING_ACT = "CMDBT_PING_ACT";
     final String CMDBT_SET_IDLE_STATE = "CMDBT_SET_IDLE_STATE";
     final String CMDBT_SET_SEARCH_STATE = "CMDBT_SET_SEARCH_STATE";
     final String CMDBT_SET_CONNECTED_STATE = "CMDBT_SET_CONNECTED_STATE";
@@ -104,6 +105,9 @@ public class MainActivity extends AppCompatActivity
     }
 
     enum CommandActivity {
+        CMDACT_PING_SERVICE,
+        CMDACT_PAUSE_ACT,
+        CMDACT_ACT_OK,
         CMDACT_SET_CONNECT,
         CMDACT_SET_IDLE,
         CMDACT_SET_SEARCH,
@@ -148,7 +152,6 @@ public class MainActivity extends AppCompatActivity
     //private TextView tvTemp;
     private int mCountCheckStatus = 0;
 
-    private Set<BluetoothDevice> pairedDevices;     // множество спаренных устройств
     private SharedPreferences sPref, sp;            // настройки приложения
     int btRxCnt;                                    // счетчик принятых пакетов
     int numberPass;                         // количество пропусков при вызапросе состояний выходов
@@ -245,6 +248,7 @@ public class MainActivity extends AppCompatActivity
 
     boolean mOpenCloseCommandSoundMode = true;      //режим работы при постановке и снятию с охраны
     boolean pauseFinish = true;
+    boolean serviceActiv = false;   // запущен ли сервис и есть ли с ним связь
     String delayedCommand;
     Intent serviceBT;
     //boolean boundBT = false;
@@ -295,6 +299,7 @@ public class MainActivity extends AppCompatActivity
             sendMessageToService(delayedCommand);
         }
     };
+
     /** обработка результатов намерений */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -303,16 +308,12 @@ public class MainActivity extends AppCompatActivity
         if (requestCode == Utils.REQUEST_ENABLE_BT) {
             if (resultCode == -1) {
                 // запускаем сервис BT который ищет сигнализацию
+                if (!serviceActiv) {
 //                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
-                serviceBT = new Intent(this, BTService.class);
-                serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
-                startService(serviceBT);
-/*                if (btMainStatus == MainStatus.CONNECTING &&
-                        connectionStatusBT == ConnectionStatusBT.CONNECTING) {
-                    // подключаемся к сервису serviceBT
-                    if (!boundBT)
-                        bindService(serviceBT, sConnBT, 0);
-                }*/
+                    serviceBT = new Intent(this, BTService.class);
+                    serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
+                    startService(serviceBT);
+                }
             }
             else {
                 // выводим сообщение "Поиск сигнализации невозможен"
@@ -326,13 +327,17 @@ public class MainActivity extends AppCompatActivity
     protected void onResume() {
         Log.d(LOG_TAG, "onResume");
         autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
+        // отправляем запрос сервису
+        sendMessageToService(CommandActivity.CMDACT_PING_SERVICE.toString());
         super.onResume();
-
     }
 
     @Override
     protected void onPause() {
         Log.d(LOG_TAG, "onPause");
+        // закрываем обмен с сервисом
+        serviceActiv = false;
+        sendMessageToService(CommandActivity.CMDACT_PAUSE_ACT.toString());
         super.onPause();
     }
 
@@ -511,22 +516,9 @@ public class MainActivity extends AppCompatActivity
         timerDelaySendMessage = new Handler();
         timerPauseExecution = new Handler();
 
-        // создаем обработчик проверки соединения с сервисом
-        sConnBT = new ServiceConnection() {
-            public void onServiceConnected(ComponentName name, IBinder binder) {
-                Log.d(LOG_TAG, "Start Service");
-                //btService = ((BTService.BTBinder) binder).getService();
-                //commandBt = btService.commandBt;
-                //BTService.boundBT = true;
-                //boundBT = BTService.boundBT;
-            }
-            public void onServiceDisconnected(ComponentName name) {
-                //boundBT = false;
-            }
-        };
-//        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-//                new IntentFilter("com.example.khmelevoyoleg.signaling:btprocess"));
         registerReceiver(mMessageReceiver, new IntentFilter("com.example.khmelevoyoleg.signaling:btprocess"));
+        // отправляем запрос сервису
+        sendMessageToService(CommandActivity.CMDACT_PING_SERVICE.toString());
         //endregion
     }
 
@@ -615,13 +607,18 @@ public class MainActivity extends AppCompatActivity
      */
     private void getCommandBT(){
         while (commandBt.size() != 0) {
+            serviceActiv = true;
             switch (commandBt.get(0)) {
                 case CMDBT_REQUEST_ENABLE_BT:
                     // Bluetooth выключен. Предложим пользователю включить его.
                     commandBt.remove(0);
                     startActivityForResult(new Intent(actionRequestEnable), Utils.REQUEST_ENABLE_BT);
                     return;
-                case CMDBT_BIND_OK:
+                case CMDBT_SERVICE_OK:
+                    break;
+                case CMDBT_PING_ACT:
+                    // передаем команду CMDACT_ACT_OK
+                    sendMessageToService(CommandActivity.CMDACT_ACT_OK.toString());
                     break;
                 case CMDBT_SET_IDLE_STATE:
                     // перевести активити в исходное состояние
@@ -1170,7 +1167,8 @@ public class MainActivity extends AppCompatActivity
                 CharSequence[] csAdressPairedDevices;
                 CharSequence[] csNamePairedDevices;
                 // получаем список спаренных устройств
-                pairedDevices = btBluetoothAdapter.getBondedDevices();
+                // множество спаренных устройств
+                Set<BluetoothDevice> pairedDevices = btBluetoothAdapter.getBondedDevices();
                 int size = pairedDevices.size();
                 csNamePairedDevices = new CharSequence[size];
                 csAdressPairedDevices = new CharSequence[size];
@@ -1209,7 +1207,8 @@ public class MainActivity extends AppCompatActivity
                             startActivityForResult(new Intent(actionRequestEnable), Utils.REQUEST_ENABLE_BT);
                         }
                         else {
-                            if (serviceBT == null) {
+                            if (!serviceActiv) {
+                                // если сервис не активен
                                 // запускаем сервис BT который ищет сигнализацию
 //                                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
                                 serviceBT = new Intent(this, BTService.class);
