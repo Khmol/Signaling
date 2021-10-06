@@ -84,6 +84,7 @@ class Utils {
     static final String IN_OFF_TIME = "IN OFF TIME,"; // команда выключить вход для обработки на время
     static final String IN_GET_TIME_OFF = "IN GET TIME OFF,01\r"; // запросить время выключения входов
     static final String IN_GET_DELAY_START = "IN GET DELAY START,01\r"; // запросить время задержки опроса входа при постановке на охрану
+    static final String IN_ALL_STATE = "IN ALL STATE,01\r"; // запросить передачу пакета INPUT и ADC
 
     static final String STATUS_GENERAL_ALARM = "STATUS_GENERAL_ALARM"; // состояние модуля - АВАРИЯ
     static final String STATUS_ALARM_TRIGGERED = "STATUS_ALARM_TRIGGERED"; // состояние модуля - предварительная АВАРИЯ

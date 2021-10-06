@@ -518,7 +518,7 @@ public class MainActivity extends AppCompatActivity
 
         registerReceiver(mMessageReceiver, new IntentFilter("com.example.khmelevoyoleg.signaling:btprocess"));
         // отправляем запрос сервису
-        sendMessageToService(CommandActivity.CMDACT_PING_SERVICE.toString());
+        //sendMessageToService(CommandActivity.CMDACT_PING_SERVICE.toString());
         //endregion
     }
 
@@ -633,6 +633,8 @@ public class MainActivity extends AppCompatActivity
                 case CMDBT_SET_CONNECTED_STATE:
                     // перевести активити в  состояние CONNECTED
                     setConnectedStatusActivity();
+                    // запрашиваем состояние входов
+                    sendDataBT(Utils.IN_ALL_STATE, 0);
                     break;
                 case CMDBT_ANALIZE_BT_DATA:
                     analiseRxData(dataToAnalize);
@@ -986,7 +988,6 @@ public class MainActivity extends AppCompatActivity
         ed.apply();
     }
 
-// TODO - проверить переменные BtService.xxxxx
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);

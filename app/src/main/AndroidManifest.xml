@@ -37,8 +37,8 @@
             android:theme="@style/AppTheme.NoActionBar"></activity>
 
         <service
-            android:process=":BTService"
             android:name=".BTService"
+            android:process=":BTService"
             android:enabled="true"
             android:exported="true">
             <intent-filter>

@@ -28,8 +28,16 @@ import java.util.UUID;
 
 public class BTService extends Service{
 
+    private enum SoundStatus {
+        ALARM_ACTIVE,
+        PREALARM_ACTIVE,
+        IDLE,
+    }
+
     // инициализация переменных
     //region InitVar
+//    final String ACTION_DATA_FROM_SERVICE = "com.example.khmelevoyoleg.signaling:btprocess_";
+//    final String ACTION_DATA_FROM_ACTIVITY = "com.example.khmelevoyoleg.signaling_";
     final String ACTION_DATA_FROM_SERVICE = "com.example.khmelevoyoleg.signaling:btprocess";
     final String ACTION_DATA_FROM_ACTIVITY = "com.example.khmelevoyoleg.signaling";
 
@@ -48,6 +56,9 @@ public class BTService extends Service{
     boolean autoConnectFlag = false;    // необходимоать автоматического соединения по BT
     boolean btMainStatusAlone = false;  // флаг индикации работы без Activity
     Handler timerBTRxHandler;           // обработчик таймера
+    int statusSIM;     // флаги статусов охраны
+    int oldStatusSIM;     // флаги статусов охраны
+    SoundStatus mSoundStatus; // состояние звукового оповещения
 
     // тип перечисления состояний по Bluetooth
     enum MainStatus {
@@ -96,22 +107,39 @@ public class BTService extends Service{
 
     static final int TIMER_AUTO_CONNECT = 30000;  // периодичность вызова runAutoConnect
     static final int TIMER_ACTIVITY_TASK = 250;   // периодичность вызова runBTTxTask
+    static final int TIMER_ACTIVITY_RUN = 1000;   // задержка перед запуском
     static final int TIMER_WAIT_ACTIVITY_TASK = 3000;   // ожидание ответа от Activity
 
     final String LOG_TAG = "SERVICE_LOG";
     final String LOG_TAG_ERR = "ERR_SERV_LOG";
 
     MediaPlayer mediaPlayer;
+
     Handler timerAutoConnectHandler;
     Runnable runAutoConnect = new Runnable() {
         @Override
         public void run() {
-            //mediaPlayer.start();
             if (autoConnectFlag){
                 if (connectionStatusBT != ConnectionStatusBT.CONNECTED){
                     // запускаем автоматический поиск
                     doCommandActivity(CMDACT_SET_CONNECT);
                     timerAutoConnectHandler.postDelayed(runAutoConnect, TIMER_AUTO_CONNECT);
+                }
+            }
+        }
+    };
+
+    // исполнение команд от Activity
+    Handler timerRunMainActivity;
+    Runnable runMainActivityTask = new Runnable() {
+        @Override
+        public void run() {
+            if (btMainStatusAlone) {
+                if (!activityActiv) {
+                    Intent intentMain = new Intent(BTService.this, MainActivity.class);
+                    intentMain.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intentMain);
+                    Log.d(LOG_TAG, "start MainActivity");
                 }
             }
         }
@@ -127,6 +155,19 @@ public class BTService extends Service{
             timerBTTxHandler.postDelayed(runBTTxTask, TIMER_ACTIVITY_TASK);
         }
     };
+    /**
+     * запуск приема по BT
+     */
+    Runnable runListenMessageBT = new Runnable() {
+        @Override
+        public void run() {
+            listenMessageBT();
+            // анализируем принятые данные если они есть
+            if (!activityActiv) {
+                analiseRxData(dataToAnalize);
+            }
+        }
+    };
 
     // исполнение команд от Activity
     Handler timerWaitActivityHandler;
@@ -135,19 +176,12 @@ public class BTService extends Service{
         public void run() {
         // переходим в режим работы без Activity
         btMainStatusAlone = true;
+
         Log.d(LOG_TAG, "ALONE");
         }
     };
 //  TODO - добавить статус без Активити и работать по нему со звуком и приемом данных
-    /**
-     * запуск приема по BT
-     */
-    Runnable runListenMessageBT = new Runnable() {
-        @Override
-        public void run() {
-            listenMessageBT();
-        }
-    };
+
     // endregion
 
     // приемник широковещательных событий
@@ -162,7 +196,7 @@ public class BTService extends Service{
                     case BluetoothDevice.ACTION_ACL_CONNECTED:
                         // изменяем состояние BT - CONNECTED
                         connectionStatusBT = ConnectionStatusBT.CONNECTED;
-                        sendMessageToActivity(null);
+                        sendMessageToActivity(CMDBT_SET_CONNECTED_STATE);
                         if (btMainStatusAlone){
                             btMainStatus = MainStatus.CONNECTED;
                             dataToSent.add(Utils.BT_INIT_MESSAGE);
@@ -215,15 +249,15 @@ public class BTService extends Service{
         bluetoothConnect = new BTConnect();
         // передаем ссылку на основную activity
         bluetoothConnect.link(this);
-
-//        mediaPlayer = MediaPlayer.create(this, R.raw.sound);
-//        mediaPlayer.start();
         // запускаем таймер просмотра состояний программы
         timerAutoConnectHandler = new Handler();
         timerAutoConnectHandler.postDelayed(runAutoConnect, TIMER_AUTO_CONNECT);
         // запускаем таймер исполнения команд от Activity
         timerBTTxHandler = new Handler();
         timerBTTxHandler.postDelayed(runBTTxTask, TIMER_ACTIVITY_TASK);
+        // таймер ожидание запуска Activity
+        timerRunMainActivity = new Handler();
+
         // запускаем таймер просмотра состояний программы
         timerBTRxHandler = new Handler();
 
@@ -250,6 +284,8 @@ public class BTService extends Service{
                 dataToSent.add(dataFromAct);
             String commandFromAct = intent.getStringExtra("commandFromAct");
             Log.d(LOG_TAG, String.format("Got message: %s, data: %s", commandFromAct, dataFromAct));
+            // активность на связи, устан. флаг
+            activityActiv = true;
             doCommandActivity(commandFromAct);
         }
     };
@@ -274,7 +310,6 @@ public class BTService extends Service{
 
     // выполнение всех команд пришедших от Activity
     private void doCommandActivity(String command){
-        activityActiv = true;
         switch (command) {
             case CMDACT_SET_CONNECT:
                 // команда установить соединение по BT
@@ -318,12 +353,17 @@ public class BTService extends Service{
                 listenMessageBT();
                 break;
             case CMDACT_PING_SERVICE:
-                sendMessageToActivity(CMDBT_SERVICE_OK);
+                if (btMainStatus == MainStatus.CONNECTED)
+                    sendMessageToActivity(CMDBT_SET_CONNECTED_STATE);
+                else
+                    sendMessageToActivity(CMDBT_SERVICE_OK);
                 break;
             case CMDACT_PAUSE_ACT:
                 activityActiv = false;
                 break;
             case CMDACT_ACT_OK:
+                activityActiv = true;
+                btMainStatusAlone = false;
                 // отменяем вызов runWaitActivityTask
                 timerWaitActivityHandler.removeCallbacks(runWaitActivityTask);
                 break;
@@ -466,8 +506,6 @@ public class BTService extends Service{
                                             } else {
                                                 // переходим в исходное состояние
                                                 returnIdleStateBT(true);
-                                                // если получено NO_BOUNDED_DEVICE, выдать предупреждение
-                                                Toast.makeText(getApplicationContext(), R.string.noValidBoundedDevice, Toast.LENGTH_SHORT).show();
                                             }
                                         }
                                     }
@@ -496,8 +534,6 @@ public class BTService extends Service{
             if (btMainStatus == MainStatus.CLOSE) {
                 // завершение работы программы
                 // выводим сообщение "Соединение разорвано"
-                Toast.makeText(getApplicationContext(),
-                        R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -637,6 +673,146 @@ public class BTService extends Service{
             }
         }
         return null;
+    }
+
+    /**
+    * анализ принятых данных
+     * @param dataRx - данные для парсинга
+    */
+    private void analiseRxData(ArrayList<String>  dataRx) {
+        while (dataRx.size() > 0) {
+            String data = dataRx.get(0);
+            ArrayList<String> commandsToParse = new ArrayList<>();
+            String[] parsedData; //массив данных ля парсинга
+            if (data.length() > 0) {
+                int startIndexIDCommandBT = 0;
+                int endIndexIDCommandBT = 0;
+                // находим символ "<" - признак начала строки
+                startIndexIDCommandBT = data.indexOf('<');
+                if (startIndexIDCommandBT >= 0)
+                    do {
+                        // находим символ "<" - признак начала строки
+                        endIndexIDCommandBT = data.indexOf('<', (startIndexIDCommandBT + 1));
+                        if (endIndexIDCommandBT >= 0) {
+                            // выделячем команду от startIndexIDCommandBT до endIndexIDCommandBT
+                            commandsToParse.add(data.substring(startIndexIDCommandBT, endIndexIDCommandBT));
+                            startIndexIDCommandBT = endIndexIDCommandBT;
+                        } else {
+                            // выделячем команду от startIndexIDCommandBT до конца data
+                            commandsToParse.add(data.substring(startIndexIDCommandBT, data.length()));
+                        }
+                    } while (endIndexIDCommandBT >= 0);
+                for (String command : commandsToParse) {
+                    // проверка на команду INPUT
+                    // region INPUT
+                    if (command.indexOf(Utils.TYPE_INPUT) > 0) {
+                        // принята команда INPUT
+                        parsedData = command.split(",");
+                        // обновляем значение статуса SIM модуля
+                        statusSIM = Integer.parseInt(parsedData[Utils.INDEX_STATUS_SIM], 16);
+                        // проверка изменилось ли состояние модуля
+                        if (statusSIM != oldStatusSIM) {
+                            // включаем звук аварии если она есть
+//                            Log.d(LOG_TAG_ERR, "statusSIM != oldStatusSIM" );
+                            checkAlarmStatus();
+                        }
+                    }
+                }
+            }
+            // удаляем обработанную команду
+            dataRx.remove(0);
+        }
+    }
+
+    /**
+     * запуск звучания аварии
+     */
+    private void checkAlarmStatus() {
+        // устанавливаем нужный рисунок на крыше машины
+        if (Utils.getValueOnMask(statusSIM, Utils.MASK_GUARD) > 0) {
+            // сигн. на охране
+            // получаем счетчики сработавших аварий
+            int preAlarmCounter = (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED_START,
+                    Utils.MASK_ALARM_TRIGERED_START + 1,
+                    Utils.MASK_ALARM_TRIGERED_START + 2)) >> Utils.MASK_ALARM_TRIGERED_START;
+            int alarmCounter = (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_START,
+                    Utils.MASK_ALARM_START + 1, Utils.MASK_ALARM_START + 2)) >> Utils.MASK_ALARM_START;
+            // включаем/ выключаем звук аварии
+            if (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM) > 0) {
+                if (alarmCounter > 0){
+                    Log.d(LOG_TAG, "start alarm");
+                    if (btMainStatusAlone){
+                        if (!activityActiv) {
+                            sendMessageToActivity(CMDBT_PING_ACT);
+                            timerRunMainActivity.postDelayed(runMainActivityTask, TIMER_ACTIVITY_RUN);
+                            Log.d(LOG_TAG, "start timer run activity");
+                        }
+                    }
+                }
+            }
+            // включаем/ выключаем звук предварительной аварии если при этом нет аварии
+            if (Utils.getValueOnMask(statusSIM, Utils.MASK_ALARM_TRIGERED) > 0 ) {
+                if (preAlarmCounter > 0){
+                    Log.d(LOG_TAG, "start pre_alarm");
+                    if (btMainStatusAlone){
+                        if (!activityActiv) {
+                            sendMessageToActivity(CMDBT_PING_ACT);
+                            timerRunMainActivity.postDelayed(runMainActivityTask, TIMER_ACTIVITY_RUN);
+                            Log.d(LOG_TAG, "start timer run activity");
+                        }
+                    }
+                }
+            }
+            // обновляем значение статуса
+            oldStatusSIM = statusSIM;
+        }
+    }
+
+    /**
+     * запуск звучания аварии и добавление события в главный список
+     * @param alarm - true - запуск аварии, false - запуск предварительной аварии
+     */
+    private void startAlarm (boolean alarm) {
+        // включаем запуск сигнала "Авария"
+        if (mediaPlayer == null) {
+            if (alarm) {
+                // включить звук аварии
+                Log.d(LOG_TAG, "start alarm");
+                // выключаем предварительную аварию если она есть
+                if (mSoundStatus == SoundStatus.PREALARM_ACTIVE)
+                    stopMediaPlayer();
+                mediaPlayer = MediaPlayer.create(this, R.raw.alarm1);
+                mSoundStatus = SoundStatus.ALARM_ACTIVE;
+            }
+            else {
+                // включить звук предварительной аварии
+                Log.d(LOG_TAG, "start prealarm");
+                mediaPlayer = MediaPlayer.create(this, R.raw.prealarm);
+                mSoundStatus = SoundStatus.PREALARM_ACTIVE;
+            }
+            // включаем звук "Авария"
+            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                // Override onCompletion method to apply desired operations.
+                @Override
+                public void onCompletion(MediaPlayer mediaPlayer) {
+                    stopMediaPlayer();
+                }
+            });
+            mediaPlayer.start();
+        }
+    }
+
+    /**
+     * отсановка проигрывания звука
+     */
+    private void stopMediaPlayer () {
+        // авария не сработала либо была выключена, выключаем звук
+        Log.d(LOG_TAG, "stop media player");
+        mSoundStatus = SoundStatus.IDLE;
+        if (mediaPlayer == null)
+            return;
+        mediaPlayer.stop();
+        mediaPlayer = null;
     }
 }
 
