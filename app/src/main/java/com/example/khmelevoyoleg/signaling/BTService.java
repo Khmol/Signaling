@@ -54,6 +54,7 @@ public class BTService extends Service{
     long btRxCnt;
     boolean activityActiv = false;      // основная программа активка
     boolean autoConnectFlag = false;    // необходимоать автоматического соединения по BT
+    boolean waitActivity = false;       // флаг ожидание запуска активити
     boolean btMainStatusAlone = false;  // флаг индикации работы без Activity
     Handler timerBTRxHandler;           // обработчик таймера
     int statusSIM;     // флаги статусов охраны
@@ -107,8 +108,9 @@ public class BTService extends Service{
 
     static final int TIMER_AUTO_CONNECT = 30000;  // периодичность вызова runAutoConnect
     static final int TIMER_ACTIVITY_TASK = 250;   // периодичность вызова runBTTxTask
-    static final int TIMER_ACTIVITY_RUN = 1000;   // задержка перед запуском
+    static final int TIMER_ACTIVITY_RUN = 2000;   // задержка перед запуском
     static final int TIMER_WAIT_ACTIVITY_TASK = 3000;   // ожидание ответа от Activity
+    static final int TIMER_WITHOUT_WAITING = 10;   // запуск по таймеру без ожидания
 
     final String LOG_TAG = "SERVICE_LOG";
     final String LOG_TAG_ERR = "ERR_SERV_LOG";
@@ -119,6 +121,8 @@ public class BTService extends Service{
     Runnable runAutoConnect = new Runnable() {
         @Override
         public void run() {
+        // автоматический поиск работает только в состоянии ALONE
+        if (!activityActiv)
             if (autoConnectFlag){
                 if (connectionStatusBT != ConnectionStatusBT.CONNECTED){
                     // запускаем автоматический поиск
@@ -176,7 +180,7 @@ public class BTService extends Service{
         public void run() {
         // переходим в режим работы без Activity
         btMainStatusAlone = true;
-
+        timerAutoConnectHandler.postDelayed(runAutoConnect, TIMER_WITHOUT_WAITING);
         Log.d(LOG_TAG, "ALONE");
         }
     };
@@ -362,6 +366,7 @@ public class BTService extends Service{
                 activityActiv = false;
                 break;
             case CMDACT_ACT_OK:
+                waitActivity = false; // активити запустилась
                 activityActiv = true;
                 btMainStatusAlone = false;
                 // отменяем вызов runWaitActivityTask
@@ -744,8 +749,11 @@ public class BTService extends Service{
                     if (btMainStatusAlone){
                         if (!activityActiv) {
                             sendMessageToActivity(CMDBT_PING_ACT);
-                            timerRunMainActivity.postDelayed(runMainActivityTask, TIMER_ACTIVITY_RUN);
-                            Log.d(LOG_TAG, "start timer run activity");
+                            if (!waitActivity) {
+                                timerRunMainActivity.postDelayed(runMainActivityTask, TIMER_ACTIVITY_RUN);
+                                waitActivity = true;    // ожидаем запуска активити
+                                Log.d(LOG_TAG, "start timer run activity");
+                            }
                         }
                     }
                 }

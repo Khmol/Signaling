@@ -100,6 +100,8 @@ class Utils {
     static final String STATUS_INPUT_FAULT_LARGER = "STATUS_INPUT_FAULT_LARGER"; // вход не обрабатывается по превышению
     static final String STATUS_INPUT_FAULT_LESS = "STATUS_INPUT_FAULT_LESS"; // вход не обрабатывается по уменьшению
 
+    static final String MAIN_IN_STATUS = "MAIN_IN_STATUS_";//ключ для записи состояния главного ArrayList
+
     // имена атрибутов для Map
     final static String ATRIBUTE_NUMBER = "number";
     final static String ATTRIBUTE_NAME = "name";

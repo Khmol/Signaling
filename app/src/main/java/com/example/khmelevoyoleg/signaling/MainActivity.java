@@ -4,7 +4,6 @@ import android.app.TimePickerDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -15,7 +14,6 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.support.constraint.ConstraintLayout;
@@ -45,8 +43,10 @@ import android.widget.ViewFlipper;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -311,7 +311,7 @@ public class MainActivity extends AppCompatActivity
                 if (!serviceActiv) {
 //                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
                     serviceBT = new Intent(this, BTService.class);
-                    serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
+                    //serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
                     startService(serviceBT);
                 }
             }
@@ -338,6 +338,7 @@ public class MainActivity extends AppCompatActivity
         // закрываем обмен с сервисом
         serviceActiv = false;
         sendMessageToService(CommandActivity.CMDACT_PAUSE_ACT.toString());
+        saveMainAdapter();
         super.onPause();
     }
 
@@ -345,10 +346,41 @@ public class MainActivity extends AppCompatActivity
     protected void onSaveInstanceState(Bundle outState) {
         // TODO - не реализовано
         super.onSaveInstanceState(outState);
+        // создаем эдитор для записи настройки
+        SharedPreferences.Editor ed = sPref.edit();
+        LinkedHashSet<String> countryHashSet = new LinkedHashSet<>();
+        countryHashSet.add("1");
+        countryHashSet.add("2");
+        countryHashSet.add("3");
+        ed.putStringSet("Key1", countryHashSet);
+        // сохраняем изменения для настроек
+        ed.apply();
+
+
         Bundle bundleAdapterMainInStatus = new Bundle();
-        //bundleAdapterMainInStatus.putObject("mainA", (Object) adapterMainInStatus);
+        bundleAdapterMainInStatus.putStringArrayList("mainStatusNumber", mMainStatusNumber);
+        bundleAdapterMainInStatus.putStringArrayList("mainStatusName", mMainStatusName);
+        bundleAdapterMainInStatus.putStringArrayList("mainStatusTime", mMainStatusTime);
+        bundleAdapterMainInStatus.putStringArrayList("mainStatusImage", mMainStatusImage);
         outState.putBundle("mainAdapter", bundleAdapterMainInStatus);
         Log.d(LOG_TAG, "onSaveInstanceState");
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        Log.d(LOG_TAG, "onRestoreInstanceState");
+/*        Bundle bundleAdapterMainInStatus;
+        bundleAdapterMainInStatus = savedInstanceState.getBundle("mainAdapter");
+        try {
+            mMainStatusNumber = bundleAdapterMainInStatus.getStringArrayList("mainStatusNumber");
+            mMainStatusName = bundleAdapterMainInStatus.getStringArrayList("mainStatusName");
+            mMainStatusTime = bundleAdapterMainInStatus.getStringArrayList("mainStatusTime");
+            mMainStatusImage = bundleAdapterMainInStatus.getStringArrayList("mainStatusImage");
+            Log.d(LOG_TAG, "onRestoreInstanceState");
+        } catch (NullPointerException e) {
+            mMainStatusNumber = new ArrayList<>();
+        }*/
     }
 
     @Override
@@ -517,6 +549,28 @@ public class MainActivity extends AppCompatActivity
         timerPauseExecution = new Handler();
 
         registerReceiver(mMessageReceiver, new IntentFilter("com.example.khmelevoyoleg.signaling:btprocess"));
+        // восстанавливаем прошлое значение главного списка
+        Bundle bundleAdapterMainInStatus;
+        try {
+            // создаем эдитор для записи настройки
+            SharedPreferences.Editor ed = sPref.edit();
+            Set<String> countryHashSet;
+            countryHashSet = sPref.getStringSet("Key1", Collections.singleton(""));
+            Log.d(LOG_TAG, "onRestoreInstanceState" + countryHashSet.toString());
+
+            bundleAdapterMainInStatus = savedInstanceState.getBundle("mainAdapter");
+            mMainStatusNumber = bundleAdapterMainInStatus.getStringArrayList("mainStatusNumber");
+            mMainStatusName = bundleAdapterMainInStatus.getStringArrayList("mainStatusName");
+            mMainStatusTime = bundleAdapterMainInStatus.getStringArrayList("mainStatusTime");
+            mMainStatusImage = bundleAdapterMainInStatus.getStringArrayList("mainStatusImage");
+        } catch (NullPointerException e) {
+            mMainStatusNumber = new ArrayList<>();
+            mMainStatusName = new ArrayList<>();
+            mMainStatusTime = new ArrayList<>();
+            mMainStatusImage = new ArrayList<>();
+            Log.d(LOG_TAG, "onRestoreInstanceState FAULT");
+        }
+
         // отправляем запрос сервису
         //sendMessageToService(CommandActivity.CMDACT_PING_SERVICE.toString());
         //endregion
@@ -600,6 +654,7 @@ public class MainActivity extends AppCompatActivity
         if (data != null)
             intent.putExtra("dataFromAct", data);
         sendBroadcast(intent);
+        Log.d(LOG_TAG, String.format("Send message: %s, data: %s", message, data));
     }
 
     /**
@@ -952,9 +1007,45 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+
+    private void saveMainAdapter(){
+        ArrayList<String> alMainInStatus = new ArrayList<>();
+        int alSize = mMainStatusNumber.size();
+        for(int i = 0; i < alSize; i++){
+            alMainInStatus.add(String.format(Locale.getDefault(),"%s;%s;%s;%s",
+                    mMainStatusNumber.get(i), mMainStatusName.get(i),
+                    mMainStatusTime.get(i), mMainStatusImage.get(i)));
+
+        }
+        savePreferences(Utils.MAIN_IN_STATUS, alMainInStatus);
+// TODO - выполнить загрузку  alMainInStatus
+
+//        // добавляем пункт в список
+//        Map<String, Object> m;
+//        m = new HashMap<>();
+//        m.put(Utils.ATRIBUTE_NUMBER, mMainStatusNumber.get(cnt));
+//        m.put(Utils.ATTRIBUTE_NAME, mMainStatusName.get(cnt));
+//        m.put(Utils.ATTRIBUTE_TIME, mMainStatusTime.get(cnt));
+//        m.put(Utils.ATTRIBUTE_STATUS_IMAGE, getImageViewValue(mMainStatusImage.get(cnt)));
+//        mAlMainInStatus.add(m);
+//        if (cnt > Utils.MAX_MAIN_STATUS_SIZE)
+//            mAlMainInStatus.remove(0); // удаляем самый давний элемент в списке
+//        adapterMainInStatus.notifyDataSetChanged();
+//        // усанавливаем фокус на последнем элементе
+//        lvMainInStatus.smoothScrollToPosition(cnt);
+    }
+
     /**
      * сохранение настроек InOut в xml файл
-     * @param inOutName - массив имен входов/ выходов
+     * @param inOutName - массив имен входов/выходов/главного меню
+     */
+    private void savePreferences(String keyName, ArrayList<String> inOutName) {
+        savePreferences(keyName, inOutName, null, null);
+    }
+
+    /**
+     * сохранение настроек InOut в xml файл
+     * @param inOutName - массив имен входов/выходов/главного меню
      * @param inOutState - массив состояний входов/ выходов
      */
     private void savePreferences(String keyName, ArrayList<String> inOutName,
@@ -1210,10 +1301,9 @@ public class MainActivity extends AppCompatActivity
                         else {
                             if (!serviceActiv) {
                                 // если сервис не активен
-                                // запускаем сервис BT который ищет сигнализацию
-//                                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
+                                // запускаем сервис BT
                                 serviceBT = new Intent(this, BTService.class);
-                                serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
+                                //serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
                                 startService(serviceBT);
                             }
                             // выводим сообщение "Запущен поиск сигнализации"
@@ -1221,11 +1311,10 @@ public class MainActivity extends AppCompatActivity
                             // передаем команду начать соединение CMDACT_SET_CONNECT
                             timerDelaySendMessage.postDelayed(runDelaySendMessage, Utils.TIMER_DELAY);
                             delayedCommand = CommandActivity.CMDACT_SET_CONNECT.toString();
+                            // читаем значение флага AutoConnect
+                            autoConnectFlag = sp.getBoolean(Utils.AUTO_CONNECT, false);
                             // обнуляем счетчик попыток установления соединения
                             mConnectionAttemptsCnt = 0;
-                            // подключаемся к сервису serviceBT
-/*                            if (!boundBT)
-                                bindService(serviceBT, sConnBT, 0);*/
                         }
                     }
                 }
@@ -1235,10 +1324,13 @@ public class MainActivity extends AppCompatActivity
                         Toast.makeText(getApplicationContext(), R.string.сonnectionStoped, Toast.LENGTH_SHORT).show();
                     }
                     else
-                    if (btMainStatus == MainStatus.CONNECTED){
-                        // выводим сообщение "Соединение разорвано"
-                        Toast.makeText(getApplicationContext(), R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
-                    }
+                        if (btMainStatus == MainStatus.CONNECTED){
+                            // выводим сообщение "Соединение разорвано"
+                            Toast.makeText(getApplicationContext(), R.string.connectionInterrupted, Toast.LENGTH_SHORT).show();
+                            // прекращаем автоматический поиск поскольку он был остановлен вручную
+                            // до момента пока вручную не включат поиск или до перезагрузки программы
+                            autoConnectFlag = false;
+                        }
                     // выключаем поиск сигнализации и переходим в исходное состояние
                     returnIdleStateActivity(true, true);
                 }
@@ -2489,7 +2581,8 @@ public class MainActivity extends AppCompatActivity
         Log.d(LOG_TAG, "onCompletion");
         // выключаем предварительную аварию если она есть
         if ( mSoundStatus == SoundStatus.PREALARM_ACTIVE ) {
-            stopMediaPlayer();
+            if (mediaPlayer != null)
+                stopMediaPlayer();
             mSoundStatus = SoundStatus.IDLE;
         }
         else
@@ -2674,6 +2767,7 @@ public class MainActivity extends AppCompatActivity
         // Освободить все ресурсы, включая работающие потоки,
         // соединения с БД и т. д.
         super.onDestroy();
+        saveMainAdapter();
         btMainStatus = MainStatus.CLOSE;
         closeBtStreams();
         releaseMP();    // release the resources of the player

@@ -16,12 +16,12 @@
         android:windowSoftInputMode="adjustPan">
         <activity
             android:name=".MainActivity"
+            android:screenOrientation="portrait"
             android:exported="true"
             android:label="@string/app_name"
-            android:screenOrientation="portrait"
             android:theme="@style/AppTheme">
 
-            <!-- android:theme="@style/AppTheme.NoActionBar"> -->
+        <!-- android:theme="@style/AppTheme.NoActionBar"> -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -38,7 +38,6 @@
 
         <service
             android:name=".BTService"
-            android:process=":BTService"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
@@ -47,5 +46,6 @@
             </intent-filter>
         </service>
     </application>
-<!--            android:process=":BTService"   -->
+
+    <!--            android:process=":BTService"   -->
 </manifest>
