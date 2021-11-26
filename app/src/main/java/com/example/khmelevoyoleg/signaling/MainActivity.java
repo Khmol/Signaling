@@ -550,26 +550,7 @@ public class MainActivity extends AppCompatActivity
 
         registerReceiver(mMessageReceiver, new IntentFilter("com.example.khmelevoyoleg.signaling:btprocess"));
         // восстанавливаем прошлое значение главного списка
-        Bundle bundleAdapterMainInStatus;
-        try {
-            // создаем эдитор для записи настройки
-            SharedPreferences.Editor ed = sPref.edit();
-            Set<String> countryHashSet;
-            countryHashSet = sPref.getStringSet("Key1", Collections.singleton(""));
-            Log.d(LOG_TAG, "onRestoreInstanceState" + countryHashSet.toString());
-
-            bundleAdapterMainInStatus = savedInstanceState.getBundle("mainAdapter");
-            mMainStatusNumber = bundleAdapterMainInStatus.getStringArrayList("mainStatusNumber");
-            mMainStatusName = bundleAdapterMainInStatus.getStringArrayList("mainStatusName");
-            mMainStatusTime = bundleAdapterMainInStatus.getStringArrayList("mainStatusTime");
-            mMainStatusImage = bundleAdapterMainInStatus.getStringArrayList("mainStatusImage");
-        } catch (NullPointerException e) {
-            mMainStatusNumber = new ArrayList<>();
-            mMainStatusName = new ArrayList<>();
-            mMainStatusTime = new ArrayList<>();
-            mMainStatusImage = new ArrayList<>();
-            Log.d(LOG_TAG, "onRestoreInstanceState FAULT");
-        }
+        loadMainAdapter();
 
         // отправляем запрос сервису
         //sendMessageToService(CommandActivity.CMDACT_PING_SERVICE.toString());
@@ -1007,7 +988,9 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-
+    /**
+     * сохранение списка главного экрана в xml файл
+     */
     private void saveMainAdapter(){
         ArrayList<String> alMainInStatus = new ArrayList<>();
         int alSize = mMainStatusNumber.size();
@@ -1015,24 +998,48 @@ public class MainActivity extends AppCompatActivity
             alMainInStatus.add(String.format(Locale.getDefault(),"%s;%s;%s;%s",
                     mMainStatusNumber.get(i), mMainStatusName.get(i),
                     mMainStatusTime.get(i), mMainStatusImage.get(i)));
-
+        }
+        for(int i = alSize; i < Utils.MAX_MAIN_STATUS_SIZE; i++){
+            alMainInStatus.add("");
         }
         savePreferences(Utils.MAIN_IN_STATUS, alMainInStatus);
-// TODO - выполнить загрузку  alMainInStatus
+    }
 
-//        // добавляем пункт в список
-//        Map<String, Object> m;
-//        m = new HashMap<>();
-//        m.put(Utils.ATRIBUTE_NUMBER, mMainStatusNumber.get(cnt));
-//        m.put(Utils.ATTRIBUTE_NAME, mMainStatusName.get(cnt));
-//        m.put(Utils.ATTRIBUTE_TIME, mMainStatusTime.get(cnt));
-//        m.put(Utils.ATTRIBUTE_STATUS_IMAGE, getImageViewValue(mMainStatusImage.get(cnt)));
-//        mAlMainInStatus.add(m);
-//        if (cnt > Utils.MAX_MAIN_STATUS_SIZE)
-//            mAlMainInStatus.remove(0); // удаляем самый давний элемент в списке
-//        adapterMainInStatus.notifyDataSetChanged();
-//        // усанавливаем фокус на последнем элементе
-//        lvMainInStatus.smoothScrollToPosition(cnt);
+    /**
+     * загрузка списка главного экрана из сохраненных настроек
+     */
+    private void loadMainAdapter(){
+        StringBuilder  prefKey = new StringBuilder(Utils.MAIN_IN_STATUS);  // задаем ключ для чтения настроек
+        StringBuilder  prefText = new StringBuilder(""); // задаем значение прочтенной настройки
+        Map<String, Object> m;
+
+        int cnt = 0;
+        do {
+            // меняем ключ для чтения настроек "имени"
+            prefKey.replace(0, prefKey.capacity(), Utils.MAIN_IN_STATUS + String.valueOf(cnt));
+            // читаем настройки
+            prefText.replace(0, prefText.capacity(), sPref.getString(prefKey.toString(), ""));
+            if (!prefText.toString().equals("")) {
+                String[] saveData = prefText.toString().split(";");
+                mMainStatusNumber.add(saveData[0]);
+                mMainStatusName.add(saveData[1]);
+                mMainStatusTime.add(saveData[2]);
+                mMainStatusImage.add(saveData[3]);
+                // добавляем пункт в список
+                m = new HashMap<>();
+                m.put(Utils.ATRIBUTE_NUMBER, mMainStatusNumber.get(cnt));
+                m.put(Utils.ATTRIBUTE_NAME, mMainStatusName.get(cnt));
+                m.put(Utils.ATTRIBUTE_TIME, mMainStatusTime.get(cnt));
+                m.put(Utils.ATTRIBUTE_STATUS_IMAGE, getImageViewValue(mMainStatusImage.get(cnt)));
+                mAlMainInStatus.add(m);
+                if (cnt > Utils.MAX_MAIN_STATUS_SIZE)
+                    mAlMainInStatus.remove(0); // удаляем самый давний элемент в списке
+            }
+            cnt++;
+        } while ( !prefText.toString().equals(""));
+        adapterMainInStatus.notifyDataSetChanged();
+        // усанавливаем фокус на последнем элементе
+        lvMainInStatus.smoothScrollToPosition(cnt);
     }
 
     /**
