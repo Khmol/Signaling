@@ -43,15 +43,11 @@ import android.widget.ViewFlipper;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-
-import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 
 public class MainActivity extends AppCompatActivity
         implements View.OnTouchListener, View.OnClickListener,
@@ -248,7 +244,10 @@ public class MainActivity extends AppCompatActivity
 
     boolean mOpenCloseCommandSoundMode = true;      //режим работы при постановке и снятию с охраны
     boolean pauseFinish = true;
-    boolean serviceActiv = false;   // запущен ли сервис и есть ли с ним связь
+    boolean delayModifyDigInAdapter = false;    // вызов с задержкой для modifyDigInAdapter
+    boolean delayModifyAnalogInAdapter = false; // вызов с задержкой для modifyAnalogInAdapter
+    boolean serviceActive = false;   // запущен ли сервис и есть ли с ним связь
+
     String delayedCommand;
     Intent serviceBT;
     //boolean boundBT = false;
@@ -287,7 +286,7 @@ public class MainActivity extends AppCompatActivity
     Runnable runPauseExecution = new Runnable() {
         @Override
         public void run() {
-            // выполняем команды пришедшие по BT
+            // пауза обработки команд завершена при переходе в ConnectionStatusBT.CONNECTED
             pauseFinish = true;
         }
     };
@@ -299,7 +298,21 @@ public class MainActivity extends AppCompatActivity
             sendMessageToService(delayedCommand);
         }
     };
-
+    // опрос команд от BT
+    Handler timerDelayExecuteCommand;
+    Runnable runDelayExecuteCommand = new Runnable() {
+        @Override
+        public void run() {
+            if (delayModifyDigInAdapter) {
+                modifyDigInAdapter();
+                delayModifyDigInAdapter = false;
+            }
+            if (delayModifyAnalogInAdapter) {
+                modifyAnalogInAdapter();
+                delayModifyAnalogInAdapter = false;
+            }
+        }
+    };
     /** обработка результатов намерений */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -308,7 +321,7 @@ public class MainActivity extends AppCompatActivity
         if (requestCode == Utils.REQUEST_ENABLE_BT) {
             if (resultCode == -1) {
                 // запускаем сервис BT который ищет сигнализацию
-                if (!serviceActiv) {
+                if (!serviceActive) {
 //                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
                     serviceBT = new Intent(this, BTService.class);
                     //serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
@@ -336,51 +349,10 @@ public class MainActivity extends AppCompatActivity
     protected void onPause() {
         Log.d(LOG_TAG, "onPause");
         // закрываем обмен с сервисом
-        serviceActiv = false;
+        serviceActive = false;
         sendMessageToService(CommandActivity.CMDACT_PAUSE_ACT.toString());
         saveMainAdapter();
         super.onPause();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        // TODO - не реализовано
-        super.onSaveInstanceState(outState);
-        // создаем эдитор для записи настройки
-        SharedPreferences.Editor ed = sPref.edit();
-        LinkedHashSet<String> countryHashSet = new LinkedHashSet<>();
-        countryHashSet.add("1");
-        countryHashSet.add("2");
-        countryHashSet.add("3");
-        ed.putStringSet("Key1", countryHashSet);
-        // сохраняем изменения для настроек
-        ed.apply();
-
-
-        Bundle bundleAdapterMainInStatus = new Bundle();
-        bundleAdapterMainInStatus.putStringArrayList("mainStatusNumber", mMainStatusNumber);
-        bundleAdapterMainInStatus.putStringArrayList("mainStatusName", mMainStatusName);
-        bundleAdapterMainInStatus.putStringArrayList("mainStatusTime", mMainStatusTime);
-        bundleAdapterMainInStatus.putStringArrayList("mainStatusImage", mMainStatusImage);
-        outState.putBundle("mainAdapter", bundleAdapterMainInStatus);
-        Log.d(LOG_TAG, "onSaveInstanceState");
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        Log.d(LOG_TAG, "onRestoreInstanceState");
-/*        Bundle bundleAdapterMainInStatus;
-        bundleAdapterMainInStatus = savedInstanceState.getBundle("mainAdapter");
-        try {
-            mMainStatusNumber = bundleAdapterMainInStatus.getStringArrayList("mainStatusNumber");
-            mMainStatusName = bundleAdapterMainInStatus.getStringArrayList("mainStatusName");
-            mMainStatusTime = bundleAdapterMainInStatus.getStringArrayList("mainStatusTime");
-            mMainStatusImage = bundleAdapterMainInStatus.getStringArrayList("mainStatusImage");
-            Log.d(LOG_TAG, "onRestoreInstanceState");
-        } catch (NullPointerException e) {
-            mMainStatusNumber = new ArrayList<>();
-        }*/
     }
 
     @Override
@@ -545,8 +517,9 @@ public class MainActivity extends AppCompatActivity
         timerBTTaskHandler = new Handler();
         timerBTTaskHandler.postDelayed(runActivityTask, Utils.TIMER_BT_TASK);
         // таймера задержек отправки команд мервису и паузы при выполении
-        timerDelaySendMessage = new Handler();
-        timerPauseExecution = new Handler();
+        timerDelaySendMessage = new Handler(); // задержка перед отправкой сообщения по BT
+        timerPauseExecution = new Handler();    // пауза при повторном выове команд
+        timerDelayExecuteCommand = new Handler(); // задержка перед вызовом команды
 
         registerReceiver(mMessageReceiver, new IntentFilter("com.example.khmelevoyoleg.signaling:btprocess"));
         // восстанавливаем прошлое значение главного списка
@@ -574,6 +547,7 @@ public class MainActivity extends AppCompatActivity
             // обновляем занчение connectionStatusBT
             String bt_connection_status = intent.getStringExtra("connectionStatusBT");
             setCurrentConnectionStatusBT(bt_connection_status);
+            // TODO - сделать обработку адаптеров входов после изменения статуса сигналки
             Log.d(LOG_TAG, String.format("Got message: %s, data: %s, btMainStatus: %s, connectionStatusBT: %s",
                     message, data, bt_main_status, bt_connection_status));
         }
@@ -643,7 +617,7 @@ public class MainActivity extends AppCompatActivity
      */
     private void getCommandBT(){
         while (commandBt.size() != 0) {
-            serviceActiv = true;
+            serviceActive = true;
             switch (commandBt.get(0)) {
                 case CMDBT_REQUEST_ENABLE_BT:
                     // Bluetooth выключен. Предложим пользователю включить его.
@@ -1306,7 +1280,7 @@ public class MainActivity extends AppCompatActivity
                             startActivityForResult(new Intent(actionRequestEnable), Utils.REQUEST_ENABLE_BT);
                         }
                         else {
-                            if (!serviceActiv) {
+                            if (!serviceActive) {
                                 // если сервис не активен
                                 // запускаем сервис BT
                                 serviceBT = new Intent(this, BTService.class);
@@ -2337,86 +2311,100 @@ public class MainActivity extends AppCompatActivity
         } else
             mMainStatusNumber.add(Integer.toString(1));
         // проверка сработала авания ??
-        if (event.equals(Utils.STATUS_GENERAL_ALARM)) {
-            // выводим надпись Авария
-            mMainStatusName.add("Авария");
-            // добавляем нужную картинку
-            mMainStatusImage.add(Utils.STATUS_GENERAL_ALARM);
-        } else // проверка сработала предварительная авания ??
-            if (event.equals(Utils.STATUS_ALARM_TRIGGERED)) {
-            // выводим надпись Авария
-            mMainStatusName.add("Предупреждение");
-            // добавляем нужную картинку
-            mMainStatusImage.add(Utils.STATUS_ALARM_TRIGGERED);
-        } else // проверка произвели установку на охрану ??
-            if (event.equals(Utils.STATUS_GUARD_ON)) {
-            // выводим надпись Охрана установлена
-            mMainStatusName.add("Охрана установлена");
-            // добавляем нужную картинку
-            mMainStatusImage.add(Utils.STATUS_GUARD_ON);
-        } else // проверка произвели выключение охраны ??
-            if (event.equals(Utils.STATUS_GUARD_OFF)) {
-            // выводим надпись Охрана установлена
-            mMainStatusName.add("Охрана снята");
-            // добавляем нужную картинку
-            mMainStatusImage.add(Utils.STATUS_GUARD_OFF);
-        } else // проверка сбросили аварию ??
-            if (event.equals(Utils.STATUS_CLEAR_ALARM)) {
-            // выводим надпись Охрана установлена
-            mMainStatusName.add("Сброс аварии");
-            // добавляем нужную картинку
-            mMainStatusImage.add(Utils.STATUS_CLEAR_ALARM);
-        } else // проверка сработал вход ??
-            if (event.equals(Utils.STATUS_INPUT_ON)) {
+        switch (event){
+            case Utils.STATUS_GENERAL_ALARM:
+                // выводим надпись Авария
+                mMainStatusName.add("Авария");
+                // добавляем нужную картинку
+                mMainStatusImage.add(Utils.STATUS_GENERAL_ALARM);
+                break;
+            case Utils.STATUS_ALARM_TRIGGERED:
+                // проверка сработала предварительная авания ??
+                // выводим надпись Авария
+                mMainStatusName.add("Предупреждение");
+                // добавляем нужную картинку
+                mMainStatusImage.add(Utils.STATUS_ALARM_TRIGGERED);
+                break;
+            case Utils.STATUS_GUARD_ON:
+                // проверка произвели установку на охрану ??
+                // выводим надпись Охрана установлена
+                mMainStatusName.add("Охрана установлена");
+                // добавляем нужную картинку
+                mMainStatusImage.add(Utils.STATUS_GUARD_ON);
+                break;
+            case Utils.STATUS_GUARD_OFF:
+                // проверка произвели выключение охраны ??
+                // выводим надпись Охрана установлена
+                mMainStatusName.add("Охрана снята");
+                // добавляем нужную картинку
+                mMainStatusImage.add(Utils.STATUS_GUARD_OFF);
+                break;
+            case Utils.STATUS_CLEAR_ALARM:
+                // проверка сбросили аварию ??
+                // выводим надпись Охрана установлена
+                mMainStatusName.add("Сброс аварии");
+                // добавляем нужную картинку
+                mMainStatusImage.add(Utils.STATUS_CLEAR_ALARM);
+                break;
+            case Utils.STATUS_INPUT_ON:
+                // проверка сработал вход ??
                 // выводим надпись Охрана установлена
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_ON);
-        } else // проверка вход разомкнулся ??
-            if (event.equals(Utils.STATUS_INPUT_OFF)) {
+                break;
+            case Utils.STATUS_INPUT_OFF:
+                // проверка вход разомкнулся ??
                 // выводим надпись - иня входа
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_OFF);
-        } else // проверка вход не обрабатывается ??
-            if (event.equals(Utils.STATUS_INPUT_FAULT)) {
+                break;
+            case Utils.STATUS_INPUT_FAULT:
+                // проверка вход не обрабатывается ??
                 // выводим надпись - иня входа
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_FAULT);
-        } else // проверка аналоговый вход не в превышении??
-            if (event.equals(Utils.STATUS_INPUT_ON_LARGER)) {
+                break;
+            case Utils.STATUS_INPUT_ON_LARGER:
+                // проверка аналоговый вход не в превышении??
                 // выводим надпись - иня входа
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_ON_LARGER);
-        } else // проверка аналоговый вход не уменьшен??
-            if (event.equals(Utils.STATUS_INPUT_ON_LESS)) {
+                break;
+            case Utils.STATUS_INPUT_ON_LESS:
+                // проверка аналоговый вход не уменьшен??
                 // выводим надпись - иня входа
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_ON_LESS);
-        }  else // проверка аналоговый вход в диапазоне??
-            if (event.equals(Utils.STATUS_INPUT_ON_SHOCK)) {
+                break;
+            case Utils.STATUS_INPUT_ON_SHOCK:
+                // проверка аналоговый вход в диапазоне??
                 // выводим надпись - иня входа
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_ON_SHOCK);
-        } else // проверка аналоговый вход не обрабатывается по превышению??
-            if (event.equals(Utils.STATUS_INPUT_FAULT_LARGER)) {
+                break;
+            case Utils.STATUS_INPUT_FAULT_LARGER:
+                // проверка аналоговый вход не обрабатывается по превышению??
                 // выводим надпись - иня входа
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_FAULT_LARGER);
-        } else // проверка аналоговый вход не обрабатывается по уменьшению??
-            if (event.equals(Utils.STATUS_INPUT_FAULT_LESS)) {
+                break;
+            case Utils.STATUS_INPUT_FAULT_LESS:
+                // проверка аналоговый вход не обрабатывается по уменьшению??
                 // выводим надпись - иня входа
                 mMainStatusName.add(input_name);
                 // добавляем нужную картинку
                 mMainStatusImage.add(Utils.STATUS_INPUT_FAULT_LESS);
+                break;
         }
         // добавляем информацию о времени срабатывания
-        String strTime = new SimpleDateFormat("dd.MM\nHH:mm:ss").format(GregorianCalendar.getInstance().getTime());
+        String strTime = new SimpleDateFormat( "dd.MM\nHH:mm:ss", Locale.getDefault()).format(GregorianCalendar.getInstance().getTime());
         mMainStatusTime.add(strTime);
 
         // добавляем пункт в список
@@ -2543,9 +2531,10 @@ public class MainActivity extends AppCompatActivity
         adapterOut.notifyDataSetChanged();
         // обновляем страницы настроек входов
         adapterDigIn.editableName = false;
-        modifyDigInAdapter();
+        delayModifyDigInAdapter = true; // выполняем отложенный вызов для ModifyDigInAdapter
+        delayModifyAnalogInAdapter = true;// выполняем отложенный вызов для ModifyAnalogInAdapter
+        timerDelayExecuteCommand.postDelayed(runDelayExecuteCommand, Utils.TIMER_DELAY_EXECUTION_COMMAND);
         adapterAnalogIn.editableName = false;
-        modifyAnalogInAdapter();
         // выключаем звук аварии
         stopMediaPlayer();
     }

@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Car Shield</string>
-    <string name="version">Версия программы 1.10.00</string>
+    <string name="version">Версия программы 1.20.00</string>
     <string name="pb_showPaired">Показать\nспаренные</string>
     <string name="tvConnectionState">Соединение отсутствует</string>
     <string name="hintTextEdit1">Введите телефон</string>

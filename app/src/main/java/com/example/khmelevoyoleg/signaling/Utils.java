@@ -190,6 +190,7 @@ class Utils {
     static final int TIMER_BT_TASK = 250;   // периодичность вызова timerBTTaskHandler
     static final int TIMER_PAUSE_INIT_MESSAGE = 10000;   // периодичность вызова timerPauseExecution
     static final int TIMER_DELAY = 500;   // периодичность вызова timerPauseExecution
+    static final int TIMER_DELAY_EXECUTION_COMMAND = 500;   // задержка перед вызовом runDelayExecuteCommand
 
     /**
      * установка в digInStatus актуальных значений
