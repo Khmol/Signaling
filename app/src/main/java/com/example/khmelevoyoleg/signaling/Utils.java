@@ -113,7 +113,6 @@ class Utils {
     static final int IDLE = 0; // состояние модуля - не на охране
     static final int MAX_CONNECTION_ATTEMPTS = 3;   // максимальное количество попыток установления соединения
     static final int REQUEST_ENABLE_BT = 1;     // запрос включения Bluetooth
-    static final int SET_SETTINGS = 2;          // редактирование настроек
     static final int SET_PREFERENCES = 3;       // редактирование настроек
     static final long UUID_SERIAL = 0x1101;     // нужный UUID
     static final long UUID_MASK = 0xFFFFFFFF00000000L;  // маска для извлечения нужных битов UUID
@@ -124,10 +123,8 @@ class Utils {
     static final short MASK_ALARM_START = 13;  // начало счетчика аварии
 
     static final int TIMER_CHECK_STATUS = 400;  // периодичность вызова runCheckStatus
-    static final int TIMER_INIT_MESSAGE = 10000;  // периодичность вызова runCheckStatus
     static final int TIMER_LISTEN_BT = 500;  // периодичность вызова runListenMessageBT
     static final int TIMER_TOAST = 3000;  // периодичность вызова runToast
-    static final int DELAY_CONNECTING = 12;     // задержка перед повторной попыткой соединения по BT
     static final int MAX_PROGRESS_VALUE = 3;    // количество ступеней в ProgressBar
     static final int AUTO_CONNECT_TIMEOUT = 540;  // время между запуском поиска SIM 5 мин = TIMER_CHECK_STATUS * AUTO_CONNECT_TIMEOUT
     static final long VIBRATE_TIME = 200;      //  длительность вибрации при нажатии кнопки
@@ -153,7 +150,6 @@ class Utils {
     static final short CMD_ADC_SHOCK_CUR_FROM = 55; // начало текущих флагов статуса входов в диапазоне в команде ADC
     static final short CMD_ADC_RSSI_FROM = 64; // начало значения RSSI в команде ADC
     static final short CMD_ADC_ON_OFF_STATUS_FROM = 12; // начало флагов сатуса входов в команде ADC_ON_OFF
-    static final short IN_VOLTAGE_POSITION = 2; // позиция напряжения питания в посылке ADC Val
     static final short CAR_BATTERY_VOLTAGE_POSITION = 2; // напряжение автомобильной батареи
     static final short RTC_BATTERY_POSITION = 3; // напряжение батарейки RTC
     static final short TEMPERATURE_POSITION = 4; // температура
@@ -161,10 +157,6 @@ class Utils {
     static final short CMD_INPUT_A_MAIN_STATUS_FROM = 9; // начало флагов статуса охраны в команде INPUT
     static final short CMD_INPUT_A_CUR_ON_FROM = 14; // начало флагов включенных датчиков в команде INPUT_A
     static final short CMD_INPUT_A_STATUS_FROM = 39; // начало флагов сатуса входов в команде INPUT_А
-
-    static final short CMD_CAN_A_MAIN_STATUS_FROM = 10; // начало флагов статуса охраны в команде CAN A
-    static final short CMD_CAN_A_CUR_ON_FROM = 15; // начало флагов включенных датчиков в команде CAN A
-    static final short CMD_CAN_A_STATUS_FROM = 24; // начало флагов сатуса входов в команде CAN A
 
     static final short CMD_ADC_A_MAIN_STATUS_FROM = 7; // начало флагов стауса входов в команде ADC_A
     static final short CMD_ADC_A_STATUS_FROM = 30; // начало флагов стауса входов в команде ADC_A
@@ -176,10 +168,6 @@ class Utils {
     static final short NUMBER_BT_DIGITAL_INPUTS = 96; // количество цифровых входов в посылке по BT
     static final short NUMBER_BT_DIGITAL_OUTPUTS = 128; // количество цифровых входов в посылке по BT
     static final short NUMBER_BT_ANALOG_INPUTS = 32; // количество аналоговых входов в посылке по BT
-    static final short NUMBER_BT_CAN = 32; // количество входов CAN в посылке по BT
-
-    static final short CMD_CAN_ON_OFF_STATUS_FROM = 15; // начало флагов сатуса входов в команде CAN_ON_OFF
-
 
     static final short ALL_OUT = 0;         // количество для выключения всех выходов
     static final short CMD_OUT_ON_OFF_STATUS_FROM = 15; // начало флагов сатуса входов в команде INPUT_ON_OFF

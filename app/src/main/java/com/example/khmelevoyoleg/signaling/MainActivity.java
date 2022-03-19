@@ -59,7 +59,6 @@ public class MainActivity extends AppCompatActivity
         IDLE,
     }
 
-
     final String LOG_TAG = "MAIN_LOG";
 
     final int DIG_IN = 1;
@@ -250,6 +249,8 @@ public class MainActivity extends AppCompatActivity
 
     String delayedCommand;
     Intent serviceBT;
+    private static final String SERVICE_NAME = "org.eclipse.paho.android.service.MqttService";
+    MQTT_Client mqttClient;
     //boolean boundBT = false;
     ServiceConnection sConnBT;
     //endregion
@@ -322,7 +323,7 @@ public class MainActivity extends AppCompatActivity
             if (resultCode == -1) {
                 // запускаем сервис BT который ищет сигнализацию
                 if (!serviceActive) {
-//                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
+//                    serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
                     serviceBT = new Intent(this, BTService.class);
                     //serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
                     startService(serviceBT);
@@ -524,7 +525,7 @@ public class MainActivity extends AppCompatActivity
         registerReceiver(mMessageReceiver, new IntentFilter("com.example.khmelevoyoleg.signaling:btprocess"));
         // восстанавливаем прошлое значение главного списка
         loadMainAdapter();
-
+        mqttClient = new MQTT_Client(this);
         // отправляем запрос сервису
         //sendMessageToService(CommandActivity.CMDACT_PING_SERVICE.toString());
         //endregion
@@ -547,7 +548,6 @@ public class MainActivity extends AppCompatActivity
             // обновляем занчение connectionStatusBT
             String bt_connection_status = intent.getStringExtra("connectionStatusBT");
             setCurrentConnectionStatusBT(bt_connection_status);
-            // TODO - сделать обработку адаптеров входов после изменения статуса сигналки
             Log.d(LOG_TAG, String.format("Got message: %s, data: %s, btMainStatus: %s, connectionStatusBT: %s",
                     message, data, bt_main_status, bt_connection_status));
         }
@@ -1283,8 +1283,10 @@ public class MainActivity extends AppCompatActivity
                             if (!serviceActive) {
                                 // если сервис не активен
                                 // запускаем сервис BT
+//                                serviceBT = new Intent("com.example.khmelevoyoleg.signaling.BTService");
+
                                 serviceBT = new Intent(this, BTService.class);
-                                //serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
+//                                serviceBT.setFlags(FLAG_ACTIVITY_NEW_TASK);
                                 startService(serviceBT);
                             }
                             // выводим сообщение "Запущен поиск сигнализации"
@@ -2762,6 +2764,7 @@ public class MainActivity extends AppCompatActivity
     public void onDestroy() {
         // Освободить все ресурсы, включая работающие потоки,
         // соединения с БД и т. д.
+        mqttClient.disconnectMQTT();
         super.onDestroy();
         saveMainAdapter();
         btMainStatus = MainStatus.CLOSE;

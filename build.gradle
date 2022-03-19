@@ -7,11 +7,19 @@ buildscript {
             url 'https://maven.google.com/'
             name 'Google'
         }
+        maven {
+            url "https://repo.eclipse.org/content/repositories/paho-releases/"
+        }
     }
     dependencies {
         //classpath 'com.android.tools.build:gradle:2.3.3'
         classpath 'com.android.tools.build:gradle:3.5.0'
+//        implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.1.0'
+//        implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'
 
+//        compile('org.eclipse.paho:org.eclipse.paho.android.service:1.0.2') {
+//            exclude module: 'support-v4'
+//        }
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }

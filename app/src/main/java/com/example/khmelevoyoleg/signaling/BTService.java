@@ -184,8 +184,6 @@ public class BTService extends Service{
         Log.d(LOG_TAG, "ALONE");
         }
     };
-//  TODO - добавить статус без Активити и работать по нему со звуком и приемом данных
-
     // endregion
 
     // приемник широковещательных событий
@@ -196,6 +194,7 @@ public class BTService extends Service{
         public void onReceive(Context context, Intent intent) {
             try {
                 String action = intent.getAction();
+                assert action != null;
                 switch (action) {
                     case BluetoothDevice.ACTION_ACL_CONNECTED:
                         // изменяем состояние BT - CONNECTED
@@ -222,15 +221,16 @@ public class BTService extends Service{
                             connectionStatusBT = ConnectionStatusBT.NO_CONNECT;
                             sendMessageToActivity(null);
                         }
+                        Log.d(LOG_TAG, "ACTION_ACL_DISCONNECTED");
                         break;
                     case BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED:
                         if (btMainStatus != MainStatus.CLOSE) {
                             // переходим в исходное состояние
-                            Log.d(LOG_TAG, "ACTION_ACL_DISCONNECT_REQUESTED");
                             returnIdleStateBT(true);
                             // перевести активити в исходное сотояние
                             sendMessageToActivity(CMDBT_SET_IDLE_STATE);
                         }
+                        Log.d(LOG_TAG, "ACTION_ACL_DISCONNECT_REQUESTED");
                         break;
                 }
             }
